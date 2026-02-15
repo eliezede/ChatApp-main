@@ -197,29 +197,34 @@ export const AdminBookings = () => {
                         <div className="flex items-center group/int">
                           <button
                             onClick={(e) => handleInterpreterClick(e, booking.interpreterId!)}
-                            className="flex items-center hover:bg-gray-100 p-1.5 rounded-lg transition-colors text-left"
+                            className="flex items-center hover:bg-slate-100 p-2 rounded-xl transition-all text-left border border-transparent hover:border-slate-200"
                           >
-                            <div className="w-7 h-7 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mr-2">
-                              <UserCheck size={14} />
+                            <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-lg flex items-center justify-center mr-2.5 shadow-sm">
+                              <UserCheck size={16} />
                             </div>
-                            <span className="text-xs font-bold text-gray-900 border-b border-transparent hover:border-emerald-600">{booking.interpreterName || 'Assigned'}</span>
+                            <div>
+                              <div className="text-[10px] text-gray-400 font-black uppercase leading-none mb-0.5">Assigned</div>
+                              <div className="text-xs font-bold text-gray-900 leading-tight truncate max-w-[120px]">
+                                {booking.interpreterName || 'View Profile'}
+                              </div>
+                            </div>
                           </button>
                           <button
                             onClick={(e) => handleUnassign(e, booking.id)}
                             disabled={unassigningId === booking.id}
-                            className="ml-2 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all opacity-0 group-hover/int:opacity-100"
-                            title="Retirar assignação"
+                            className="ml-2 p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover/int:opacity-100"
+                            title="Unassign Interpreter"
                           >
-                            {unassigningId === booking.id ? <Spinner size="xs" /> : <X size={14} />}
+                            {unassigningId === booking.id ? <Spinner size="sm" /> : <X size={14} />}
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={(e) => handleAssignClick(e, booking)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-black uppercase hover:bg-amber-100 transition-colors border border-amber-100"
+                          className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[11px] font-black uppercase hover:bg-amber-100 transition-all border-2 border-amber-100/50 hover:border-amber-200 shadow-sm"
                         >
-                          <UserPlus size={14} />
-                          Asignar
+                          <UserPlus size={15} />
+                          Assign
                         </button>
                       )}
                     </td>
@@ -240,7 +245,7 @@ export const AdminBookings = () => {
       <Modal
         isOpen={isAssignModalOpen}
         onClose={() => setIsAssignModalOpen(false)}
-        title={`Asignar Intérprete para ${selectedBooking?.bookingRef}`}
+        title={`Assign Interpreter for ${selectedBooking?.bookingRef}`}
       >
         <div className="space-y-4">
           <div className="relative">
@@ -279,7 +284,7 @@ export const AdminBookings = () => {
                     onClick={() => confirmAssign(interpreter)}
                     isLoading={assignLoading}
                   >
-                    Asignar
+                    Assign
                   </Button>
                 </div>
               ))}
@@ -347,7 +352,13 @@ export const AdminBookings = () => {
               </div>
             </div>
 
-            <div className="pt-4 border-t flex justify-end">
+            <div className="pt-4 border-t flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/admin/interpreters/${selectedInterpreter.id}`)}
+              >
+                View Full Profile
+              </Button>
               <Button onClick={() => setIsInterpreterModalOpen(false)}>Close</Button>
             </div>
           </div>

@@ -336,12 +336,17 @@ export const BookingService = {
           throw new Error('This job is no longer available.');
         }
 
+        // Fetch interpreter name
+        const intSnap = await getDoc(doc(db, 'interpreters', data.interpreterId));
+        const intName = intSnap.exists() ? (intSnap.data() as Interpreter).name : 'Unknown';
+
         await updateDoc(assignmentRef, { status: AssignmentStatus.ACCEPTED, respondedAt: new Date().toISOString() });
 
         // Premium Workflow: Instead of CONFIRMED, we go to ACCEPTED status (pending Admin confirmation)
         await updateDoc(bookingRef, {
           status: BookingStatus.ACCEPTED,
-          interpreterId: data.interpreterId
+          interpreterId: data.interpreterId,
+          interpreterName: intName
         });
 
         // Notify Admins
@@ -356,9 +361,11 @@ export const BookingService = {
       if (a) {
         a.status = AssignmentStatus.ACCEPTED;
         const b = MOCK_BOOKINGS.find(book => book.id === a.bookingId);
+        const i = MOCK_INTERPRETERS.find(inter => inter.id === a.interpreterId);
         if (b) {
           b.status = BookingStatus.ACCEPTED;
           b.interpreterId = a.interpreterId;
+          if (i) b.interpreterName = i.name;
         }
         saveMockData();
       }

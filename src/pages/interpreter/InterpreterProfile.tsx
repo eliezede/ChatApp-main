@@ -5,8 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { InterpreterService, StorageService } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { Interpreter } from '../../types';
-import { 
-  User, Shield, Award, LogOut, Edit2, Save, X, Phone, 
+import {
+  User, Shield, Award, LogOut, Edit2, Save, X, Phone,
   Languages, Check, Upload, FileText, Info, Calendar, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
@@ -20,15 +20,15 @@ export const InterpreterProfile = () => {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const { showToast } = useToast();
-  
+
   const [profile, setProfile] = useState<Interpreter | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('PERSONAL');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  
+
   const [formData, setFormData] = useState<Partial<Interpreter>>({});
-  
+
   // Calendar state
   const [viewDate, setViewDate] = useState(new Date());
 
@@ -111,7 +111,7 @@ export const InterpreterProfile = () => {
     const updated = current.includes(dateStr)
       ? current.filter(d => d !== dateStr)
       : [...current, dateStr];
-    
+
     setFormData(prev => ({ ...prev, unavailableDates: updated }));
     // Auto-save availability changes to keep it fluid
     InterpreterService.updateProfile(user!.profileId!, { unavailableDates: updated });
@@ -123,351 +123,497 @@ export const InterpreterProfile = () => {
     <button
       type="button"
       onClick={() => setActiveTab(id)}
-      className={`flex-1 flex flex-col items-center py-3 border-b-2 transition-all ${
-        activeTab === id 
-          ? 'border-blue-600 text-blue-600' 
-          : 'border-transparent text-gray-400 hover:text-gray-600'
-      }`}
+      className={`flex items-center gap-3 px-6 py-4 rounded-2xl transition-all font-black uppercase tracking-widest text-[10px] ${activeTab === id
+        ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 translate-x-1'
+        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+        }`}
     >
-      <Icon size={18} className="mb-1" />
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+      <Icon size={18} />
+      {label}
     </button>
   );
 
-  const inputClasses = "w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-gray-900 bg-white shadow-sm";
-  const labelClasses = "block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1";
+  const inputClasses = "w-full p-4 border border-slate-100 rounded-[1.25rem] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-slate-900 bg-white placeholder:text-slate-400 font-medium shadow-sm active:scale-[0.99]";
+  const labelClasses = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1";
 
   // Calendar Helpers
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const startDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
-  
+
   const renderCalendar = () => {
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
     const totalDays = daysInMonth(year, month);
     const startDay = startDayOfMonth(year, month);
     const today = new Date().toISOString().split('T')[0];
-    
+
     const days = [];
     // Padding
     for (let i = 0; i < startDay; i++) {
       days.push(<div key={`pad-${i}`} className="h-12 md:h-16 border border-gray-50 bg-gray-50/30"></div>);
     }
-    
+
     // Month days
     for (let d = 1; d <= totalDays; d++) {
       const date = new Date(year, month, d);
       const dateStr = date.toISOString().split('T')[0];
-      const isPast = date < new Date(new Date().setHours(0,0,0,0));
+      const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
       const isToday = dateStr === today;
       const isUnavailable = formData.unavailableDates?.includes(dateStr);
-      
+
       days.push(
-        <div 
+        <div
           key={dateStr}
           onClick={() => !isPast && toggleDateAvailability(dateStr)}
-          className={`h-12 md:h-16 border border-gray-100 flex flex-col items-center justify-center relative cursor-pointer transition-all active:scale-95
-            ${isPast ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : 'bg-white hover:bg-blue-50'}
-            ${isUnavailable ? 'bg-red-50' : ''}
+          className={`h-16 flex flex-col items-center justify-center relative cursor-pointer transition-all active:scale-95 group/day
+            ${isPast ? 'bg-slate-50 text-slate-300 cursor-not-allowed opacity-50' : 'bg-white hover:bg-blue-50/50'}
+            ${isUnavailable ? 'bg-red-50/50 border border-red-100 flex-1' : ''}
           `}
         >
-          {isToday && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-600 rounded-full"></div>}
-          <span className={`text-sm font-bold ${isUnavailable ? 'text-red-600' : isPast ? 'text-gray-300' : 'text-gray-700'}`}>
+          {isToday && (
+            <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.4)]"></div>
+          )}
+
+          <span className={`text-sm font-black transition-colors ${isUnavailable ? 'text-red-600' : isPast ? 'text-slate-300' : 'text-slate-600 group-hover/day:text-blue-600'
+            }`}>
             {d}
           </span>
-          {isUnavailable && <span className="text-[8px] font-black uppercase text-red-400 mt-1">Busy</span>}
+
+          {isUnavailable && (
+            <div className="absolute bottom-2 inset-x-2 flex justify-center">
+              <div className="h-1 w-full max-w-[12px] bg-red-400 rounded-full"></div>
+            </div>
+          )}
         </div>
       );
     }
-    
+
     return days;
   };
 
   return (
-    <div className="space-y-6 pb-24 max-w-2xl mx-auto">
-      {/* Availability Switcher */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm flex items-center justify-between">
-         <div className="flex items-center">
-            <div className={`w-3 h-3 rounded-full mr-3 ${profile.isAvailable ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-            <div>
-               <p className="text-sm font-bold text-gray-900">{profile.isAvailable ? 'Profile Online' : 'Profile Offline'}</p>
-               <p className="text-[10px] text-gray-500 uppercase tracking-wide">
-                 {profile.isAvailable ? 'Visible to new job searches' : 'Hidden from new job matches'}
-               </p>
-            </div>
-         </div>
-         <button 
-           type="button"
-           onClick={toggleGlobalAvailability}
-           className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
-             profile.isAvailable 
-               ? 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100' 
-               : 'bg-green-600 text-white shadow-lg shadow-green-100 hover:bg-green-700'
-           }`}
-         >
-           {profile.isAvailable ? 'Disable Matching' : 'Enable Matching'}
-         </button>
-      </div>
-
-      <div className="flex justify-between items-center px-1">
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">My Profile</h1>
-        {activeTab !== 'AVAILABILITY' && (
-          !isEditing ? (
-            <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} icon={Edit2}>Edit</Button>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} icon={X}>Cancel</Button>
-          )
-        )}
-      </div>
-
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        {/* Navigation Tabs */}
-        <div className="flex bg-gray-50/50 border-b border-gray-100 overflow-x-auto scrollbar-hide">
-           <TabButton id="PERSONAL" label="Details" icon={User} />
-           <TabButton id="SKILLS" label="Skills" icon={Award} />
-           <TabButton id="COMPLIANCE" label="Compliance" icon={Shield} />
-           <TabButton id="AVAILABILITY" label="Schedule" icon={Calendar} />
+    <div className="max-w-[1400px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Account Settings</h1>
+          <p className="text-slate-500 font-bold mt-1">Manage your identity, professional skills and compliance</p>
         </div>
 
-        <div className="p-6 md:p-8">
-           {/* PERSONAL TAB */}
-           {activeTab === 'PERSONAL' && (
-             <form onSubmit={handleSave} className="space-y-6 animate-fade-in">
-                <div className="flex items-center space-x-6 mb-8">
-                   <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 text-2xl font-black border-4 border-white shadow-md">
-                     {profile.name.charAt(0)}
-                   </div>
-                   <div>
-                      <h3 className="text-lg font-bold text-gray-900">{profile.name}</h3>
-                      <p className="text-sm text-gray-500">{profile.email}</p>
-                      <Badge variant={profile.status === 'ACTIVE' ? 'success' : 'warning'} className="mt-2">
-                        {profile.status}
-                      </Badge>
-                   </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-100 transition-all border border-red-100 shadow-sm shadow-red-50 active:scale-95"
+          >
+            <LogOut size={16} />
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        {/* Sidebar: Profile Summary & Quick Actions */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-110 transition-transform duration-700"></div>
+
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <div className="relative mb-6">
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-blue-200/50 ring-4 ring-white">
+                  {profile.name.charAt(0)}
+                </div>
+                <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-xl border-4 border-white shadow-sm flex items-center justify-center ${profile.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                  {profile.isAvailable && <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>}
+                </div>
+              </div>
+
+              <h3 className="text-2xl font-black text-slate-900">{profile.name}</h3>
+              <p className="text-slate-400 font-bold text-sm mt-1">{profile.email}</p>
+
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Badge variant={profile.status === 'ACTIVE' ? 'success' : 'warning'}>
+                  {profile.status}
+                </Badge>
+                <Badge variant="info">
+                  Interpreter Partner
+                </Badge>
+              </div>
+
+              <div className="w-full mt-10 pt-8 border-t border-slate-50 space-y-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Availability</span>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${profile.isAvailable ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {profile.isAvailable ? 'Active' : 'Offline'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={toggleGlobalAvailability}
+                    className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] transition-all shadow-lg active:scale-95 ${profile.isAvailable
+                      ? 'bg-slate-900 text-white hover:bg-black shadow-slate-900/10'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/10'
+                      }`}
+                  >
+                    {profile.isAvailable ? <X size={16} /> : <Check size={16} />}
+                    {profile.isAvailable ? 'Go Offline' : 'Set Active'}
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div className="md:col-span-2">
-                      <label className={labelClasses}>Full Name</label>
-                      <input 
-                        type="text" disabled={!isEditing}
-                        className={inputClasses + " disabled:bg-gray-50 disabled:text-gray-500"}
-                        value={formData.name || ''}
-                        onChange={e => setFormData({...formData, name: e.target.value})}
-                      />
-                   </div>
-                   <div>
-                      <label className={labelClasses}>Phone Number</label>
-                      <input 
-                        type="tel" disabled={!isEditing}
-                        className={inputClasses + " disabled:bg-gray-50"}
-                        value={formData.phone || ''}
-                        onChange={e => setFormData({...formData, phone: e.target.value})}
-                      />
-                   </div>
-                   <div>
-                      <label className={labelClasses}>Postcode</label>
-                      <input 
-                        type="text" disabled={!isEditing}
-                        className={inputClasses + " disabled:bg-gray-50"}
-                        value={formData.postcode || ''}
-                        onChange={e => setFormData({...formData, postcode: e.target.value})}
-                      />
-                   </div>
-                   <div className="md:col-span-2">
-                      <label className={labelClasses}>Address Line 1</label>
-                      <input 
-                        type="text" disabled={!isEditing}
-                        className={inputClasses + " disabled:bg-gray-50"}
-                        value={formData.addressLine1 || ''}
-                        onChange={e => setFormData({...formData, addressLine1: e.target.value})}
-                      />
-                   </div>
-                </div>
-                {isEditing && (
-                   <div className="mt-8 pt-6 border-t">
-                      <Button type="submit" isLoading={isSaving} className="w-full h-12" icon={Save}>Save Changes</Button>
-                   </div>
-                )}
-             </form>
-           )}
+                <p className="px-4 text-[10px] text-slate-400 font-bold leading-relaxed">
+                  {profile.isAvailable
+                    ? 'Your profile is currently visible for on-demand booking requests.'
+                    : 'You are hidden from searches but will still receive direct offers.'}
+                </p>
+              </div>
+            </div>
+          </div>
 
-           {/* SKILLS TAB */}
-           {activeTab === 'SKILLS' && (
-             <div className="space-y-8 animate-fade-in">
-                <div className="space-y-4">
-                  <h4 className="flex items-center text-sm font-bold text-gray-900 border-b pb-2">
-                    <Languages size={18} className="text-blue-500 mr-2" /> 
-                    Languages
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-2 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                    {settings.masterData.priorityLanguages.map(lang => (
-                      <label key={lang} className={`flex items-center p-3 rounded-xl border cursor-pointer transition-all ${
-                        formData.languages?.includes(lang) 
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100' 
-                          : 'bg-white border-gray-100 text-gray-500 opacity-60 hover:opacity-100'
-                      } ${!isEditing && 'pointer-events-none'}`}>
-                        <input 
-                          type="checkbox" className="hidden"
-                          checked={formData.languages?.includes(lang)}
-                          onChange={() => toggleLanguage(lang)}
-                        />
-                        <div className={`w-4 h-4 rounded border mr-2 flex items-center justify-center ${
-                          formData.languages?.includes(lang) ? 'bg-blue-700 border-blue-400' : 'bg-white border-gray-300'
-                        }`}>
-                          {formData.languages?.includes(lang) && <Check size={12} className="text-white" />}
-                        </div>
-                        <span className="text-xs font-bold uppercase">{lang}</span>
-                      </label>
-                    ))}
+          <div className="hidden lg:flex flex-col gap-2 p-2 bg-white rounded-[2rem] shadow-sm border border-slate-100">
+            <TabButton id="PERSONAL" label="Personal Details" icon={User} />
+            <TabButton id="SKILLS" label="Skills & Expertise" icon={Award} />
+            <TabButton id="COMPLIANCE" label="Compliance & DBS" icon={Shield} />
+            <TabButton id="AVAILABILITY" label="Schedule Editor" icon={Calendar} />
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Tabs for Mobile - Scrolled horizontally */}
+          <div className="lg:hidden flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
+            <button
+              onClick={() => setActiveTab('PERSONAL')}
+              className={`whitespace-nowrap px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'PERSONAL' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white text-slate-400 border border-slate-100'}`}
+            >
+              Details
+            </button>
+            <button
+              onClick={() => setActiveTab('SKILLS')}
+              className={`whitespace-nowrap px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'SKILLS' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white text-slate-400 border border-slate-100'}`}
+            >
+              Skills
+            </button>
+            <button
+              onClick={() => setActiveTab('COMPLIANCE')}
+              className={`whitespace-nowrap px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'COMPLIANCE' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white text-slate-400 border border-slate-100'}`}
+            >
+              Compliance
+            </button>
+            <button
+              onClick={() => setActiveTab('AVAILABILITY')}
+              className={`whitespace-nowrap px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'AVAILABILITY' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white text-slate-400 border border-slate-100'}`}
+            >
+              Schedule
+            </button>
+          </div>
+
+          <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100 min-h-[500px]">
+            {/* PERSONAL TAB */}
+            {activeTab === 'PERSONAL' && (
+              <form onSubmit={handleSave} className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xl font-black text-slate-900">Personal Information</h4>
+                  {!isEditing ? (
+                    <button type="button" onClick={() => setIsEditing(true)} className="text-xs font-black uppercase text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 transition-all flex items-center gap-2">
+                      <Edit2 size={14} /> Edit Profile
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => setIsEditing(false)} className="text-xs font-black uppercase text-slate-400 hover:text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-all">
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="md:col-span-2">
+                    <label className={labelClasses}>Full Professional Name</label>
+                    <input
+                      type="text" disabled={!isEditing}
+                      className={inputClasses + " disabled:bg-slate-50 disabled:text-slate-400 disabled:border-transparent"}
+                      value={formData.name || ''}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="e.g. John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClasses}>Phone Number</label>
+                    <input
+                      type="tel" disabled={!isEditing}
+                      className={inputClasses + " disabled:bg-slate-50 disabled:text-slate-400 disabled:border-transparent"}
+                      value={formData.phone || ''}
+                      onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="+44 0000 000000"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClasses}>Postcode</label>
+                    <input
+                      type="text" disabled={!isEditing}
+                      className={inputClasses + " disabled:bg-slate-50 disabled:text-slate-400 disabled:border-transparent uppercase"}
+                      value={formData.postcode || ''}
+                      onChange={e => setFormData({ ...formData, postcode: e.target.value })}
+                      placeholder="SW1A 1AA"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className={labelClasses}>Primary Address</label>
+                    <input
+                      type="text" disabled={!isEditing}
+                      className={inputClasses + " disabled:bg-slate-50 disabled:text-slate-400 disabled:border-transparent"}
+                      value={formData.addressLine1 || ''}
+                      onChange={e => setFormData({ ...formData, addressLine1: e.target.value })}
+                      placeholder="Search for an address..."
+                    />
                   </div>
                 </div>
+
                 {isEditing && (
-                   <Button onClick={() => handleSave()} isLoading={isSaving} className="w-full h-12" icon={Save}>Save Skills</Button>
+                  <div className="mt-12 pt-10 border-t border-slate-50">
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className="w-full h-14 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                    >
+                      {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save size={18} />}
+                      Confirm Changes
+                    </button>
+                  </div>
                 )}
-             </div>
-           )}
+              </form>
+            )}
 
-           {/* COMPLIANCE TAB */}
-           {activeTab === 'COMPLIANCE' && (
-             <div className="space-y-8 animate-fade-in">
-                <div className="bg-orange-50 border border-orange-100 p-6 rounded-2xl">
-                   <div className="flex items-start mb-4">
-                      <div className="bg-orange-100 p-3 rounded-xl text-orange-600 mr-4">
-                        <Shield size={24} />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-black text-orange-900 uppercase tracking-widest">Enhanced DBS Check</h4>
-                        <p className="text-xs text-orange-800/70 mt-1">Status and document verification.</p>
-                      </div>
-                   </div>
+            {/* SKILLS TAB */}
+            {activeTab === 'SKILLS' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xl font-black text-slate-900">Expertise & Languages</h4>
+                  {!isEditing ? (
+                    <button type="button" onClick={() => setIsEditing(true)} className="text-xs font-black uppercase text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 transition-all flex items-center gap-2">
+                      <Edit2 size={14} /> Update Skills
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => setIsEditing(false)} className="text-xs font-black uppercase text-slate-400 hover:text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-all">
+                      Cancel
+                    </button>
+                  )}
+                </div>
 
-                   <div className="space-y-4 mt-6">
-                      <div>
-                        <label className={labelClasses}>Expiry Date</label>
-                        <input 
+                <div className="space-y-6">
+                  <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    <label className={labelClasses + " mb-4"}>Target Languages</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {settings.masterData.priorityLanguages.map(lang => (
+                        <label key={lang} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group/lang ${formData.languages?.includes(lang)
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100'
+                          : 'bg-white border-slate-100 text-slate-500 hover:border-blue-200'
+                          } ${!isEditing && 'opacity-60 pointer-events-none'}`}>
+                          <input
+                            type="checkbox" className="hidden"
+                            checked={formData.languages?.includes(lang)}
+                            onChange={() => toggleLanguage(lang)}
+                          />
+                          <span className="text-xs font-black uppercase tracking-wider">{lang}</span>
+                          <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${formData.languages?.includes(lang) ? 'bg-white/20 border-white text-white' : 'bg-slate-50 border-slate-100 text-transparent group-hover/lang:border-blue-200'
+                            }`}>
+                            <Check size={12} className="stroke-[4px]" />
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {isEditing && (
+                  <div className="mt-12 pt-10 border-t border-slate-50">
+                    <button
+                      onClick={() => handleSave()}
+                      disabled={isSaving}
+                      className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-slate-200 hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3"
+                    >
+                      {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save size={18} />}
+                      Save Updates
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* COMPLIANCE TAB */}
+            {activeTab === 'COMPLIANCE' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xl font-black text-slate-900">Compliance & Security</h4>
+                  {!isEditing ? (
+                    <button type="button" onClick={() => setIsEditing(true)} className="text-xs font-black uppercase text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 transition-all flex items-center gap-2">
+                      <Edit2 size={14} /> Update Docs
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => setIsEditing(false)} className="text-xs font-black uppercase text-slate-400 hover:text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-all">
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-orange-100 p-8 rounded-[2.5rem] relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/20 rounded-full -mr-6 -mt-6 blur-2xl"></div>
+
+                  <div className="flex items-start gap-5 mb-8">
+                    <div className="bg-white p-4 rounded-[1.5rem] text-orange-600 shadow-sm ring-1 ring-orange-200/50">
+                      <Shield size={28} />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-black text-slate-900 leading-tight">Enhanced DBS Certificate</h4>
+                      <p className="text-sm font-bold text-slate-500 mt-1">Verification status and documentation</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <label className={labelClasses + " text-orange-600/80"}>Certificate Expiry</label>
+                      <div className="relative">
+                        <input
                           type="date" disabled={!isEditing}
-                          className="w-full p-3 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white text-gray-900"
+                          className="w-full p-4 border border-orange-200/50 rounded-2xl focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 outline-none transition-all text-slate-900 bg-white font-medium disabled:bg-white/50 disabled:border-transparent"
                           value={formData.dbsExpiry || ''}
-                          onChange={e => setFormData({...formData, dbsExpiry: e.target.value})}
+                          onChange={e => setFormData({ ...formData, dbsExpiry: e.target.value })}
                         />
                       </div>
+                    </div>
 
-                      <div className="pt-2">
-                        <label className={labelClasses}>Certificate Document</label>
-                        <div className={`relative border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center transition-all ${
-                          formData.dbsDocumentUrl ? 'border-green-300 bg-green-50/50' : 'border-orange-200 bg-white hover:bg-orange-50'
+                    <div className="flex flex-col justify-end">
+                      <div className={`relative border-2 border-dashed rounded-[2rem] p-6 flex flex-col items-center justify-center transition-all min-h-[160px] ${formData.dbsDocumentUrl ? 'border-emerald-200 bg-white/60' : 'border-orange-200/50 bg-white/40 hover:bg-white/80'
                         }`}>
-                           {formData.dbsDocumentUrl ? (
-                             <div className="text-center">
-                                <div className="bg-green-100 p-3 rounded-full text-green-600 inline-flex mb-3">
-                                   <FileText size={24} />
-                                </div>
-                                <p className="text-xs font-bold text-green-800">Document Uploaded</p>
-                                <a href={formData.dbsDocumentUrl} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 font-bold uppercase mt-2 block hover:underline">View Certificate</a>
-                                {isEditing && (
-                                  <label className="mt-4 block cursor-pointer">
-                                     <span className="text-[10px] bg-white px-3 py-1.5 rounded-full border border-gray-200 text-gray-500 font-black uppercase hover:bg-gray-50 shadow-sm">Replace</span>
-                                     <input type="file" className="hidden" accept=".pdf,image/*" onChange={handleFileUpload} disabled={isUploading} />
-                                  </label>
-                                )}
-                             </div>
-                           ) : (
-                             <label className={`flex flex-col items-center cursor-pointer ${!isEditing && 'pointer-events-none opacity-50'}`}>
-                                <div className="bg-gray-100 p-3 rounded-full text-gray-400 mb-3">
-                                   <Upload size={24} />
-                                </div>
-                                <p className="text-xs font-bold text-gray-500">Upload PDF/Image</p>
-                                <input type="file" className="hidden" accept=".pdf,image/*" onChange={handleFileUpload} disabled={isUploading || !isEditing} />
-                             </label>
-                           )}
-                           {isUploading && (
-                             <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-2xl">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-                             </div>
-                           )}
-                        </div>
+                        {formData.dbsDocumentUrl ? (
+                          <div className="text-center">
+                            <div className="bg-emerald-100 p-3 rounded-2xl text-emerald-600 inline-flex mb-3 shadow-sm">
+                              <FileText size={24} />
+                            </div>
+                            <p className="text-[10px] font-black uppercase text-emerald-700 tracking-wider">Document Verified</p>
+                            <div className="flex items-center gap-2 mt-4">
+                              <a href={formData.dbsDocumentUrl} target="_blank" rel="noreferrer" className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-xl font-black uppercase tracking-[0.1em] hover:bg-black transition-all">View File</a>
+                              {isEditing && (
+                                <label className="cursor-pointer">
+                                  <span className="text-[10px] bg-white px-4 py-2 rounded-xl border border-slate-200 text-slate-500 font-black uppercase hover:bg-slate-50 transition-all">Replace</span>
+                                  <input type="file" className="hidden" accept=".pdf,image/*" onChange={handleFileUpload} disabled={isUploading} />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <label className={`flex flex-col items-center cursor-pointer group/upload ${!isEditing && 'pointer-events-none opacity-50'}`}>
+                            <div className="bg-white p-4 rounded-2xl text-slate-300 mb-4 shadow-sm group-hover/upload:text-orange-500 transition-colors">
+                              <Upload size={24} />
+                            </div>
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest group-hover/upload:text-slate-600 transition-colors">Upload Certificate</p>
+                            <input type="file" className="hidden" accept=".pdf,image/*" onChange={handleFileUpload} disabled={isUploading || !isEditing} />
+                          </label>
+                        )}
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-white/95 flex items-center justify-center rounded-[2rem] z-20 backdrop-blur-sm">
+                            <div className="flex flex-col items-center gap-4">
+                              <div className="animate-spin rounded-full h-10 w-10 border-4 border-orange-600 border-t-transparent shadow-sm"></div>
+                              <span className="text-[10px] font-black uppercase text-orange-600 tracking-widest">Encrypting...</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                   </div>
+                    </div>
+                  </div>
                 </div>
+
                 {isEditing && (
-                   <Button onClick={() => handleSave()} isLoading={isSaving} className="w-full h-12" icon={Save}>Save Compliance Data</Button>
+                  <div className="mt-12 pt-10 border-t border-slate-50">
+                    <button
+                      onClick={() => handleSave()}
+                      disabled={isSaving}
+                      className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-slate-200 hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3"
+                    >
+                      {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save size={18} />}
+                      Update Compliance
+                    </button>
+                  </div>
                 )}
-             </div>
-           )}
+              </div>
+            )}
 
-           {/* AVAILABILITY TAB */}
-           {activeTab === 'AVAILABILITY' && (
-             <div className="animate-fade-in">
-                <div className="flex justify-between items-center mb-6">
-                   <h3 className="font-bold text-gray-900">Manage Availability</h3>
-                   <div className="flex items-center space-x-1">
-                      <button 
-                        onClick={() => setViewDate(new Date(viewDate.setMonth(viewDate.getMonth() - 1)))}
-                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
-                      >
-                         <ChevronLeft size={18} />
-                      </button>
-                      <span className="text-sm font-black uppercase tracking-widest px-4 w-40 text-center">
-                        {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                      </span>
-                      <button 
-                        onClick={() => setViewDate(new Date(viewDate.setMonth(viewDate.getMonth() + 1)))}
-                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
-                      >
-                         <ChevronRight size={18} />
-                      </button>
-                   </div>
+            {/* AVAILABILITY TAB */}
+            {activeTab === 'AVAILABILITY' && (
+              <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                  <div>
+                    <h4 className="text-xl font-black text-slate-900">Manage Availabilty</h4>
+                    <p className="text-sm font-bold text-slate-400 mt-1">Block dates when you are not available</p>
+                  </div>
+
+                  <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl self-start">
+                    <button
+                      onClick={() => setViewDate(new Date(viewDate.setMonth(viewDate.getMonth() - 1)))}
+                      className="p-2 hover:bg-white rounded-xl text-slate-500 transition-all shadow-sm shadow-transparent hover:shadow-slate-200"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="text-[10px] font-black uppercase tracking-widest px-6 w-44 text-center text-slate-700">
+                      {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button
+                      onClick={() => setViewDate(new Date(viewDate.setMonth(viewDate.getMonth() + 1)))}
+                      className="p-2 hover:bg-white rounded-xl text-slate-500 transition-all shadow-sm shadow-transparent hover:shadow-slate-200"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-xl overflow-hidden shadow-inner mb-4">
-                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                     <div key={day} className="bg-gray-50 py-2 text-center text-[10px] font-black uppercase text-gray-400">
-                        {day}
-                     </div>
-                   ))}
-                   {renderCalendar()}
+                <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-3xl overflow-hidden shadow-sm mb-10">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="bg-slate-50 py-3 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                      {day}
+                    </div>
+                  ))}
+                  {renderCalendar()}
                 </div>
 
-                <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-3">
-                   <div className="flex items-start">
-                      <Info size={16} className="text-blue-600 mr-3 mt-0.5" />
-                      <p className="text-xs text-blue-800 leading-relaxed">
-                        Tap on a date to mark yourself as <strong>Busy (Unavailable)</strong>. System-matched jobs will automatically avoid these dates.
+                <div className="bg-blue-600 p-8 rounded-[2.5rem] shadow-xl shadow-blue-200 relative overflow-hidden group">
+                  <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/10 rounded-full -mb-10 -mr-10 blur-2xl group-hover:scale-110 transition-transform duration-700"></div>
+
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-6 relative z-10">
+                    <div className="bg-white/20 p-4 rounded-2xl text-white backdrop-blur-md">
+                      <Info size={28} />
+                    </div>
+                    <div className="flex-1">
+                      <h5 className="text-white font-black text-lg">Smart Schedule Matching</h5>
+                      <p className="text-blue-50 text-sm font-medium leading-relaxed mt-1">
+                        Mark <span className="bg-white/20 px-2 py-0.5 rounded-md font-black">Busy</span> to stop receiving automatic matches. This won't affect your confirmed jobs.
                       </p>
-                   </div>
-                   <div className="flex items-center space-x-4 pl-7">
-                      <div className="flex items-center text-[10px] font-bold text-gray-500">
-                         <div className="w-3 h-3 bg-white border border-gray-200 rounded-sm mr-1.5"></div>
-                         Available
-                      </div>
-                      <div className="flex items-center text-[10px] font-bold text-red-600">
-                         <div className="w-3 h-3 bg-red-50 border border-red-200 rounded-sm mr-1.5"></div>
-                         Unavailable
-                      </div>
-                      <div className="flex items-center text-[10px] font-bold text-blue-600">
-                         <div className="w-3 h-3 bg-white border border-blue-600 rounded-full mr-1.5"></div>
-                         Today
-                      </div>
-                   </div>
-                </div>
-             </div>
-           )}
-        </div>
-      </div>
+                    </div>
+                  </div>
 
-      <div className="text-center px-6 mt-12">
-        <button 
-          type="button"
-          onClick={handleLogout}
-          className="w-full bg-red-50 text-red-600 font-black py-4 rounded-2xl flex items-center justify-center hover:bg-red-100 transition-colors border border-red-100 uppercase tracking-widest text-xs mb-8"
-        >
-          <LogOut size={18} className="mr-2" /> Sign Out
-        </button>
-        <p className="text-[9px] text-gray-400 uppercase font-black tracking-[0.2em] leading-relaxed">
-          Lingland internal partner platform v2.1<br/>
-          Secure encrypted session • UID: {user?.id}
-        </p>
+                  <div className="flex flex-wrap items-center gap-6 mt-10 pt-8 border-t border-white/10 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 bg-white rounded-[6px] shadow-sm"></div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-50">Free to work</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 bg-red-500 rounded-[6px] shadow-md shadow-red-500/20"></div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-50">Blocked Date</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full mx-1.5 shadow-[0_0_8px_white]"></div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-50">Today</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col items-center py-10 opacity-40">
+            <p className="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em] leading-relaxed text-center">
+              Lingland internal partner platform v2.1<br />
+              Secure encrypted session • UID: {user?.id}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

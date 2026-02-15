@@ -37,6 +37,7 @@ import { AdminInterpreterInvoiceDetailsPage } from './pages/admin/billing/AdminI
 import { AdminClients } from './pages/admin/AdminClients.tsx';
 import { AdminInterpreters } from './pages/admin/AdminInterpreters.tsx';
 import { AdminInterpreterDetails } from './pages/admin/interpreters/AdminInterpreterDetails.tsx';
+import { AdminNewBooking } from './pages/admin/bookings/AdminNewBooking';
 import { AdminUsers } from './pages/admin/AdminUsers.tsx';
 import { AdminSettings } from './pages/admin/AdminSettings.tsx';
 import { AdminApplications } from './pages/admin/AdminApplications.tsx';
@@ -137,6 +138,7 @@ const App = () => {
                             <Route path="dashboard" element={<Dashboard />} />
                             <Route path="messages" element={<AdminMessages />} />
                             <Route path="bookings" element={<AdminBookings />} />
+                            <Route path="bookings/new" element={<AdminNewBooking />} />
                             <Route path="bookings/:id" element={<AdminBookingDetails />} />
                             <Route path="applications" element={<AdminApplications />} />
                             <Route path="clients" element={<AdminClients />} />

@@ -1,0 +1,674 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+    Building2, User, Globe2, Clock, MapPin, Video,
+    Search, ChevronLeft, Save, Plus, X, Phone, Mail,
+    Calendar, Check, UserPlus, Info, CreditCard, ChevronRight
+} from 'lucide-react';
+import { ClientService, InterpreterService, BookingService } from '../../../services/api';
+import { Client, Interpreter, ServiceType, BookingStatus } from '../../../types';
+import { useToast } from '../../../context/ToastContext';
+import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
+import { useAuth } from '../../../context/AuthContext';
+
+export const AdminNewBooking = () => {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const { showToast } = useToast();
+
+    const [loading, setLoading] = useState(false);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
+    const [searchingInterpreter, setSearchingInterpreter] = useState('');
+    const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
+    const [clientModalOpen, setClientModalOpen] = useState(false);
+    const [clientSearchQuery, setClientSearchQuery] = useState('');
+
+    const [clientSource, setClientSource] = useState<'EXISTING' | 'GUEST'>('GUEST');
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [selectedInterpreter, setSelectedInterpreter] = useState<Interpreter | null>(null);
+
+    const [formData, setFormData] = useState({
+        costCode: '',
+        serviceType: ServiceType.FACE_TO_FACE,
+        languageFrom: 'English',
+        languageTo: '',
+        date: '',
+        startTime: '',
+        durationMinutes: 60,
+        locationType: 'ONSITE' as 'ONSITE' | 'ONLINE',
+        address: '',
+        postcode: '',
+        onlineLink: '',
+        notes: '',
+        genderPreference: 'None' as 'Male' | 'Female' | 'None',
+        organization: '',
+        contactName: '',
+        contactEmail: '',
+        contactPhone: ''
+    });
+
+    useEffect(() => {
+        loadInitialData();
+    }, []);
+
+    const loadInitialData = async () => {
+        try {
+            const [c, i] = await Promise.all([
+                ClientService.getAll(),
+                InterpreterService.getAll()
+            ]);
+            setClients(c);
+            const activeInts = i.filter(int => int.status === 'ACTIVE');
+            setInterpreters(activeInts);
+
+            // Extract unique languages
+            const allLangs = activeInts.flatMap(int => int.languages);
+            const uniqueLangs = Array.from(new Set(allLangs)).sort();
+            setAvailableLanguages(uniqueLangs);
+        } catch (e) {
+            console.error("Failed to load data", e);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.languageTo || !formData.date || !formData.startTime) {
+            showToast('Please fill in all required fields', 'error');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const bookingData: any = {
+                costCode: formData.costCode,
+                serviceType: formData.serviceType,
+                languageFrom: formData.languageFrom,
+                languageTo: formData.languageTo,
+                date: formData.date,
+                startTime: formData.startTime,
+                durationMinutes: formData.durationMinutes,
+                locationType: formData.locationType,
+                address: formData.address,
+                postcode: formData.postcode,
+                onlineLink: formData.onlineLink,
+                notes: formData.notes,
+                genderPreference: formData.genderPreference,
+                status: selectedInterpreter ? BookingStatus.CONFIRMED : BookingStatus.REQUESTED,
+                requestedByUserId: user?.id || 'admin',
+                bookingRef: `LL-${Math.floor(1000 + Math.random() * 9000)}`,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            if (clientSource === 'EXISTING' && selectedClient) {
+                bookingData.clientId = selectedClient.id;
+                bookingData.clientName = selectedClient.companyName;
+                bookingData.guestContact = {
+                    name: formData.contactName || selectedClient.contactPerson,
+                    email: formData.contactEmail || selectedClient.email,
+                    phone: formData.contactPhone,
+                    organisation: selectedClient.companyName
+                };
+            } else {
+                bookingData.clientName = formData.organization || 'Guest Client';
+                bookingData.guestContact = {
+                    name: formData.contactName,
+                    email: formData.contactEmail,
+                    phone: formData.contactPhone,
+                    organisation: formData.organization
+                };
+            }
+
+            if (selectedInterpreter) {
+                bookingData.interpreterId = selectedInterpreter.id;
+                bookingData.interpreterName = selectedInterpreter.name;
+            }
+
+            await BookingService.create(bookingData);
+            showToast('Booking created successfully', 'success');
+            navigate('/admin/bookings');
+        } catch (error) {
+            showToast('Failed to create booking', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const labelClasses = "block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2 ml-1";
+    const inputClasses = "w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-slate-900 font-medium placeholder:text-slate-300";
+
+    const filteredClientsForModal = clients.filter(c =>
+        c.companyName.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+        c.contactPerson.toLowerCase().includes(clientSearchQuery.toLowerCase())
+    );
+
+    const filteredInterpreters = interpreters.filter(i =>
+        i.name.toLowerCase().includes(searchingInterpreter.toLowerCase()) ||
+        i.languages.some(l => l.toLowerCase().includes(searchingInterpreter.toLowerCase()))
+    );
+
+    return (
+        <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/admin/bookings')}
+                        className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Create Manual Booking</h1>
+                        <p className="text-slate-500 font-bold mt-1">Register a request received via email or phone</p>
+                    </div>
+                </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+                {/* Left Column: Client & Essentials */}
+                <div className="lg:col-span-7 space-y-8">
+
+                    {/* Billing Information */}
+                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="bg-amber-50 p-3 rounded-2xl text-amber-600">
+                                <CreditCard size={24} />
+                            </div>
+                            <h2 className="text-xl font-black text-slate-900">Billing Information</h2>
+                        </div>
+                        <div>
+                            <label className={labelClasses}>Purchase Order / Cost Code</label>
+                            <input
+                                type="text"
+                                className={inputClasses + " font-mono"}
+                                placeholder="e.g. PO-2024-001 or CC-HR-99"
+                                value={formData.costCode}
+                                onChange={e => setFormData({ ...formData, costCode: e.target.value })}
+                            />
+                            {selectedClient && (
+                                <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase italic">
+                                    Default format for this client: {selectedClient.defaultCostCodeType}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Client Selection */}
+                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
+                                <Building2 size={24} />
+                            </div>
+                            <h2 className="text-xl font-black text-slate-900">Client Information</h2>
+                        </div>
+
+                        <div className="flex p-1 bg-slate-100 rounded-2xl mb-8">
+                            <button
+                                type="button"
+                                onClick={() => setClientSource('GUEST')}
+                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${clientSource === 'GUEST' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                Guest / New Client
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setClientSource('EXISTING')}
+                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${clientSource === 'EXISTING' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                Existing Registered Client
+                            </button>
+                        </div>
+
+                        {clientSource === 'EXISTING' ? (
+                            <div className="space-y-6">
+                                <div>
+                                    <label className={labelClasses}>Search Registered Client</label>
+
+                                    {!selectedClient ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setClientModalOpen(true)}
+                                            className="w-full flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-slate-100 hover:border-blue-200 transition-all text-left group"
+                                        >
+                                            <Search className="text-slate-400 group-hover:text-blue-500 transition-colors" size={18} />
+                                            <span className="text-slate-400 font-medium group-hover:text-slate-600 transition-colors">Click to browse and select a client...</span>
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-blue-600 p-2 rounded-xl text-white">
+                                                    <Check size={16} />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-black text-blue-900">{selectedClient.companyName}</div>
+                                                    <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{selectedClient.contactPerson}</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedClient(null)}
+                                                className="p-2 text-blue-400 hover:text-blue-600 transition-colors"
+                                            >
+                                                <X size={18} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className={labelClasses}>Request Member Name</label>
+                                        <input
+                                            type="text"
+                                            className={inputClasses}
+                                            placeholder="Person who called/emailed"
+                                            value={formData.contactName}
+                                            onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelClasses}>Direct Contact Number</label>
+                                        <input
+                                            type="tel"
+                                            className={inputClasses}
+                                            placeholder="+44 0000 000000"
+                                            value={formData.contactPhone}
+                                            onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="md:col-span-2">
+                                        <label className={labelClasses}>Organization / Company</label>
+                                        <input
+                                            type="text"
+                                            className={inputClasses}
+                                            placeholder="e.g. British Council"
+                                            value={formData.organization}
+                                            onChange={e => setFormData({ ...formData, organization: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelClasses}>Contact Person</label>
+                                        <input
+                                            type="text"
+                                            className={inputClasses}
+                                            placeholder="Full Name"
+                                            value={formData.contactName}
+                                            onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelClasses}>Email Address</label>
+                                        <input
+                                            type="email"
+                                            className={inputClasses}
+                                            placeholder="email@example.com"
+                                            value={formData.contactEmail}
+                                            onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Service Details */}
+                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600">
+                                <Globe2 size={24} />
+                            </div>
+                            <h2 className="text-xl font-black text-slate-900">Service Logistics</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label className={labelClasses}>Language Category</label>
+                                <select
+                                    className={inputClasses}
+                                    value={formData.serviceType}
+                                    onChange={e => setFormData({ ...formData, serviceType: e.target.value as ServiceType })}
+                                >
+                                    {Object.values(ServiceType).map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelClasses}>Target Language</label>
+                                <select
+                                    required
+                                    className={inputClasses}
+                                    value={formData.languageTo}
+                                    onChange={e => setFormData({ ...formData, languageTo: e.target.value })}
+                                >
+                                    <option value="">Select Target Language...</option>
+                                    {availableLanguages.map(lang => (
+                                        <option key={lang} value={lang}>{lang}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Date of Service</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="date"
+                                        required
+                                        className={inputClasses + " pl-12"}
+                                        value={formData.date}
+                                        onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={labelClasses}>Time</label>
+                                        <input
+                                            type="time"
+                                            required
+                                            className={inputClasses}
+                                            value={formData.startTime}
+                                            onChange={e => setFormData({ ...formData, startTime: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelClasses}>Dur. (min)</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            className={inputClasses}
+                                            value={formData.durationMinutes}
+                                            onChange={e => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Interpreter Gender Preference</label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {['None', 'Male', 'Female'].map(gender => (
+                                        <button
+                                            key={gender}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, genderPreference: gender as any })}
+                                            className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${formData.genderPreference === gender ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                        >
+                                            {gender}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 pt-8 border-t border-slate-50">
+                            <label className={labelClasses}>Meeting Method</label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, locationType: 'ONSITE' })}
+                                    className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONSITE' ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                >
+                                    <MapPin size={24} className="mb-2" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Face to Face</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, locationType: 'ONLINE' })}
+                                    className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONLINE' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                >
+                                    <Video size={24} className="mb-2" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Remote / Video</span>
+                                </button>
+                            </div>
+
+                            {formData.locationType === 'ONSITE' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 animate-in fade-in slide-in-from-top-2">
+                                    <div className="md:col-span-2">
+                                        <label className={labelClasses}>Full Address</label>
+                                        <input
+                                            type="text"
+                                            className={inputClasses}
+                                            placeholder="Street, Building name..."
+                                            value={formData.address}
+                                            onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelClasses}>Postcode</label>
+                                        <input
+                                            type="text"
+                                            className={inputClasses + " uppercase"}
+                                            placeholder="SW1A 1AA"
+                                            value={formData.postcode}
+                                            onChange={e => setFormData({ ...formData, postcode: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mt-6 animate-in fade-in slide-in-from-top-2">
+                                    <label className={labelClasses}>Meeting Link / Platform</label>
+                                    <input
+                                        type="text"
+                                        className={inputClasses}
+                                        placeholder="e.g. MS Teams Link, Zoom ID, or 'TBC'"
+                                        value={formData.onlineLink}
+                                        onChange={e => setFormData({ ...formData, onlineLink: e.target.value })}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Assignment & Notes */}
+                <div className="lg:col-span-5 space-y-8">
+
+                    {/* Internal Notes */}
+                    <div className="bg-slate-900 rounded-[2.5rem] p-8 lg:p-10 text-white shadow-2xl shadow-slate-900/20">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="bg-white/10 p-3 rounded-2xl text-white">
+                                <Info size={24} />
+                            </div>
+                            <h2 className="text-xl font-black">Admin Notes</h2>
+                        </div>
+                        <textarea
+                            className="w-full h-40 bg-white/5 border border-white/10 rounded-2xl p-6 outline-none focus:ring-4 focus:ring-white/5 focus:border-white/20 transition-all text-white font-medium placeholder:text-white/20 resize-none"
+                            placeholder="Any special instructions or case notes for the interpreter..."
+                            value={formData.notes}
+                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                        />
+                    </div>
+
+                    {/* Interpreter Assignment */}
+                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-110 transition-transform duration-700"></div>
+
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="bg-amber-50 p-3 rounded-2xl text-amber-600">
+                                    <UserPlus size={24} />
+                                </div>
+                                <h2 className="text-xl font-black text-slate-900">Immediate Assignment</h2>
+                            </div>
+
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    className={inputClasses + " pl-12 bg-slate-50"}
+                                    placeholder="Search for an interpreter..."
+                                    value={searchingInterpreter}
+                                    onChange={(e) => setSearchingInterpreter(e.target.value)}
+                                />
+                            </div>
+
+                            {searchingInterpreter && !selectedInterpreter && (
+                                <div className="mt-4 border border-slate-100 rounded-2xl max-h-60 overflow-y-auto p-2 bg-slate-50/50">
+                                    {filteredInterpreters.map(i => (
+                                        <button
+                                            key={i.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedInterpreter(i);
+                                                setSearchingInterpreter('');
+                                            }}
+                                            className="w-full flex items-center justify-between p-4 hover:bg-white rounded-xl transition-all text-left shadow-sm shadow-transparent hover:shadow-slate-200/50 mb-1"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-black text-sm">
+                                                    {i.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-slate-900">{i.name}</div>
+                                                    <div className="text-[10px] text-slate-400 font-bold uppercase">{i.languages.slice(0, 2).join(', ')}</div>
+                                                </div>
+                                            </div>
+                                            <Plus size={16} className="text-slate-300" />
+                                        </button>
+                                    ))}
+                                    {filteredInterpreters.length === 0 && (
+                                        <div className="p-10 text-center">
+                                            <p className="text-xs text-slate-400 font-bold">No matches found</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {selectedInterpreter && (
+                                <div className="mt-6 flex items-center justify-between p-6 bg-slate-900 text-white rounded-[2rem] shadow-xl shadow-slate-200">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white font-black text-lg">
+                                            {selectedInterpreter.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-black">{selectedInterpreter.name}</div>
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Assigned Directly</div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedInterpreter(null)}
+                                        className="p-2 text-white/30 hover:text-white transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {!selectedInterpreter && !searchingInterpreter && (
+                                <div className="mt-8 flex items-start gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                                    <div className="text-blue-500 mt-1">
+                                        <Info size={16} />
+                                    </div>
+                                    <p className="text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-wider">
+                                        If left empty, this job will be created as a <span className="text-blue-600">Pending Request</span> and sent to the general bidding pool.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Submit Action */}
+                    <div className="pt-4">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full h-20 bg-blue-600 text-white rounded-[2.5rem] font-black uppercase tracking-[0.2em] text-[12px] shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-4 group"
+                        >
+                            {loading ? (
+                                <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+                            ) : (
+                                <>
+                                    <Save size={20} className="group-hover:scale-110 transition-transform" />
+                                    Publish Booking
+                                </>
+                            )}
+                        </button>
+                        <p className="text-center mt-6 text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                            Validated Secure Submission • Lingland V3
+                        </p>
+                    </div>
+                </div>
+            </form>
+
+            {/* Client Selection Modal */}
+            <Modal
+                isOpen={clientModalOpen}
+                onClose={() => {
+                    setClientModalOpen(false);
+                    setClientSearchQuery('');
+                }}
+                title="Select Registered Client"
+                maxWidth="2xl"
+            >
+                <div className="space-y-4">
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-900 font-medium placeholder:text-slate-400"
+                            placeholder="Search by company name or contact person..."
+                            value={clientSearchQuery}
+                            onChange={(e) => setClientSearchQuery(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
+                        {filteredClientsForModal.length > 0 ? (
+                            filteredClientsForModal.map(c => (
+                                <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedClient(c);
+                                        setClientModalOpen(false);
+                                        setClientSearchQuery('');
+                                    }}
+                                    className="w-full flex items-center gap-4 p-4 bg-white hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-xl transition-all text-left group"
+                                >
+                                    <div className="bg-slate-100 group-hover:bg-blue-100 p-3 rounded-lg text-slate-400 group-hover:text-blue-600 transition-colors">
+                                        <Building2 size={20} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-sm font-bold text-slate-900 group-hover:text-blue-900 transition-colors">{c.companyName}</div>
+                                        <div className="text-xs text-slate-500 mt-0.5">{c.contactPerson}</div>
+                                        <div className="text-[10px] text-slate-400 font-medium mt-1">{c.email}</div>
+                                    </div>
+                                    <ChevronRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                </button>
+                            ))
+                        ) : (
+                            <div className="text-center py-12">
+                                <Building2 size={48} className="mx-auto text-slate-300 mb-4" />
+                                <p className="text-slate-500 font-medium">No clients found</p>
+                                <p className="text-xs text-slate-400 mt-1">Try adjusting your search query</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {filteredClientsForModal.length > 0 && (
+                        <div className="pt-3 border-t border-slate-100">
+                            <p className="text-xs text-slate-400 text-center">
+                                Showing {filteredClientsForModal.length} of {clients.length} registered clients
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </Modal>
+        </div>
+    );
+};

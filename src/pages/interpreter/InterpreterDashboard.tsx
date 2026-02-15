@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { StatsService } from '../../services/statsService';
 import { useAuth } from '../../context/AuthContext';
 import { BookingService, BillingService } from '../../services/api';
 import { Booking } from '../../types';
@@ -87,14 +88,17 @@ interface QuickStatProps {
   color: string;
 }
 
-const QuickStat = ({ label, value, icon: Icon, color }: QuickStatProps) => (
-  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center hover:border-blue-200 transition-colors h-full">
+const QuickStat = ({ label, value, icon: Icon, color, onClick }: QuickStatProps & { onClick?: () => void }) => (
+  <button
+    onClick={onClick}
+    className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center hover:border-blue-300 hover:shadow-md transition-all h-full group active:scale-95"
+  >
     <div className={`w-12 h-12 rounded-full ${color} bg-opacity-10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
       <Icon size={24} className={color.replace('bg-', 'text-')} />
     </div>
     <p className="text-2xl font-black text-slate-900 tracking-tight">{value}</p>
     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{label}</p>
-  </div>
+  </button>
 );
 
 interface JobOfferCardProps {
@@ -136,15 +140,15 @@ interface TimelineItemProps {
   isLast?: boolean;
 }
 
-const TimelineItem = ({ time, title, org, isLast }: TimelineItemProps) => (
-  <div className="flex group relative pl-2">
+const TimelineItem = ({ time, title, org, isLast, onClick }: TimelineItemProps & { onClick?: () => void }) => (
+  <div className="flex group relative pl-2 cursor-pointer" onClick={onClick}>
     <div className="flex flex-col items-center mr-4">
       <div className="w-2.5 h-2.5 rounded-full bg-slate-300 group-hover:bg-blue-600 transition-colors z-10 ring-4 ring-white"></div>
       {!isLast && <div className="w-0.5 h-full bg-slate-100 my-1 group-hover:bg-slate-200 transition-colors"></div>}
     </div>
     <div className="pb-8 w-full">
       <p className="text-xs font-bold text-slate-400 mb-1">{time}</p>
-      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 group-hover:border-blue-100 transition-colors">
+      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 group-hover:border-blue-100 group-hover:bg-white group-hover:shadow-sm transition-all">
         <h4 className="text-sm font-bold text-slate-900">{title}</h4>
         <p className="text-xs text-slate-500 mt-0.5">{org}</p>
       </div>
@@ -163,6 +167,12 @@ export const InterpreterDashboard = () => {
   // Data State
   const [upcomingJobs, setUpcomingJobs] = useState<Booking[]>([]);
   const [offers, setOffers] = useState<Booking[]>([]);
+  const [stats, setStats] = useState({
+    completedBookings: 0,
+    liveOffers: 0,
+    upcomingBookings: 0,
+    rating: 4.9
+  });
   const [earnings, setEarnings] = useState('£0.00');
 
   useEffect(() => {
@@ -176,10 +186,11 @@ export const InterpreterDashboard = () => {
   const loadDashboardData = async (interpreterId: string) => {
     setLoading(true);
     try {
-      const [schedule, offerList, totalEarnings] = await Promise.all([
+      const [schedule, offerList, totalEarnings, realStats] = await Promise.all([
         BookingService.getInterpreterSchedule(interpreterId),
         BookingService.getInterpreterOffers(interpreterId),
-        BillingService.getInterpreterEarnings(interpreterId)
+        BillingService.getInterpreterEarnings(interpreterId),
+        StatsService.getInterpreterStats(interpreterId)
       ]);
 
       const upcoming = schedule
@@ -187,8 +198,17 @@ export const InterpreterDashboard = () => {
         .sort((a: Booking, b: Booking) => new Date(a.date + 'T' + a.startTime).getTime() - new Date(b.date + 'T' + b.startTime).getTime());
 
       setUpcomingJobs(upcoming);
-      setOffers(offerList);
+
+      // Use the actual objects from either list, mapping appropriately
+      // For now we keep the lists as they are but populate the stats
+      setOffers(offerList.map((o: any) => o.bookingSnapshot || o));
       setEarnings(`£${totalEarnings.toFixed(2)}`);
+      setStats({
+        completedBookings: realStats.completedBookings || 0,
+        liveOffers: realStats.liveOffers || 0,
+        upcomingBookings: realStats.upcomingBookings || 0,
+        rating: 4.9 // Assume rating is still being worked on in backend
+      });
     } catch (error) {
       console.error("Failed to load dashboard data", error);
     } finally {
@@ -196,13 +216,16 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  const handleCheckIn = () => {
-    alert("Checked in successfully! Waiting for client...");
+  const handleCheckIn = (jobId?: string) => {
+    if (jobId) {
+      navigate(`/interpreter/jobs/${jobId}`);
+    } else {
+      alert("No active job to check in.");
+    }
   };
 
   const handleAccept = (id: string) => {
-    alert(`Accepted job offer ${id}`);
-    setOffers((prev: Booking[]) => prev.filter((o: Booking) => o.id !== id));
+    navigate('/interpreter/jobs'); // Take them to the jobs page to handle the offer
   };
 
   if (loading) return (
@@ -245,7 +268,7 @@ export const InterpreterDashboard = () => {
             </div>
 
             <div className="md:col-span-2">
-              <NextJobCard job={nextJob} onCheckIn={handleCheckIn} />
+              <NextJobCard job={nextJob} onCheckIn={() => handleCheckIn(nextJob?.id)} />
             </div>
           </div>
 
@@ -254,9 +277,9 @@ export const InterpreterDashboard = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-slate-900 text-lg flex items-center">
                 Live Offers
-                <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">{offers.length}</span>
+                <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">{stats.liveOffers}</span>
               </h3>
-              <button className="text-sm text-blue-600 font-bold hover:text-blue-700">View All</button>
+              <button onClick={() => navigate('/interpreter/jobs')} className="text-sm text-blue-600 font-bold hover:text-blue-700">View All</button>
             </div>
 
             {offers.length === 0 ? (
@@ -283,9 +306,9 @@ export const InterpreterDashboard = () => {
 
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-3 lg:grid-cols-1 gap-4">
-            <QuickStat label="Earnings" value={earnings} icon={PoundSterling} color="bg-emerald-500" />
-            <QuickStat label="Jobs Done" value={upcomingJobs.length + 2} icon={CheckCircle2} color="bg-blue-500" />
-            <QuickStat label="Rating" value="4.9" icon={Star} color="bg-amber-500" />
+            <QuickStat label="Earnings" value={earnings} icon={PoundSterling} color="bg-emerald-500" onClick={() => navigate('/interpreter/billing')} />
+            <QuickStat label="Jobs Done" value={stats.completedBookings} icon={CheckCircle2} color="bg-blue-500" onClick={() => navigate('/interpreter/jobs')} />
+            <QuickStat label="Rating" value={stats.rating} icon={Star} color="bg-amber-500" onClick={() => navigate('/interpreter/profile')} />
           </div>
 
           {/* Today's Schedule */}
@@ -311,6 +334,7 @@ export const InterpreterDashboard = () => {
                     title={job.serviceType}
                     org={job.clientName}
                     isLast={i === upcomingJobs.length - 1}
+                    onClick={() => navigate(`/interpreter/jobs/${job.id}`)}
                   />
                 ))}
               </div>
