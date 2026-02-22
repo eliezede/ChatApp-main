@@ -24,11 +24,11 @@ const SESSIONS_DATA = [
     {
         id: '01',
         phase: 'Estabilização',
-        title: 'O Fundamento',
-        subtitle: 'Introdução aos princípios básicos.',
+        title: '1. O que realmente dói',
+        subtitle: 'Uma análise sobre como a dor do término não vem apenas da ausência física, mas da quebra de expectativas e da ferida no senso de identidade.',
         duration: '12:00',
-        status: 'completed',
-        audioPath: '1 - O que realmente doi.mp3', // gs://origin-690af.firebasestorage.app/1 - O que realmente doi.mp3
+        status: 'recommended',
+        audioPath: 'audios/1 - O que realmente doi.mp3',
     },
     {
         id: '02',
@@ -36,8 +36,7 @@ const SESSIONS_DATA = [
         title: 'Controle Interno',
         subtitle: 'Focar apenas no que está sob seu poder.',
         duration: '15:20',
-        status: 'recommended',
-        audioPath: '1 - O que realmente doi.mp3',
+        status: 'locked_open',
     },
     {
         id: '03',
@@ -45,22 +44,6 @@ const SESSIONS_DATA = [
         title: 'A Voz da Razão',
         subtitle: 'Distinga fatos de julgamentos.',
         duration: '10:45',
-        status: 'locked_open',
-    },
-    {
-        id: '04',
-        phase: 'Estrutura',
-        title: 'Dicotomia do Controle',
-        subtitle: 'Avançado: Aplicação prática.',
-        duration: '22:15',
-        status: 'locked',
-    },
-    {
-        id: '05',
-        phase: 'Expansão',
-        title: 'Visualização Negativa',
-        subtitle: 'Preparo para adversidades futuras.',
-        duration: '18:30',
         status: 'locked',
     },
 ];
