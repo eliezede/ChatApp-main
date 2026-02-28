@@ -15,6 +15,7 @@ import Chat from './screens/Chat';
 import Home from './screens/Home';
 import WelcomeOnboarding from './screens/WelcomeOnboarding';
 import Questionnaire from './screens/Questionnaire';
+import PlanReady from './screens/PlanReady';
 import Dashboard from './screens/Dashboard';
 import Library from './screens/Library';
 import Missions from './screens/Missions';
@@ -174,16 +175,17 @@ function ChatStack() {
 function OnboardingStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name='OnboardingIntro' component={WelcomeOnboarding} />
-      <Stack.Screen name='Questionnaire' component={Questionnaire} />
       <Stack.Screen name='ProtocolTutorial' component={ProtocolTutorial} />
     </Stack.Navigator>
   );
 }
 
-function AuthStack() {
+function UnauthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name='OnboardingIntro' component={WelcomeOnboarding} />
+      <Stack.Screen name='Questionnaire' component={Questionnaire} />
+      <Stack.Screen name='PlanReady' component={PlanReady} />
       <Stack.Screen name='Login' component={Login} />
       <Stack.Screen name='Signup' component={Signup} />
       <Stack.Screen name='ForgotPassword' component={ForgotPassword} />
@@ -246,7 +248,7 @@ function RootNavigator() {
           {user ? (
             onboardingCompleted ? <ChatStack /> : <OnboardingStack />
           ) : (
-            <AuthStack />
+            <UnauthStack />
           )}
           {user && onboardingCompleted && <GlobalMiniPlayer />}
         </View>

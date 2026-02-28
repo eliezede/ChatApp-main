@@ -28,7 +28,11 @@ const WelcomeOnboarding = ({ navigation }) => {
                 <View style={styles.header}>
                     <View style={styles.logoContainer}>
                         <View style={styles.glassIcon}>
-                            <MaterialCommunityIcons name="auto-fix" size={28} color={colors.primary} />
+                            <Image
+                                source={require('../assets/icon.png')}
+                                style={{ width: 32, height: 32, borderRadius: 8 }}
+                                resizeMode="contain"
+                            />
                         </View>
                         <Text style={styles.logoLabel}>ORIGIN</Text>
                     </View>
@@ -60,6 +64,13 @@ const WelcomeOnboarding = ({ navigation }) => {
                     >
                         <Text style={styles.buttonText}>Começar</Text>
                     </TouchableOpacity>
+
+                    <View style={styles.loginLinkContainer}>
+                        <Text style={styles.loginTextLabel}>Já tem uma conta? </Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                            <Text style={styles.loginTextLink}>Entrar</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     <View style={styles.trustSignals}>
                         <Text style={styles.trustText}>Privacidade Garantida</Text>
@@ -210,6 +221,20 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 2,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    loginLinkContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    loginTextLabel: {
+        color: 'rgba(255, 255, 255, 0.5)',
+        fontSize: 14,
+    },
+    loginTextLink: {
+        color: colors.primary,
+        fontSize: 14,
+        fontWeight: 'bold',
     },
     bottomBar: {
         width: 48,

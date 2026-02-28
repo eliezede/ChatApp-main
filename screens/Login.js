@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -15,11 +15,17 @@ import { auth } from "../config/firebase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import colors from "../colors";
 
-export default function Login({ navigation }) {
+export default function Login({ route, navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (route?.params?.prefilledEmail) {
+      setEmail(route.params.prefilledEmail);
+    }
+  }, [route?.params?.prefilledEmail]);
 
   const onHandleLogin = () => {
     if (email !== "" && password !== "") {
@@ -118,7 +124,7 @@ export default function Login({ navigation }) {
 
             <TouchableOpacity
               style={styles.signupButton}
-              onPress={() => navigation.navigate("Signup")}
+              onPress={() => navigation.navigate("OnboardingIntro")}
             >
               <Text style={styles.signupButtonText}>CRIAR CONTA</Text>
             </TouchableOpacity>

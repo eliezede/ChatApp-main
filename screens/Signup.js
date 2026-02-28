@@ -10,13 +10,17 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from "react-native";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import colors from '../colors';
+import { calculateProfile } from '../logic/ScoringEngine';
+import { generateDailyPlan } from '../logic/PlanEngine';
 
-export default function Signup({ navigation }) {
+export default function Signup({ navigation, route }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -37,17 +41,49 @@ export default function Signup({ navigation }) {
     createUserWithEmailAndPassword(auth, email, password)
       .then(async (userCredential) => {
         const user = userCredential.user;
+        const answers = route.params?.questionnaireAnswers;
+        let profile = null;
+
+        if (answers) {
+          profile = calculateProfile(answers);
+        }
+
         // Create user document in Firestore
-        await setDoc(doc(db, 'users', user.uid), {
+        const userData = {
           email: user.email,
-          onboardingCompleted: false,
-          createdAt: new Date()
-        });
+          onboardingCompleted: false, // will activate ProtocolTutorial next
+          createdAt: serverTimestamp()
+        };
+
+        if (profile) {
+          userData.profile = profile;
+          userData.lastPlanGeneration = serverTimestamp();
+        }
+
+        await setDoc(doc(db, 'users', user.uid), userData);
         console.log('Signup success and user doc created');
+
+        if (profile) {
+          await generateDailyPlan(user.uid, profile);
+        }
       })
       .catch((err) => {
         setLoading(false);
-        Alert.alert("Erro no Cadastro", err.message);
+        if (err.code === 'auth/email-already-in-use') {
+          Alert.alert(
+            "Conta Existente",
+            "Este e-mail já está cadastrado em nosso sistema. Deseja fazer o login?",
+            [
+              { text: "Cancelar", style: "cancel" },
+              {
+                text: "Fazer Login",
+                onPress: () => navigation.navigate("Login", { prefilledEmail: email })
+              }
+            ]
+          );
+        } else {
+          Alert.alert("Erro no Cadastro", err.message);
+        }
       });
   };
 
@@ -56,6 +92,16 @@ export default function Signup({ navigation }) {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <View style={styles.glassIcon}>
+              <Image
+                source={require('../assets/icon.png')}
+                style={{ width: 32, height: 32, borderRadius: 8 }}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.logoLabel}>ORIGIN</Text>
+          </View>
           <Text style={styles.title}>Junte-se ao ORIGIN</Text>
           <Text style={styles.subtitle}>Inicie sua jornada de reconstrução.</Text>
         </View>
@@ -142,6 +188,27 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 48,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 32,
+  },
+  glassIcon: {
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoLabel: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 4,
+    textTransform: 'uppercase',
   },
   title: {
     fontSize: 24,

@@ -15,7 +15,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { questions } from '../logic/questions';
 import { calculateProfile } from '../logic/ScoringEngine';
 import { db, auth } from '../config/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { AuthenticatedUserContext } from '../App';
 import colors from '../colors';
 import { generateDailyPlan } from '../logic/PlanEngine';
@@ -95,30 +95,10 @@ const Questionnaire = ({ navigation }) => {
 
     const finishOnboarding = async (finalAnswers) => {
         setLoading(true);
-        try {
-            const profile = calculateProfile(finalAnswers);
-            const user = auth.currentUser;
-
-            if (user) {
-                await updateDoc(doc(db, 'users', user.uid), {
-                    onboardingCompleted: true,
-                    profile: profile,
-                    lastPlanGeneration: serverTimestamp()
-                });
-
-                await generateDailyPlan(user.uid, profile);
-            }
-            navigation.navigate('ProtocolTutorial');
-        } catch (error) {
-            console.error("Error finishing onboarding:", error);
-            if (isMounted.current) {
-                alert("Erro ao salvar dados. Tente novamente.");
-            }
-        } finally {
-            if (isMounted.current) {
-                setLoading(false);
-            }
+        if (isMounted.current) {
+            setLoading(false);
         }
+        navigation.navigate('PlanReady', { questionnaireAnswers: finalAnswers });
     };
 
     return (
@@ -210,7 +190,9 @@ const Questionnaire = ({ navigation }) => {
                     disabled={selectedOptions.length === 0 || loading}
                     onPress={handleContinue}
                 >
-                    <Text style={styles.continueButtonText}>{loading ? 'Processando...' : 'Continuar'}</Text>
+                    <Text style={styles.continueButtonText}>
+                        {loading ? 'Processando...' : (currentStep === questions.length - 1 ? 'Gerar meu Plano' : 'Continuar')}
+                    </Text>
                     {!loading && <MaterialCommunityIcons name="arrow-right" size={20} color={colors.backgroundDark} />}
                 </TouchableOpacity>
                 <Text style={styles.footerHint}>
