@@ -15,7 +15,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { questions } from '../logic/questions';
 import { calculateProfile } from '../logic/ScoringEngine';
 import { db, auth } from '../config/firebase';
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { AuthenticatedUserContext } from '../App';
 import colors from '../colors';
 import { generateDailyPlan } from '../logic/PlanEngine';
@@ -27,20 +27,19 @@ const Questionnaire = ({ navigation }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [answers, setAnswers] = useState({});
     const [loading, setLoading] = useState(false);
-    const [selectedOption, setSelectedOption] = useState(null);
+    const [selectedOptions, setSelectedOptions] = useState([]);
     const isMounted = useRef(true);
 
     const question = questions[currentStep];
     const progress = ((currentStep + 1) / questions.length) * 100;
 
-    // Animation for progress bar
     const progressAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.timing(progressAnim, {
             toValue: progress,
             duration: 500,
-            useNativeDriver: Platform.OS !== 'web',
+            useNativeDriver: false,
         }).start();
     }, [progress]);
 
@@ -50,23 +49,42 @@ const Questionnaire = ({ navigation }) => {
         };
     }, []);
 
-    const handleAnswer = (option, index) => {
-        setSelectedOption(index);
+    const handleOptionPress = (index) => {
+        if (question.type === 'multiple') {
+            if (selectedOptions.includes(index)) {
+                setSelectedOptions(selectedOptions.filter(i => i !== index));
+            } else {
+                if (selectedOptions.length < 2) {
+                    setSelectedOptions([...selectedOptions, index]);
+                }
+            }
+        } else {
+            setSelectedOptions([index]);
+        }
     };
 
     const handleContinue = () => {
-        if (selectedOption === null) return;
+        if (selectedOptions.length === 0) return;
 
-        const op = question.type === 'scale' ? selectedOption : question.options[selectedOption];
+        let finalValue;
+        if (question.type === 'multiple') {
+            finalValue = selectedOptions.map(i => question.options[i]);
+        } else {
+            finalValue = question.options[selectedOptions[0]];
+        }
+
+        const weightValue = question.type === 'multiple'
+            ? selectedOptions.reduce((acc, i) => acc + question.weights[i], 0) / selectedOptions.length
+            : question.weights[selectedOptions[0]];
 
         const updatedAnswers = {
             ...answers,
-            [question.id]: op,
-            [`${question.id}_weight`]: question.weights ? question.weights[selectedOption] : selectedOption
+            [question.id]: finalValue,
+            [`${question.id}_weight`]: weightValue
         };
 
         setAnswers(updatedAnswers);
-        setSelectedOption(null);
+        setSelectedOptions([]);
 
         if (currentStep < questions.length - 1) {
             setCurrentStep(currentStep + 1);
@@ -88,10 +106,8 @@ const Questionnaire = ({ navigation }) => {
                     lastPlanGeneration: serverTimestamp()
                 });
 
-                // Generate initial plan using the new engine
                 await generateDailyPlan(user.uid, profile);
             }
-            // Navigate to tutorial first — tutorial calls setOnboardingCompleted
             navigation.navigate('ProtocolTutorial');
         } catch (error) {
             console.error("Error finishing onboarding:", error);
@@ -105,25 +121,32 @@ const Questionnaire = ({ navigation }) => {
         }
     };
 
-    const getIconForOption = (option, index) => {
-        const icons = ['lightbulb-outline', 'clock-outline', 'weight-lifter', 'account-group-outline', 'dots-horizontal'];
-        return icons[index % icons.length];
-    };
-
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            {/* Progress Header */}
-            <View style={styles.progressHeader}>
-                <View style={styles.progressInfo}>
-                    <Text style={styles.progressLabel}>ASSESSMENT</Text>
-                    <Text style={styles.progressPercentage}>{Math.round(progress)}%</Text>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity
+                    onPress={() => currentStep > 0 ? setCurrentStep(currentStep - 1) : navigation.goBack()}
+                    style={styles.backButton}
+                >
+                    <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Onboarding</Text>
+                <View style={{ width: 40 }} />
+            </View>
+
+            {/* Progress Bar Section */}
+            <View style={styles.progressSection}>
+                <View style={styles.progressTextContainer}>
+                    <Text style={styles.progressLabel}>Progresso da jornada</Text>
+                    <Text style={styles.progressValue}>{currentStep + 1}/{questions.length}</Text>
                 </View>
                 <View style={styles.progressBarBg}>
                     <Animated.View
                         style={[
-                            styles.progressFill,
+                            styles.progressBarFill,
                             {
                                 width: progressAnim.interpolate({
                                     inputRange: [0, 100],
@@ -135,101 +158,64 @@ const Questionnaire = ({ navigation }) => {
                 </View>
             </View>
 
-            {/* Navigation */}
-            <View style={styles.navBar}>
-                <TouchableOpacity
-                    onPress={() => currentStep > 0 ? setCurrentStep(currentStep - 1) : navigation.goBack()}
-                    style={styles.navButton}
-                >
-                    <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textSecondary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                    <Text style={styles.exitText}>Sair</Text>
-                </TouchableOpacity>
-            </View>
-
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Question Section */}
-                <View style={styles.questionSection}>
-                    <Text style={styles.questionText}>{question.question}</Text>
-                    <Text style={styles.questionHint}>
-                        {question.type === 'scale'
-                            ? 'Selecione um valor de 0 a 10 que melhor representa seu estado atual.'
-                            : 'Sua honestidade é o primeiro passo para uma reconstrução efetiva.'}
+                <View style={styles.questionHeader}>
+                    <Text style={styles.questionTitle}>{question.question}</Text>
+                    <Text style={styles.questionSubtitle}>
+                        {question.type === 'multiple' ? 'Escolha até 2 opções' : 'Isso nos ajuda a personalizar os exercícios para o seu momento atual.'}
                     </Text>
                 </View>
 
-                {/* Options List */}
                 <View style={styles.optionsList}>
-                    {question.type === 'scale' ? (
-                        <View style={styles.scaleContainer}>
-                            {[...Array(11).keys()].map((num) => (
-                                <TouchableOpacity
-                                    key={num}
-                                    style={[
-                                        styles.scaleItem,
-                                        selectedOption === num && styles.scaleItemSelected
-                                    ]}
-                                    onPress={() => handleAnswer(num, num)}
-                                >
-                                    <Text style={[
-                                        styles.scaleText,
-                                        selectedOption === num && styles.scaleTextSelected
-                                    ]}>{num}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    ) : (
-                        question.options.map((option, index) => (
+                    {question.options.map((option, index) => {
+                        const isSelected = selectedOptions.includes(index);
+                        return (
                             <TouchableOpacity
                                 key={index}
+                                activeOpacity={0.7}
                                 style={[
                                     styles.optionCard,
-                                    selectedOption === index && styles.optionCardSelected
+                                    isSelected && styles.optionCardSelected
                                 ]}
-                                onPress={() => handleAnswer(option, index)}
+                                onPress={() => handleOptionPress(index)}
                             >
-                                <View style={styles.cardLeft}>
-                                    <View style={styles.iconWrapper}>
-                                        <MaterialCommunityIcons
-                                            name={getIconForOption(option, index)}
-                                            size={22}
-                                            color={selectedOption === index ? colors.primary : colors.textSecondary}
-                                        />
-                                    </View>
-                                    <Text style={[
-                                        styles.optionLabel,
-                                        selectedOption === index && styles.optionLabelSelected
-                                    ]}>
-                                        {option}
-                                    </Text>
-                                </View>
+                                <Text style={[
+                                    styles.optionText,
+                                    isSelected && styles.optionTextSelected
+                                ]}>{option}</Text>
                                 <View style={[
-                                    styles.radioIndicator,
-                                    selectedOption === index && styles.radioIndicatorSelected
+                                    styles.checkbox,
+                                    isSelected && styles.checkboxSelected
                                 ]}>
-                                    {selectedOption === index && <View style={styles.radioInner} />}
+                                    {isSelected && (
+                                        <MaterialCommunityIcons
+                                            name={question.type === 'multiple' ? "check" : "circle"}
+                                            size={question.type === 'multiple' ? 16 : 10}
+                                            color="#fff"
+                                        />
+                                    )}
                                 </View>
                             </TouchableOpacity>
-                        ))
-                    )}
+                        );
+                    })}
                 </View>
             </ScrollView>
 
-            {/* Footer */}
             <View style={styles.footer}>
                 <TouchableOpacity
                     style={[
                         styles.continueButton,
-                        { opacity: (loading || selectedOption === null) ? 0.6 : 1 }
+                        { opacity: selectedOptions.length === 0 || loading ? 0.6 : 1 }
                     ]}
-                    disabled={loading || selectedOption === null}
+                    disabled={selectedOptions.length === 0 || loading}
                     onPress={handleContinue}
                 >
-                    <Text style={styles.continueButtonText}>
-                        {loading ? 'Processando...' : 'Continuar'}
-                    </Text>
+                    <Text style={styles.continueButtonText}>{loading ? 'Processando...' : 'Continuar'}</Text>
+                    {!loading && <MaterialCommunityIcons name="arrow-right" size={20} color={colors.backgroundDark} />}
                 </TouchableOpacity>
+                <Text style={styles.footerHint}>
+                    Suas respostas são privadas e usadas apenas para melhorar sua experiência.
+                </Text>
             </View>
         </SafeAreaView>
     );
@@ -240,189 +226,150 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.backgroundDark,
     },
-    progressHeader: {
-        paddingHorizontal: 24,
-        paddingTop: 16,
-        paddingBottom: 8,
-        backgroundColor: 'rgba(17, 25, 33, 0.95)',
-    },
-    progressInfo: {
+    header: {
         flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        marginBottom: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
-    progressLabel: {
-        color: '#64748b',
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 2,
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    progressPercentage: {
-        color: colors.primary,
-        fontSize: 12,
+    headerTitle: {
+        color: '#fff',
+        fontSize: 18,
         fontWeight: 'bold',
     },
-    progressBarBg: {
-        height: 4,
-        backgroundColor: colors.borderDark,
-        borderRadius: 2,
-        overflow: 'hidden',
+    progressSection: {
+        paddingHorizontal: 24,
+        paddingVertical: 16,
     },
-    progressFill: {
-        height: '100%',
-        backgroundColor: colors.primary,
-        borderRadius: 2,
-    },
-    navBar: {
+    progressTextContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+        marginBottom: 12,
     },
-    navButton: {
-        padding: 8,
-    },
-    exitText: {
-        color: colors.textSecondary,
+    progressLabel: {
+        color: 'rgba(255, 255, 255, 0.5)',
         fontSize: 14,
         fontWeight: '500',
-        padding: 8,
+    },
+    progressValue: {
+        color: colors.primary,
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    progressBarBg: {
+        height: 6,
+        backgroundColor: 'rgba(244, 157, 37, 0.1)',
+        borderRadius: 3,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: colors.primary,
+        borderRadius: 3,
     },
     scrollContent: {
         paddingHorizontal: 24,
-        paddingBottom: 120,
+        paddingBottom: 160,
     },
-    questionSection: {
-        marginTop: 24,
-        marginBottom: 32,
+    questionHeader: {
+        paddingTop: 32,
+        paddingBottom: 32,
     },
-    questionText: {
+    questionTitle: {
         color: '#fff',
-        fontSize: 28,
-        fontWeight: 'bold',
-        lineHeight: 34,
-        letterSpacing: -0.5,
+        fontSize: 32,
+        fontWeight: '800',
+        lineHeight: 40,
+        marginBottom: 12,
     },
-    questionHint: {
-        color: colors.textSecondary,
-        fontSize: 14,
-        marginTop: 12,
-        lineHeight: 20,
+    questionSubtitle: {
+        color: 'rgba(255, 255, 255, 0.5)',
+        fontSize: 16,
+        lineHeight: 24,
     },
     optionsList: {
-        gap: 12,
+        gap: 16,
     },
     optionCard: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: colors.surfaceDark,
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: colors.borderDark,
+        padding: 20,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
     },
     optionCardSelected: {
         borderColor: colors.primary,
-        backgroundColor: 'rgba(23, 115, 207, 0.1)',
+        backgroundColor: 'rgba(244, 157, 37, 0.08)',
     },
-    cardLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    optionText: {
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: 16,
+        fontWeight: '600',
         flex: 1,
-    },
-    iconWrapper: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        backgroundColor: colors.backgroundDark,
-        justifyContent: 'center',
-        alignItems: 'center',
         marginRight: 16,
     },
-    optionLabel: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    optionLabelSelected: {
+    optionTextSelected: {
         color: '#fff',
     },
-    radioIndicator: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        borderWidth: 2,
-        borderColor: '#475569',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    radioIndicatorSelected: {
-        borderColor: colors.primary,
-        backgroundColor: colors.primary,
-    },
-    radioInner: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#fff',
-    },
-    scaleContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-        justifyContent: 'center',
-    },
-    scaleItem: {
-        width: 45,
-        height: 45,
+    checkbox: {
+        width: 24,
+        height: 24,
         borderRadius: 12,
-        backgroundColor: colors.surfaceDark,
-        borderWidth: 1,
-        borderColor: colors.borderDark,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    scaleItemSelected: {
+    checkboxSelected: {
         borderColor: colors.primary,
         backgroundColor: colors.primary,
-    },
-    scaleText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    scaleTextSelected: {
-        color: '#fff',
     },
     footer: {
         position: 'absolute',
         bottom: 0,
         width: '100%',
         padding: 24,
-        paddingBottom: 40,
-        backgroundColor: 'rgba(17, 25, 33, 0.95)',
-        borderTopWidth: 1,
-        borderTopColor: colors.borderDark,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+        backgroundColor: colors.backgroundDark,
     },
     continueButton: {
+        flexDirection: 'row',
         backgroundColor: colors.primary,
-        height: 58,
-        borderRadius: 16,
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
+        gap: 12,
         shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+        elevation: 10,
     },
     continueButtonText: {
-        color: '#fff',
+        color: colors.backgroundDark,
         fontSize: 18,
-        fontWeight: 'bold',
-        letterSpacing: 0.5,
+        fontWeight: '800',
+    },
+    footerHint: {
+        textAlign: 'center',
+        color: 'rgba(255, 255, 255, 0.3)',
+        fontSize: 12,
+        marginTop: 16,
+        paddingHorizontal: 20,
     },
 });
 

@@ -10,6 +10,9 @@ import {
     StatusBar,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useWindowDimensions } from 'react-native';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
 import { AuthenticatedUserContext } from '../App';
 import colors from '../colors';
 
@@ -52,11 +55,19 @@ const slides = [
     },
     {
         id: '4',
-        icon: 'flag-outline',
+        icon: 'seal-variant',
         color: '#4ade80',
+        title: 'Seu Contrato\nSoberano.',
+        subtitle: 'Este não é apenas um app de tarefas. É um compromisso que você assume consigo mesmo.',
+        accent: '"A disciplina é a forma mais elevada de amor-próprio."',
+    },
+    {
+        id: '5',
+        icon: 'flag-outline',
+        color: colors.primary,
         title: 'Sua missão\ncomeça hoje.',
         subtitle: 'Complete as tarefas do seu plano diário. Cada uma conta. O tempo não espera.',
-        accent: '"A única chave para uma vida boa é a execução."',
+        accent: 'O Protocolo foi ativado. Sua reconstrução começa agora.',
     },
 ];
 
@@ -114,16 +125,41 @@ const SlideItem = ({ item }) => (
 
 const ProtocolTutorial = () => {
     const { setOnboardingCompleted } = useContext(AuthenticatedUserContext);
+    const { width } = useWindowDimensions();
     const flatListRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (currentIndex < slides.length - 1) {
             flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
             setCurrentIndex(currentIndex + 1);
         } else {
+            const user = auth.currentUser;
+            if (user) {
+                try {
+                    await updateDoc(doc(db, 'users', user.uid), {
+                        onboardingCompleted: true
+                    });
+                } catch (error) {
+                    console.error("Error updating onboarding status:", error);
+                }
+            }
             setOnboardingCompleted(true);
         }
+    };
+
+    const handleSkip = async () => {
+        const user = auth.currentUser;
+        if (user) {
+            try {
+                await updateDoc(doc(db, 'users', user.uid), {
+                    onboardingCompleted: true
+                });
+            } catch (error) {
+                console.error("Error updating onboarding status:", error);
+            }
+        }
+        setOnboardingCompleted(true);
     };
 
     const isLast = currentIndex === slides.length - 1;
@@ -135,7 +171,7 @@ const ProtocolTutorial = () => {
             {/* Skip */}
             <View style={styles.header}>
                 <Text style={styles.logoText}>ORIGIN</Text>
-                <TouchableOpacity onPress={() => setOnboardingCompleted(true)}>
+                <TouchableOpacity onPress={handleSkip}>
                     <Text style={styles.skipText}>Pular</Text>
                 </TouchableOpacity>
             </View>
@@ -151,6 +187,11 @@ const ProtocolTutorial = () => {
                 showsHorizontalScrollIndicator={false}
                 scrollEnabled={false}
                 style={{ flex: 1 }}
+                getItemLayout={(_, index) => ({
+                    length: width,
+                    offset: width * index,
+                    index,
+                })}
             />
 
             {/* Footer */}

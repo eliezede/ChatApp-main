@@ -23,6 +23,7 @@ const { width } = Dimensions.get('window');
 const SESSIONS_DATA = [
     {
         id: '01',
+        type: 'audio',
         phase: 'Estabilização',
         title: '1. O que realmente dói',
         subtitle: 'Uma análise sobre como a dor do término não vem apenas da ausência física, mas da quebra de expectativas e da ferida no senso de identidade.',
@@ -32,15 +33,40 @@ const SESSIONS_DATA = [
     }
 ];
 
-const CATEGORIES = ['Todas', 'Estabilização', 'Estrutura', 'Expansão'];
+const READINGS_DATA = [
+    {
+        id: 'r01',
+        type: 'text',
+        phase: 'Estabilização',
+        title: 'Meditações - Livro II',
+        subtitle: 'Marco Aurélio sobre a transitoriedade e o foco no presente.',
+        duration: '5 min leitura',
+        status: 'available',
+    },
+    {
+        id: 'r02',
+        type: 'text',
+        phase: 'Estrutura',
+        title: 'Sobre a Brevidade da Vida',
+        subtitle: 'Sêneca ensina como o tempo é mal gasto por quem não tem propósito.',
+        duration: '8 min leitura',
+        status: 'locked',
+    }
+];
 
-const Sessions = () => {
+const CATEGORIES = ['Todas', 'Estabilização', 'Estrutura', 'Expansão'];
+const CONTENT_TYPES = [
+    { id: 'audio', label: 'ÁUDIOS', icon: 'headphones' },
+    { id: 'text', label: 'LEITURAS', icon: 'book-open-variant' }
+];
+
+const Library = () => {
     const [selectedCategory, setSelectedCategory] = useState('Estabilização');
+    const [contentType, setContentType] = useState('audio'); // audio | text
     const {
         playingSession,
         isPlaying,
         loading,
-        playbackStatus,
         playSession
     } = usePlayback();
 
@@ -76,7 +102,8 @@ const Sessions = () => {
         }
     };
 
-    const filteredSessions = SESSIONS_DATA.filter(s =>
+    const currentData = contentType === 'audio' ? SESSIONS_DATA : READINGS_DATA;
+    const filteredContent = currentData.filter(s =>
         selectedCategory === 'Todas' || s.phase === selectedCategory
     );
 
@@ -87,6 +114,32 @@ const Sessions = () => {
             <AppHeader
                 variant="brand"
             />
+
+            {/* Content Type Tabs */}
+            <View style={styles.contentTypeWrapper}>
+                {CONTENT_TYPES.map(type => (
+                    <TouchableOpacity
+                        key={type.id}
+                        onPress={() => setContentType(type.id)}
+                        style={[
+                            styles.typeTab,
+                            contentType === type.id && styles.typeTabActive
+                        ]}
+                    >
+                        <MaterialCommunityIcons
+                            name={type.icon}
+                            size={18}
+                            color={contentType === type.id ? colors.primary : '#64748b'}
+                        />
+                        <Text style={[
+                            styles.typeTabText,
+                            contentType === type.id && styles.typeTabTextActive
+                        ]}>
+                            {type.label}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
 
             {/* Categories */}
             <View style={styles.categoriesContainer}>
@@ -112,28 +165,24 @@ const Sessions = () => {
             </View>
 
             <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Hero Card */}
+                {/* Hero Card context dependent */}
                 <View style={styles.heroCard}>
                     <View style={styles.heroGradient} />
                     <View style={styles.heroContent}>
                         <View style={styles.heroHeader}>
                             <View style={styles.faseBadge}>
                                 <View style={styles.faseDot} />
-                                <Text style={styles.faseBadgeText}>FASE ATUAL</Text>
+                                <Text style={styles.faseBadgeText}>BIBLIOTECA</Text>
                             </View>
-                            <Text style={styles.cicloText}>Ciclo 1 de 3</Text>
+                            <Text style={styles.cicloText}>{contentType === 'audio' ? 'Refúgio de Voz' : 'Asilo de Letras'}</Text>
                         </View>
                         <View style={styles.heroMeta}>
                             <Text style={styles.heroTitle}>Estabilização</Text>
                             <Text style={styles.heroDesc}>
-                                Reconstrua sua fundação mental. O caos externo não deve perturbar sua ordem interna.
+                                {contentType === 'audio'
+                                    ? 'Acalme a tempestade interna através de guias curados para sua reconstrução.'
+                                    : 'Acesse a sabedoria dos mestres. O conhecimento é a única posse que não pode ser roubada.'}
                             </Text>
-                        </View>
-                        <View style={styles.heroProgress}>
-                            <View style={styles.progressBarBg}>
-                                <View style={[styles.progressBarFill, { width: '33%' }]} />
-                            </View>
-                            <Text style={styles.progressText}>33%</Text>
                         </View>
                     </View>
                 </View>
@@ -141,23 +190,27 @@ const Sessions = () => {
                 {/* Section Title */}
                 <View style={styles.sectionDivider}>
                     <View style={styles.dividerLine} />
-                    <Text style={styles.sectionLabel}>SESSÕES RECOMENDADAS</Text>
+                    <Text style={styles.sectionLabel}>{contentType === 'audio' ? 'SESSÕES RECOMENDADAS' : 'LEITURAS ESSENCIAIS'}</Text>
                     <View style={styles.dividerLine} />
                 </View>
 
-                {/* Session List */}
+                {/* Content List */}
                 <View style={styles.listContainer}>
-                    {filteredSessions.map((session) => (
+                    {filteredContent.map((item) => (
                         <TouchableOpacity
-                            key={session.id}
+                            key={item.id}
                             style={[
                                 styles.sessionItem,
-                                session.status === 'recommended' && styles.sessionItemRecommended,
-                                session.status === 'locked' && styles.sessionItemLocked
+                                item.status === 'recommended' && styles.sessionItemRecommended,
+                                item.status === 'locked' && styles.sessionItemLocked
                             ]}
-                            onPress={() => session.status !== 'locked' && handlePlaySession(session)}
+                            onPress={() => {
+                                if (item.status === 'locked') return;
+                                if (item.type === 'audio') handlePlaySession(item);
+                                else { /* Handle text view */ }
+                            }}
                         >
-                            {session.status === 'recommended' && (
+                            {item.status === 'recommended' && (
                                 <View style={styles.recommendedBadge}>
                                     <Text style={styles.recommendedBadgeText}>RECOMENDADO PARA SUA FASE</Text>
                                 </View>
@@ -166,27 +219,23 @@ const Sessions = () => {
                             <View style={styles.sessionMain}>
                                 <View style={[
                                     styles.sessionIconBox,
-                                    session.status === 'recommended' && styles.sessionIconBoxRecommended,
-                                    session.status === 'completed' && styles.sessionIconBoxCompleted,
+                                    item.status === 'recommended' && styles.sessionIconBoxRecommended,
+                                    item.status === 'completed' && styles.sessionIconBoxCompleted,
+                                    item.type === 'text' && { borderRadius: 12 }
                                 ]}>
-                                    {loading && playingSession?.id === session.id ? (
+                                    {loading && playingSession?.id === item.id ? (
                                         <ActivityIndicator size="small" color="#fff" />
                                     ) : (
                                         <MaterialCommunityIcons
                                             name={
-                                                session.status === 'completed' ? 'check' :
-                                                    session.status === 'locked' ? 'lock' :
-                                                        'play'
+                                                item.status === 'locked' ? 'lock' :
+                                                    item.type === 'text' ? 'book-open-variant' : 'play'
                                             }
-                                            size={session.status === 'completed' ? 20 : 24}
-                                            color={
-                                                session.status === 'completed' ? '#22c55e' :
-                                                    session.status === 'locked' ? '#475569' :
-                                                        '#fff'
-                                            }
+                                            size={20}
+                                            color={item.status === 'locked' ? '#475569' : '#fff'}
                                         />
                                     )}
-                                    {isPlaying && playingSession?.id === session.id && (
+                                    {isPlaying && playingSession?.id === item.id && (
                                         <Animated.View style={[styles.playingPulse, { transform: [{ scale: pulseAnim }] }]} />
                                     )}
                                 </View>
@@ -194,17 +243,17 @@ const Sessions = () => {
                                 <View style={styles.sessionInfo}>
                                     <View style={styles.sessionMetaRow}>
                                         <View style={styles.numberBadge}>
-                                            <Text style={styles.numberText}>{session.id}</Text>
+                                            <Text style={styles.numberText}>{item.id}</Text>
                                         </View>
-                                        <Text style={styles.sessionPhase}>{session.phase.toUpperCase()}</Text>
+                                        <Text style={styles.sessionPhase}>{item.phase.toUpperCase()}</Text>
                                     </View>
-                                    <Text style={styles.sessionTitle}>{session.title}</Text>
-                                    <Text style={styles.sessionSubtitle}>{session.subtitle}</Text>
+                                    <Text style={styles.sessionTitle}>{item.title}</Text>
+                                    <Text style={styles.sessionSubtitle} numberOfLines={2}>{item.subtitle}</Text>
                                 </View>
 
                                 <View style={styles.sessionRight}>
-                                    <Text style={styles.durationText}>{session.duration}</Text>
-                                    {playingSession?.id === session.id && isPlaying && (
+                                    <Text style={styles.durationText}>{item.duration}</Text>
+                                    {playingSession?.id === item.id && isPlaying && (
                                         <View style={styles.waveContainer}>
                                             <View style={[styles.waveBar, { height: 6 }]} />
                                             <View style={[styles.waveBar, { height: 12 }]} />
@@ -228,36 +277,33 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.backgroundDark,
     },
-    header: {
+    contentTypeWrapper: {
+        flexDirection: 'row',
+        paddingHorizontal: 24,
+        marginTop: 20,
+        gap: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.03)',
+    },
+    typeTab: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
         paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
+        gap: 8,
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
     },
-    headerIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
+    typeTabActive: {
+        borderBottomColor: colors.primary,
     },
-    headerTitleContainer: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    headerSubtitle: {
-        color: '#cd7f32',
-        fontSize: 10,
+    typeTabText: {
+        color: '#64748b',
+        fontSize: 11,
         fontWeight: 'bold',
-        letterSpacing: 2,
+        letterSpacing: 1,
     },
-    headerTitle: {
+    typeTabTextActive: {
         color: '#fff',
-        fontSize: 14,
-        fontWeight: 'bold',
     },
     categoriesContainer: {
         paddingVertical: 12,
@@ -279,7 +325,7 @@ const styles = StyleSheet.create({
     },
     categoryText: {
         color: '#64748b',
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '500',
     },
     categoryTextActive: {
@@ -294,14 +340,14 @@ const styles = StyleSheet.create({
         backgroundColor: '#1c2126',
         borderRadius: 20,
         padding: 24,
-        marginTop: 16,
+        marginTop: 8,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.05)',
     },
     heroGradient: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(23, 115, 207, 0.1)',
+        backgroundColor: 'rgba(23, 115, 207, 0.08)',
         opacity: 0.5,
     },
     heroContent: {
@@ -343,40 +389,18 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     heroMeta: {
-        marginBottom: 20,
+        marginBottom: 8,
     },
     heroTitle: {
         color: '#fff',
         fontSize: 24,
-        fontWeight: 'bold',
+        fontWeight: '900',
         marginBottom: 4,
     },
     heroDesc: {
         color: '#94a3b8',
         fontSize: 12,
         lineHeight: 18,
-    },
-    heroProgress: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    progressBarBg: {
-        flex: 1,
-        height: 4,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: 2,
-        overflow: 'hidden',
-    },
-    progressBarFill: {
-        height: '100%',
-        backgroundColor: colors.primary,
-        borderRadius: 2,
-    },
-    progressText: {
-        color: '#64748b',
-        fontSize: 10,
-        fontWeight: 'bold',
     },
     sectionDivider: {
         flexDirection: 'row',
@@ -407,7 +431,6 @@ const styles = StyleSheet.create({
     },
     sessionItemRecommended: {
         borderColor: 'rgba(23, 115, 207, 0.4)',
-        backgroundColor: '#1c2126',
     },
     sessionItemLocked: {
         opacity: 0.5,
@@ -416,7 +439,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: -10,
         right: 16,
-        backgroundColor: '#cd7f32',
+        backgroundColor: colors.primary,
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 4,
@@ -425,7 +448,7 @@ const styles = StyleSheet.create({
     recommendedBadgeText: {
         color: '#fff',
         fontSize: 8,
-        fontWeight: 'bold',
+        fontWeight: '900',
         letterSpacing: 1,
     },
     sessionMain: {
@@ -434,16 +457,18 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     sessionIconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: '#1e293b',
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
     },
     sessionIconBoxRecommended: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.primary + '22',
+        borderWidth: 1,
+        borderColor: colors.primary + '44',
     },
     sessionIconBoxCompleted: {
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -454,7 +479,7 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         borderWidth: 1,
         borderColor: 'rgba(23, 115, 207, 0.3)',
-        borderRadius: 24,
+        borderRadius: 22,
     },
     sessionInfo: {
         flex: 1,
@@ -497,7 +522,7 @@ const styles = StyleSheet.create({
     },
     durationText: {
         color: '#64748b',
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '500',
     },
     waveContainer: {
@@ -513,4 +538,4 @@ const styles = StyleSheet.create({
     }
 });
 
-export default Sessions;
+export default Library;

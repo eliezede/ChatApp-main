@@ -68,7 +68,7 @@ const CustomDrawerContent = (props) => {
             {/* Profile Header */}
             <TouchableOpacity
                 style={styles.profileHeader}
-                onPress={() => props.navigation.navigate('Profile')}
+                onPress={() => props.navigation.navigate('MainTabs', { screen: 'Profile' })}
             >
                 <View style={styles.avatarWrapper}>
                     <Image
@@ -85,30 +85,51 @@ const CustomDrawerContent = (props) => {
             <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
                 <View style={styles.navGroup}>
                     <NavItem
-                        icon="view-dashboard"
-                        label="Dashboard"
-                        onPress={() => props.navigation.navigate('Dashboard')}
-                        isActive={props.state.index === 0}
+                        icon="compass"
+                        label="Painel"
+                        onPress={() => { props.navigation.closeDrawer(); props.navigation.navigate('MainTabs', { screen: 'Dashboard' }); }}
+                        isActive={props.state.routes[props.state.index].name === 'MainTabs' && props.state.routes[props.state.index].state?.routes[props.state.routes[props.state.index].state?.index]?.name === 'Dashboard'}
                     />
                     <NavItem
-                        icon="map-marker-path"
-                        label="Plano de Reconstrução"
-                        onPress={() => props.navigation.navigate('Dashboard', { screen: 'Dashboard', params: { openTraining: true } })}
+                        icon="brain"
+                        label="Diário Terapêutico"
+                        onPress={() => { props.navigation.closeDrawer(); props.navigation.navigate('MainTabs', { screen: 'Diario' }); }}
                     />
-                    <NavItem icon="headphones" label="Sessões de Áudio" onPress={() => props.navigation.navigate('Sessions')} />
-                    <NavItem icon="history" label="Trajetória & Ciclos" onPress={() => { }} />
-                    <NavItem icon="book-open-variant" label="Biblioteca Estoica" onPress={() => { }} />
+                    <NavItem
+                        icon="target"
+                        label="Missões"
+                        onPress={() => { props.navigation.closeDrawer(); props.navigation.navigate('MainTabs', { screen: 'Missoes' }); }}
+                    />
+                    <NavItem
+                        icon="shield-check-outline"
+                        label="Histórico Contato Zero"
+                        onPress={() => { props.navigation.closeDrawer(); props.navigation.navigate('MainTabs', { screen: 'Dashboard' }); }}
+                    />
+                    <NavItem
+                        icon="book-open-variant"
+                        label="Biblioteca"
+                        onPress={() => { props.navigation.closeDrawer(); props.navigation.navigate('MainTabs', { screen: 'Sessions' }); }}
+                    />
+                    <NavItem
+                        icon="history"
+                        label="Trajetória & Ciclos"
+                        onPress={() => { props.navigation.closeDrawer(); props.navigation.navigate('MainTabs', { screen: 'Trajectory' }); }}
+                    />
 
                     <View style={styles.divider} />
 
                     <NavItem
                         icon="account-cog"
                         label="Perfil & Ajustes"
-                        onPress={() => props.navigation.navigate('Profile')}
-                        isActive={props.state.routes[props.state.index].name === 'Profile'}
+                        onPress={() => { props.navigation.closeDrawer(); props.navigation.navigate('MainTabs', { screen: 'Perfil' }); }}
+                        isActive={props.state.routes[props.state.index].name === 'Profile' || (props.state.routes[props.state.index].name === 'MainTabs' && props.state.routes[props.state.index].state?.routes[props.state.routes[props.state.index].state?.index]?.name === 'Perfil')}
                     />
                     <NavItem icon="help-circle-outline" label="Suporte" onPress={() => { }} />
-                    <NavItem icon="information-outline" label="Sobre o ORIGIN" onPress={() => { }} />
+                    <NavItem
+                        icon="information-outline"
+                        label="Sobre o ORIGIN"
+                        onPress={() => { props.navigation.closeDrawer(); props.navigation.navigate('MainTabs', { screen: 'About' }); }}
+                    />
                 </View>
             </ScrollView>
 

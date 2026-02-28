@@ -43,7 +43,7 @@ export default function Transparency({ navigation }) {
                 <View style={styles.spacer} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
                 <View style={styles.heroSection}>
                     <View style={styles.heroIcon}>
                         <MaterialCommunityIcons name="shield-lock-outline" size={32} color={colors.primary} />

@@ -1,13 +1,14 @@
 export default {
-    primary: '#1773cf',
-    backgroundDark: '#0B1116',
-    backgroundOLED: '#050505',
-    surfaceDark: '#161E26',
-    surfaceHighlight: '#1C2530',
-    surfaceInput: '#0d1218',
-    borderDark: '#24303f',
-    textSecondary: '#9dabb8',
-    gray: '#C5C5C7',
-    mediumGray: '#F6F7FB',
-    lightGray: '#FAFAFA'
+    primary: '#f49d25',
+    backgroundDark: '#120f0b',
+    backgroundOLED: '#0a0c14',
+    surfaceDark: '#1e1a15',
+    surfaceHighlight: '#2b251e',
+    surfaceInput: '#1e1a15',
+    borderDark: 'rgba(244, 157, 37, 0.1)',
+    accentCyan: '#00f2ff',
+    textSecondary: '#94a3b8',
+    gray: '#64748b',
+    mediumGray: '#f8f7f5',
+    lightGray: '#ffffff'
 };

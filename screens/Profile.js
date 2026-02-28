@@ -13,11 +13,14 @@ import {
     Platform,
     StatusBar,
     Linking,
+    ActivityIndicator,
 } from 'react-native';
-import { auth, db } from '../config/firebase';
+import { auth, db, storage } from '../config/firebase';
 import { signOut } from 'firebase/auth';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AppHeader from '../components/AppHeader';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { AuthenticatedUserContext } from '../App';
 import * as ImagePicker from 'expo-image-picker';
 import colors from '../colors';
@@ -31,6 +34,7 @@ const Profile = ({ navigation }) => {
     const [editName, setEditName] = React.useState('');
     const [editFocus, setEditFocus] = React.useState('');
     const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+    const [uploading, setUploading] = React.useState(false);
 
     React.useEffect(() => {
         const user = auth.currentUser;
@@ -73,18 +77,41 @@ const Profile = ({ navigation }) => {
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.3,
-            base64: true,
+            base64: false,
         });
-        if (!result.canceled && result.assets?.length > 0) {
+
+        if (!result.cancelled) {
             const user = auth.currentUser;
-            const asset = result.assets[0];
-            const imageUri = Platform.OS === 'web' && asset.base64
-                ? `data:image/jpeg;base64,${asset.base64}`
-                : asset.uri;
+            const uri = result.uri;
+
+            setUploading(true);
             try {
-                await updateDoc(doc(db, 'users', user.uid), { photoURL: imageUri });
+                // Robust XHR-based blob conversion (Standard practice for local files)
+                const blob = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.onload = function () {
+                        resolve(xhr.response);
+                    };
+                    xhr.onerror = function (e) {
+                        console.log(e);
+                        reject(new TypeError("Network request failed"));
+                    };
+                    xhr.responseType = "blob";
+                    xhr.open("GET", uri, true);
+                    xhr.send(null);
+                });
+
+                const storageRef = ref(storage, `profile_photos/${user.uid}.jpg`);
+                await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+                const downloadURL = await getDownloadURL(storageRef);
+
+                await updateDoc(doc(db, 'users', user.uid), { photoURL: downloadURL });
+                Alert.alert('Sucesso', 'Foto de perfil atualizada!');
             } catch (error) {
+                console.error("Error uploading image:", error);
                 Alert.alert('Erro', 'Não foi possível atualizar a foto.');
+            } finally {
+                setUploading(false);
             }
         }
     };
@@ -124,11 +151,14 @@ const Profile = ({ navigation }) => {
     };
 
     const phase = userProfile?.profile?.phase;
-    const roleLabel = phase === 3 ? 'MASTER' : phase === 2 ? 'ARCHITECT' : 'NEÓFITO';
+    const roleLabel = phase === 3 ? 'MESTRE' : phase === 2 ? 'ARQUITETO' : 'NEÓFITO';
     const phaseDisplay = phase === 3 ? 'Expansão' : phase === 2 ? 'Estrutura' : 'Estabilização';
     const disciplineScore = Math.round(userProfile?.profile?.disciplineScore || 0);
     const stabilityScore = Math.round(userProfile?.profile?.stabilityScore || 0);
     const structureScore = Math.round(userProfile?.profile?.structureScore || 0);
+    const czStreak = userProfile?.contactZero?.currentStreak || 0;
+    const czBest = userProfile?.contactZero?.bestStreak || 0;
+    const czTotal = (userProfile?.contactZero?.history || []).filter(h => h.success).length;
 
     // --- Sub-components ---
     const SettingsRow = ({ icon, label, onPress, rightContent, rightText, isDestructive = false }) => (
@@ -162,169 +192,213 @@ const Profile = ({ navigation }) => {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>PERFIL</Text>
-                {isEditingProfile ? (
-                    <TouchableOpacity onPress={handleSave} style={styles.headerBtn}>
-                        <MaterialCommunityIcons name="check" size={22} color={colors.primary} />
-                    </TouchableOpacity>
-                ) : (
-                    <View style={{ width: 34 }} />
-                )}
-            </View>
+            <AppHeader
+                variant="brand"
+                rightIcon={isEditingProfile ? "check" : null}
+                rightAction={isEditingProfile ? handleSave : null}
+            />
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={{ flex: 1, overflow: 'hidden' }}>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-                {/* Hero */}
-                <View style={styles.heroSection}>
-                    <TouchableOpacity style={styles.avatarWrapper} onPress={handleUpdatePhoto} activeOpacity={0.85}>
-                        <View style={styles.avatarBorder}>
-                            <Image
-                                source={userProfile?.photoURL ? { uri: userProfile.photoURL } : STOIC_AVATAR}
-                                style={styles.avatar}
-                            />
-                        </View>
-                        <View style={styles.editBadge}>
-                            <MaterialCommunityIcons name="pencil" size={13} color={colors.primary} />
-                        </View>
-                    </TouchableOpacity>
-
-                    {isEditingProfile ? (
-                        <TextInput
-                            style={styles.nameInput}
-                            value={editName}
-                            onChangeText={setEditName}
-                            placeholder="Seu Nome"
-                            placeholderTextColor="#475569"
-                            autoFocus
-                        />
-                    ) : (
-                        <Text style={styles.userName}>{(userProfile?.name || 'GUERREIRO').toUpperCase()}</Text>
-                    )}
-
-                    <View style={styles.badgeRow}>
-                        <View style={styles.roleBadge}>
-                            <Text style={styles.roleBadgeText}>{roleLabel}</Text>
-                        </View>
-                        <Text style={styles.phaseText}>Fase: {phaseDisplay}</Text>
-                    </View>
-                </View>
-
-                {/* Stats Grid */}
-                <View style={styles.statsGrid}>
-                    <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{stabilityScore}<Text style={styles.statUnit}>%</Text></Text>
-                        <Text style={styles.statLabel}>ESTABILIDADE</Text>
-                    </View>
-                    <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{structureScore}<Text style={styles.statUnit}>%</Text></Text>
-                        <Text style={styles.statLabel}>ESTRUTURA</Text>
-                    </View>
-                    <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{disciplineScore}<Text style={styles.statUnit}>%</Text></Text>
-                        <Text style={styles.statLabel}>DISCIPLINA</Text>
-                    </View>
-                </View>
-
-                {/* === SETTINGS SECTIONS === */}
-                <View style={styles.settingsSections}>
-
-                    {/* Identity */}
-                    <SectionTitle>IDENTIDADE</SectionTitle>
-                    <SettingsGroup>
-                        <SettingsRow
-                            icon="account-edit-outline"
-                            label="Editar Nome & Foco"
-                            onPress={() => setIsEditingProfile(true)}
-                        />
-                        {isEditingProfile && (
-                            <View style={styles.inlineEditContainer}>
-                                <Text style={styles.inputLabel}>FOCO ATUAL</Text>
-                                <TextInput
-                                    style={styles.focusInput}
-                                    value={editFocus}
-                                    onChangeText={setEditFocus}
-                                    placeholder="Ex: Resiliência"
-                                    placeholderTextColor="#475569"
-                                />
-                            </View>
-                        )}
-                        <SettingsRow
-                            icon="camera-outline"
-                            label="Alterar Foto"
+                    {/* Hero */}
+                    <View style={styles.heroSection}>
+                        <TouchableOpacity
+                            style={styles.avatarWrapper}
                             onPress={handleUpdatePhoto}
-                        />
-                        <SettingsRow
-                            icon="chart-line"
-                            label="Detalhes do Protocolo"
-                            onPress={() => navigation.navigate('ProgressDetail')}
-                        />
-                    </SettingsGroup>
-
-                    {/* System */}
-                    <SectionTitle>SISTEMA</SectionTitle>
-                    <SettingsGroup>
-                        <SettingsRow
-                            icon="bell-outline"
-                            label="Notificações"
-                            rightContent={
-                                <Switch
-                                    value={notificationsEnabled}
-                                    onValueChange={setNotificationsEnabled}
-                                    trackColor={{ false: '#1e293b', true: colors.primary }}
-                                    thumbColor="#fff"
+                            activeOpacity={0.85}
+                            disabled={uploading}
+                        >
+                            <View style={styles.avatarBorder}>
+                                <Image
+                                    source={userProfile?.photoURL ? { uri: userProfile.photoURL } : STOIC_AVATAR}
+                                    style={[styles.avatar, uploading && { opacity: 0.5 }]}
                                 />
-                            }
-                        />
-                        <SettingsRow
-                            icon="weather-night"
-                            label="Modo Escuro"
-                            rightText="Ativo"
-                        />
-                        <SettingsRow
-                            icon="cloud-sync-outline"
-                            label="Status de Sincronização"
-                            rightContent={
-                                <View style={styles.syncStatus}>
-                                    <View style={styles.syncDot} />
-                                    <Text style={styles.syncText}>Ativo</Text>
+                                {uploading && (
+                                    <View style={styles.loaderOverlay}>
+                                        <ActivityIndicator color={colors.primary} size="large" />
+                                    </View>
+                                )}
+                            </View>
+                            {!uploading && (
+                                <View style={styles.editBadge}>
+                                    <MaterialCommunityIcons name="pencil" size={13} color={colors.primary} />
                                 </View>
-                            }
-                        />
-                    </SettingsGroup>
-
-                    {/* Support */}
-                    <SectionTitle>SUPORTE</SectionTitle>
-                    <SettingsGroup>
-                        <SettingsRow
-                            icon="book-open-outline"
-                            label="Manual Estoico"
-                            onPress={() => Linking.openURL('https://en.wikisource.org/wiki/Meditations')}
-                        />
-                        <SettingsRow
-                            icon="message-text-outline"
-                            label="Enviar Feedback"
-                            onPress={() => Linking.openURL('mailto:feedback@originprotocol.app')}
-                        />
-                    </SettingsGroup>
-
-                    {/* Danger Zone */}
-                    <View style={styles.dangerZone}>
-                        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-                            <MaterialCommunityIcons name="logout" size={18} color="#ef4444" />
-                            <Text style={styles.logoutText}>Encerrar Sessão</Text>
+                            )}
                         </TouchableOpacity>
+
+                        {isEditingProfile ? (
+                            <TextInput
+                                style={styles.nameInput}
+                                value={editName}
+                                onChangeText={setEditName}
+                                placeholder="Seu Nome"
+                                placeholderTextColor="#475569"
+                                autoFocus
+                            />
+                        ) : (
+                            <Text style={styles.userName}>{(userProfile?.name || 'GUERREIRO').toUpperCase()}</Text>
+                        )}
                     </View>
 
-                    {/* Quote */}
-                    <View style={styles.quoteSection}>
-                        <Text style={styles.quoteText}>"Não perca mais tempo argumentando sobre como um bom homem deve ser. Seja um."</Text>
-                        <Text style={styles.quoteAuthor}>— MARCO AURÉLIO</Text>
+
+                    {/* Contato Zero Stats */}
+                    <View style={styles.czStatsRow}>
+                        <View style={styles.czCardHeader}>
+                            <MaterialCommunityIcons name="shield-check-outline" size={14} color={colors.primary} />
+                            <Text style={styles.czCardTitle}>CONTATO ZERO</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={styles.czStatItem}>
+                                <MaterialCommunityIcons name="fire" size={18} color={colors.primary} />
+                                <Text style={styles.czStatValue}>{czStreak}</Text>
+                                <Text style={styles.czStatLabel}>Sequência{`\n`}Atual</Text>
+                            </View>
+                            <View style={styles.czStatDivider} />
+                            <View style={styles.czStatItem}>
+                                <MaterialCommunityIcons name="shield-check" size={18} color="#22c55e" />
+                                <Text style={[styles.czStatValue, { color: '#22c55e' }]}>{czTotal}</Text>
+                                <Text style={styles.czStatLabel}>Dias de{`\n`}Vitória</Text>
+                            </View>
+                            <View style={styles.czStatDivider} />
+                            <View style={styles.czStatItem}>
+                                <MaterialCommunityIcons name="trophy-outline" size={18} color="#fbbf24" />
+                                <Text style={[styles.czStatValue, { color: '#fbbf24' }]}>{czBest}</Text>
+                                <Text style={styles.czStatLabel}>Melhor{`\n`}Sequência</Text>
+                            </View>
+                        </View>
                     </View>
 
-                </View>
-            </ScrollView>
+                    {/* === SETTINGS SECTIONS === */}
+                    <View style={styles.settingsSections}>
+
+                        {/* Identity */}
+                        <SectionTitle>IDENTIDADE</SectionTitle>
+                        <SettingsGroup>
+                            <SettingsRow
+                                icon="account-edit-outline"
+                                label="Editar Nome & Foco"
+                                onPress={() => setIsEditingProfile(true)}
+                            />
+                            {isEditingProfile && (
+                                <View style={styles.inlineEditContainer}>
+                                    <Text style={styles.inputLabel}>FOCO ATUAL</Text>
+                                    <TextInput
+                                        style={styles.focusInput}
+                                        value={editFocus}
+                                        onChangeText={setEditFocus}
+                                        placeholder="Ex: Resiliência"
+                                        placeholderTextColor="#475569"
+                                    />
+                                </View>
+                            )}
+                            <SettingsRow
+                                icon="camera-outline"
+                                label="Alterar Foto"
+                                onPress={handleUpdatePhoto}
+                            />
+                            <SettingsRow
+                                icon="chart-line"
+                                label="Detalhes do Protocolo"
+                                onPress={() => navigation.navigate('ProgressDetail')}
+                            />
+                            <SettingsRow
+                                icon="run-fast"
+                                label="Ajustes de Rotina"
+                                onPress={() => navigation.navigate('TrainingSettings')}
+                            />
+                        </SettingsGroup>
+
+                        {/* Journey */}
+                        <SectionTitle>A MINHA JORNADA</SectionTitle>
+                        <SettingsGroup>
+                            <SettingsRow
+                                icon="shield-check-outline"
+                                label="Histórico Contato Zero"
+                                rightText={`${czStreak} dias`}
+                                onPress={() => navigation.navigate('CheckinHistory')}
+                            />
+                            <SettingsRow
+                                icon="brain"
+                                label="Diário Terapêutico"
+                                onPress={() => navigation.navigate('Diario')}
+                            />
+                            <SettingsRow
+                                icon="target"
+                                label="Missões Ativas"
+                                onPress={() => navigation.navigate('Missoes')}
+                            />
+                            <SettingsRow
+                                icon="view-dashboard-outline"
+                                label="Relatório de Equilíbrio"
+                                onPress={() => navigation.navigate('Dashboard')}
+                            />
+                        </SettingsGroup>
+
+                        {/* System */}
+                        <SectionTitle>SISTEMA</SectionTitle>
+                        <SettingsGroup>
+                            <SettingsRow
+                                icon="bell-outline"
+                                label="Notificações"
+                                rightContent={
+                                    <Switch
+                                        value={notificationsEnabled}
+                                        onValueChange={setNotificationsEnabled}
+                                        trackColor={{ false: '#1e293b', true: colors.primary }}
+                                        thumbColor="#fff"
+                                    />
+                                }
+                            />
+                            <SettingsRow
+                                icon="weather-night"
+                                label="Modo Escuro"
+                                rightText="Ativo"
+                            />
+                            <SettingsRow
+                                icon="cloud-sync-outline"
+                                label="Status de Sincronização"
+                                rightContent={
+                                    <View style={styles.syncStatus}>
+                                        <View style={styles.syncDot} />
+                                        <Text style={styles.syncText}>Ativo</Text>
+                                    </View>
+                                }
+                            />
+                        </SettingsGroup>
+
+                        {/* Support */}
+                        <SectionTitle>SUPORTE</SectionTitle>
+                        <SettingsGroup>
+                            <SettingsRow
+                                icon="book-open-outline"
+                                label="Manual Estoico"
+                                onPress={() => Linking.openURL('https://en.wikisource.org/wiki/Meditations')}
+                            />
+                            <SettingsRow
+                                icon="message-text-outline"
+                                label="Enviar Feedback"
+                                onPress={() => Linking.openURL('mailto:feedback@originprotocol.app')}
+                            />
+                        </SettingsGroup>
+
+                        {/* Danger Zone */}
+                        <View style={styles.dangerZone}>
+                            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+                                <MaterialCommunityIcons name="logout" size={18} color="#ef4444" />
+                                <Text style={styles.logoutText}>Encerrar Sessão</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Quote */}
+                        <View style={styles.quoteSection}>
+                            <Text style={styles.quoteText}>"Não perca mais tempo argumentando sobre como um bom homem deve ser. Seja um."</Text>
+                            <Text style={styles.quoteAuthor}>— MARCO AURÉLIO</Text>
+                        </View>
+
+                    </View>
+                </ScrollView>
+            </View>
         </SafeAreaView>
     );
 };
@@ -386,6 +460,13 @@ const styles = StyleSheet.create({
         borderColor: colors.borderDark,
         borderRadius: 14,
         padding: 5,
+    },
+    loaderOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        borderRadius: 54,
     },
     userName: {
         color: '#fff',
@@ -590,6 +671,55 @@ const styles = StyleSheet.create({
         fontSize: 9,
         marginTop: 6,
         letterSpacing: 2,
+    },
+
+    // Contato Zero row
+    czStatsRow: {
+        flexDirection: 'column',
+        backgroundColor: 'rgba(23, 28, 35, 0.7)',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(0, 242, 255, 0.1)',
+        marginHorizontal: 24,
+        marginBottom: 24,
+        paddingTop: 14,
+        paddingBottom: 18,
+        paddingHorizontal: 16,
+    },
+    czCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 16,
+    },
+    czCardTitle: {
+        color: colors.primary,
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1.5,
+    },
+    czStatItem: {
+        flex: 1,
+        alignItems: 'center',
+        gap: 4,
+    },
+    czStatValue: {
+        color: colors.primary,
+        fontSize: 26,
+        fontWeight: '900',
+        lineHeight: 30,
+    },
+    czStatLabel: {
+        color: '#475569',
+        fontSize: 10,
+        fontWeight: '700',
+        textAlign: 'center',
+        lineHeight: 14,
+    },
+    czStatDivider: {
+        width: 1,
+        height: 40,
+        backgroundColor: 'rgba(255,255,255,0.06)',
     },
 });
 

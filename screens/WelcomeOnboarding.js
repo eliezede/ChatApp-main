@@ -7,64 +7,68 @@ import {
     TouchableOpacity,
     StatusBar,
     Dimensions,
+    Image,
+    Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../colors';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const WelcomeOnboarding = ({ navigation }) => {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            {/* Background Decor */}
-            <View style={styles.bgGlow} />
+            {/* Decorative Element (Glow Sphere) */}
+            <View style={styles.glowSphere} />
 
             <View style={styles.content}>
-                {/* Header */}
+                {/* Top App Bar / Logo Section */}
                 <View style={styles.header}>
-                    <Text style={styles.wordmark}>ORIGIN</Text>
-                    <View style={styles.headerLine} />
+                    <View style={styles.logoContainer}>
+                        <View style={styles.glassIcon}>
+                            <MaterialCommunityIcons name="auto-fix" size={28} color={colors.primary} />
+                        </View>
+                        <Text style={styles.logoLabel}>ORIGIN</Text>
+                    </View>
                 </View>
 
                 {/* Hero Section */}
                 <View style={styles.hero}>
-                    <View style={styles.iconContainer}>
-                        <MaterialCommunityIcons name="weight-lifter" size={24} color={colors.primary} />
+                    <View style={styles.titleContainer}>
+                        <Text style={styles.titleText}>Términos são</Text>
+                        <Text style={styles.italicTitle}>difíceis,</Text>
                     </View>
-                    <View style={styles.textGroup}>
-                        <Text style={styles.heroTextLight}>
-                            Você não está <Text style={styles.strikethroughText}>quebrado</Text>.
+
+                    <View style={styles.glassPanel}>
+                        <Text style={styles.descriptionText}>
+                            mas você não precisa passar por isso sozinho. Vamos ajustar a sua jornada de recuperação.
                         </Text>
-                        <Text style={styles.heroTextBold}>
-                            Está em <Text style={styles.primaryText}>reconstrução</Text>.
+                        <Text style={styles.subDescriptionText}>
+                            Leva menos de 1 minuto.
                         </Text>
                     </View>
-                    <Text style={styles.description}>
-                        O estoicismo não é sobre suprimir emoções, mas sobre direcioná-las com propósito.
-                    </Text>
                 </View>
 
-                {/* Footer */}
+                {/* Footer / Action Zone */}
                 <View style={styles.footer}>
-                    <View style={styles.progressIndicators}>
-                        <View style={[styles.dot, styles.activeDot]} />
-                        <View style={styles.dot} />
-                        <View style={styles.dot} />
-                    </View>
-
                     <TouchableOpacity
-                        style={styles.button}
+                        style={styles.mainButton}
+                        activeOpacity={0.8}
                         onPress={() => navigation.navigate('Questionnaire')}
                     >
-                        <View style={styles.buttonContent}>
-                            <Text style={styles.buttonText}>INICIAR JORNADA</Text>
-                            <MaterialCommunityIcons name="arrow-right" size={18} color={colors.primary} />
-                        </View>
+                        <Text style={styles.buttonText}>Começar</Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.versionText}>V1.0.4 • SYSTEM ACTIVE</Text>
+                    <View style={styles.trustSignals}>
+                        <Text style={styles.trustText}>Privacidade Garantida</Text>
+                        <View style={styles.dot} />
+                        <Text style={styles.trustText}>100% Gratuito</Text>
+                    </View>
+
+                    {/* Safe Area Bottom Indicator */}
+                    <View style={styles.bottomBar} />
                 </View>
             </View>
         </SafeAreaView>
@@ -76,140 +80,143 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.backgroundOLED,
     },
-    bgGlow: {
+    glowSphere: {
         position: 'absolute',
-        bottom: -100,
-        width: width,
-        height: width,
-        borderRadius: width / 2,
+        top: '30%',
+        left: '50%',
+        width: 384,
+        height: 384,
+        marginLeft: -192,
+        marginTop: -192,
         backgroundColor: colors.primary,
-        opacity: 0.1,
-        // Linear gradient simulation isn't perfect without a lib, but this gives the 'glow' effect
+        borderRadius: 192,
+        opacity: 0.08,
+        // blurRadius is not supported in View style, would need an Image or specialized lib
+        // but for now, opacity gives a similar 'feeling'
     },
     content: {
         flex: 1,
-        paddingHorizontal: 24,
         justifyContent: 'space-between',
-        paddingVertical: 40,
+        paddingHorizontal: 32,
     },
     header: {
+        paddingTop: 40,
         alignItems: 'center',
-        opacity: 0.6,
     },
-    wordmark: {
-        color: '#888',
+    logoContainer: {
+        alignItems: 'center',
+        gap: 8,
+    },
+    glassIcon: {
+        padding: 12,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    logoLabel: {
+        color: 'rgba(255, 255, 255, 0.4)',
         fontSize: 10,
         fontWeight: 'bold',
         letterSpacing: 4,
-        marginBottom: 4,
-    },
-    headerLine: {
-        height: 1,
-        width: 24,
-        backgroundColor: colors.primary,
-        opacity: 0.4,
+        textTransform: 'uppercase',
     },
     hero: {
-        alignItems: 'center',
-    },
-    iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: '#1e293b',
-        backgroundColor: 'rgba(15, 18, 22, 0.5)',
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 32,
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.1,
-        shadowRadius: 15,
     },
-    textGroup: {
+    titleContainer: {
         marginBottom: 24,
         alignItems: 'center',
     },
-    heroTextLight: {
-        color: 'rgba(255, 255, 255, 0.9)',
-        fontSize: 32,
-        fontWeight: '300',
-        textAlign: 'center',
-        lineHeight: 40,
-    },
-    strikethroughText: {
-        color: '#64748b',
-        textDecorationLine: 'line-through',
-    },
-    heroTextBold: {
+    titleText: {
         color: '#fff',
-        fontSize: 32,
-        fontWeight: 'bold',
+        fontSize: 48,
+        fontWeight: '800',
+        lineHeight: 52,
         textAlign: 'center',
-        lineHeight: 40,
+        letterSpacing: -1,
     },
-    primaryText: {
+    italicTitle: {
         color: colors.primary,
+        fontSize: 48,
+        fontStyle: 'italic',
+        fontWeight: '500',
+        lineHeight: 52,
+        textAlign: 'center',
     },
-    description: {
-        color: '#94a3b8',
+    glassPanel: {
+        paddingVertical: 24,
+        paddingHorizontal: 32,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        width: '100%',
+    },
+    descriptionText: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 18,
+        fontWeight: '300',
+        lineHeight: 28,
+        textAlign: 'center',
+    },
+    subDescriptionText: {
+        marginTop: 8,
+        color: 'rgba(255, 255, 255, 0.4)',
         fontSize: 14,
         textAlign: 'center',
-        lineHeight: 22,
-        maxWidth: 240,
-        opacity: 0.8,
     },
     footer: {
+        paddingBottom: 48,
         alignItems: 'center',
+        gap: 24,
+    },
+    mainButton: {
         width: '100%',
-    },
-    progressIndicators: {
-        flexDirection: 'row',
-        gap: 8,
-        marginBottom: 24,
-    },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#1e293b',
-    },
-    activeDot: {
-        backgroundColor: '#fff',
-    },
-    button: {
-        width: '100%',
-        height: 58,
-        backgroundColor: '#0f1216',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#1e293b',
+        height: 64,
+        backgroundColor: colors.primary,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 24,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 10,
-    },
-    buttonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+        elevation: 10,
     },
     buttonText: {
-        color: '#fff',
-        fontSize: 14,
+        color: '#120f0b',
+        fontSize: 18,
         fontWeight: 'bold',
-        letterSpacing: 1,
     },
-    versionText: {
-        color: '#475569',
-        fontSize: 10,
-        letterSpacing: 2,
+    trustSignals: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    trustText: {
+        color: 'rgba(255, 255, 255, 0.3)',
+        fontSize: 11,
         fontWeight: '500',
+        textTransform: 'uppercase',
+        letterSpacing: 2,
+    },
+    dot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    bottomBar: {
+        width: 48,
+        height: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 2,
+        marginTop: 8,
     },
 });
 

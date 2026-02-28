@@ -10,14 +10,82 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    useWindowDimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../colors';
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// Local-safe date string helper
+const getLocalDateString = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const CalendarPicker = ({ selectedDate, onSelect, onClose }) => {
+    const today = new Date();
+    const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate + 'T12:00:00'));
+
+    const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+    const startDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
+    const monthName = currentMonth.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
+
+    const changeMonth = (offset) => {
+        const next = new Date(currentMonth);
+        next.setMonth(currentMonth.getMonth() + offset);
+        setCurrentMonth(next);
+    };
+
+    return (
+        <View style={styles.calendarPickerContainer}>
+            <View style={styles.calendarPickerHeader}>
+                <TouchableOpacity onPress={() => changeMonth(-1)}>
+                    <MaterialCommunityIcons name="chevron-left" size={24} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.calendarMonthName}>{monthName} {currentMonth.getFullYear()}</Text>
+                <TouchableOpacity onPress={() => changeMonth(1)}>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color="#fff" />
+                </TouchableOpacity>
+            </View>
+            <View style={styles.calendarPickerGrid}>
+                {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
+                    <Text key={i} style={styles.calendarPickerDayName}>{d}</Text>
+                ))}
+                {Array.from({ length: startDayOfMonth }).map((_, i) => <View key={`p-${i}`} style={styles.calendarPickerDayEmpty} />)}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const d = i + 1;
+                    const year = currentMonth.getFullYear();
+                    const month = currentMonth.getMonth();
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+                    const isSelected = dateStr === selectedDate;
+                    const dateObj = new Date(year, month, d);
+                    const isToday = dateObj.toDateString() === today.toDateString();
+
+                    return (
+                        <TouchableOpacity
+                            key={d}
+                            style={[styles.calendarPickerDay, isSelected && styles.calendarPickerDaySelected]}
+                            onPress={() => onSelect(dateStr)}
+                        >
+                            <Text style={[styles.calendarPickerDayText, isSelected && { color: '#000', fontWeight: 'bold' }, isToday && !isSelected && { color: colors.primary }]}>
+                                {d}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </View>
+    );
+};
 
 const ActionModal = ({ isVisible, onClose, task, onSave }) => {
+    const { height } = useWindowDimensions();
     const [data, setData] = useState({});
+    const [showCalendar, setShowCalendar] = useState(false);
     const [step, setStep] = useState(1);
     const [completedExercises, setCompletedExercises] = useState([]);
     const [exerciseDetail, setExerciseDetail] = useState(null);
@@ -338,40 +406,104 @@ const ActionModal = ({ isVisible, onClose, task, onSave }) => {
         </View>
     );
 
-    const renderQuickAdd = () => (
-        <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>NOVA TAREFA</Text>
-            <Text style={styles.modalSub}>Surgiu algo novo? Registre e continue focado.</Text>
+    const renderQuickAdd = () => {
+        const periods = [
+            { id: 'morning', label: 'Alvorada', sub: 'Manhã', icon: 'weather-sunset-up' },
+            { id: 'afternoon', label: 'Ocupação', sub: 'Tarde', icon: 'briefcase-outline' },
+            { id: 'evening', label: 'Recolhimento', sub: 'Noite', icon: 'weather-night' },
+            { id: 'other', label: 'Outros', sub: 'Extra', icon: 'dots-horizontal' },
+        ];
 
-            <TextInput
-                style={styles.textInput}
-                placeholder="O que precisa ser feito?"
-                placeholderTextColor="#475569"
-                autoFocus
-                value={data.title || ''}
-                onChangeText={(val) => setData({ ...data, title: val })}
-            />
+        const categories = [
+            { id: 'essential', label: 'ESSENCIAL', color: colors.primary },
+            { id: 'complementary', label: 'COMPLEMENTAR', color: '#64748b' },
+            { id: 'impulse', label: 'GATILHO / IMPULSO', color: '#f43f5e' },
+        ];
 
-            <View style={styles.typeSelector}>
-                <TouchableOpacity
-                    style={[styles.typeBadge, !data.isImpulse && styles.typeBadgeActive]}
-                    onPress={() => setData({ ...data, isImpulse: false })}
-                >
-                    <Text style={[styles.typeText, !data.isImpulse && styles.typeTextActive]}>TAREFA</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.typeBadge, data.isImpulse && styles.typeBadgeActive]}
-                    onPress={() => setData({ ...data, isImpulse: true })}
-                >
-                    <Text style={[styles.typeText, data.isImpulse && styles.typeTextActive]}>GATILHO / IMPULSO</Text>
+        return (
+            <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>NOVA TAREFA</Text>
+                <Text style={styles.modalSub}>Surgiu algo novo? Agende e continue focado.</Text>
+
+                <View style={styles.inputGroup}>
+                    <Text style={styles.sectionLabel}>O QUE PRECISA SER FEITO?</Text>
+                    <TextInput
+                        style={styles.textInput}
+                        placeholder="Ex: Estudar Filosofia..."
+                        placeholderTextColor="#475569"
+                        autoFocus
+                        value={data.title || ''}
+                        onChangeText={(val) => setData({ ...data, title: val })}
+                    />
+
+                    <Text style={[styles.sectionLabel, { marginTop: 16 }]}>QUANDO?</Text>
+                    <TouchableOpacity
+                        style={styles.dateSelectorButton}
+                        onPress={() => setShowCalendar(!showCalendar)}
+                    >
+                        <MaterialCommunityIcons name="calendar-edit" size={20} color={colors.primary} />
+                        <Text style={styles.dateSelectorText}>
+                            {data.targetDate ? new Date(data.targetDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Escolher data'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {showCalendar && (
+                        <CalendarPicker
+                            selectedDate={data.targetDate || getLocalDateString()}
+                            onSelect={(date) => {
+                                setData({ ...data, targetDate: date });
+                                setShowCalendar(false);
+                            }}
+                        />
+                    )}
+
+                    <Text style={[styles.sectionLabel, { marginTop: 16 }]}>PERÍODO</Text>
+                    <View style={styles.periodRow}>
+                        {periods.map(p => (
+                            <TouchableOpacity
+                                key={p.id}
+                                style={[styles.periodCard, (data.period || 'other') === p.id && styles.periodCardActive]}
+                                onPress={() => setData({ ...data, period: p.id })}
+                            >
+                                <MaterialCommunityIcons
+                                    name={p.icon}
+                                    size={20}
+                                    color={(data.period || 'other') === p.id ? colors.primary : '#64748b'}
+                                />
+                                <Text style={[styles.periodLabel, (data.period || 'other') === p.id && { color: colors.primary }]}>{p.label}</Text>
+                                <Text style={styles.periodSub}>{p.sub}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <Text style={[styles.sectionLabel, { marginTop: 16 }]}>CATEGORIA</Text>
+                    <View style={styles.categoryRow}>
+                        {categories.map(c => (
+                            <TouchableOpacity
+                                key={c.id}
+                                style={[
+                                    styles.categoryBadge,
+                                    (data.category || 'essential') === c.id && { borderColor: c.color, backgroundColor: c.color + '22' }
+                                ]}
+                                onPress={() => setData({ ...data, category: c.id, isImpulse: c.id === 'impulse' })}
+                            >
+                                <Text style={[
+                                    styles.categoryText,
+                                    (data.category || 'essential') === c.id && { color: c.color }
+                                ]}>
+                                    {c.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                <TouchableOpacity style={styles.saveButton} onPress={saveAndClose}>
+                    <Text style={styles.saveButtonText}>ADICIONAR AO PLANO</Text>
                 </TouchableOpacity>
             </View>
-
-            <TouchableOpacity style={styles.saveButton} onPress={saveAndClose}>
-                <Text style={styles.saveButtonText}>ADICIONAR AO DIA</Text>
-            </TouchableOpacity>
-        </View>
-    );
+        );
+    };
 
     const renderTrigger = () => (
         <View style={styles.modalContent}>
@@ -426,24 +558,25 @@ const ActionModal = ({ isVisible, onClose, task, onSave }) => {
             transparent={true}
             onRequestClose={onClose}
         >
-            <View style={styles.overlay}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.keyboardView}
-                >
-                    <View style={styles.sheet}>
-                        <View style={styles.dragBar} />
-                        <TouchableOpacity style={styles.closeIcon} onPress={onClose}>
-                            <MaterialCommunityIcons name="close" size={24} color="#64748b" />
-                        </TouchableOpacity>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "padding"}
+                style={styles.overlay}
+            >
+                <View style={[styles.sheet, { maxHeight: height * 0.9 }]}>
+                    <View style={styles.dragBar} />
+                    <TouchableOpacity style={styles.closeIcon} onPress={onClose}>
+                        <MaterialCommunityIcons name="close" size={24} color="#64748b" />
+                    </TouchableOpacity>
 
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {renderContent()}
-                            <View style={{ height: 40 }} />
-                        </ScrollView>
-                    </View>
-                </KeyboardAvoidingView>
-            </View>
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {renderContent()}
+                        <View style={{ height: 40 }} />
+                    </ScrollView>
+                </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
@@ -461,9 +594,9 @@ const styles = StyleSheet.create({
         backgroundColor: colors.backgroundDark,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
-        maxHeight: height * 0.9,
         paddingTop: 12,
         paddingHorizontal: 24,
+        width: '100%',
     },
     dragBar: {
         width: 40,
@@ -710,6 +843,144 @@ const styles = StyleSheet.create({
         fontSize: 8,
         fontWeight: '900',
         letterSpacing: 0.5,
+    },
+    dateSelectorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    periodGrid: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    periodBadge: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: colors.surfaceDark,
+        borderWidth: 1,
+        borderColor: colors.borderDark,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    periodBadgeActive: {
+        borderColor: colors.primary,
+        backgroundColor: colors.primary + '22',
+    },
+    categoryRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    categoryBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.borderDark,
+        backgroundColor: colors.surfaceDark,
+    },
+    categoryText: {
+        color: '#64748b',
+        fontSize: 10,
+        fontWeight: 'bold',
+        letterSpacing: 1,
+    },
+    // Enhanced Quick Add styles
+    dateSelectorButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.surfaceDark,
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.borderDark,
+        gap: 12,
+    },
+    dateSelectorText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    periodRow: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    periodCard: {
+        flex: 1,
+        backgroundColor: colors.surfaceDark,
+        borderRadius: 16,
+        padding: 12,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.borderDark,
+    },
+    periodCardActive: {
+        borderColor: colors.primary,
+        backgroundColor: colors.primary + '11',
+    },
+    periodLabel: {
+        color: '#94a3b8',
+        fontSize: 10,
+        fontWeight: '900',
+        marginTop: 6,
+        textAlign: 'center',
+    },
+    periodSub: {
+        color: '#475569',
+        fontSize: 8,
+        fontWeight: 'bold',
+        marginTop: 2,
+    },
+    // Calendar Picker styles
+    calendarPickerContainer: {
+        backgroundColor: colors.surfaceDark,
+        borderRadius: 20,
+        padding: 16,
+        marginTop: 10,
+        borderWidth: 1,
+        borderColor: colors.borderDark,
+    },
+    calendarPickerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    calendarMonthName: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    calendarPickerGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+    calendarPickerDayName: {
+        width: `${100 / 7}%`,
+        textAlign: 'center',
+        color: colors.primary,
+        fontSize: 10,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    calendarPickerDayEmpty: {
+        width: `${100 / 7}%`,
+        aspectRatio: 1,
+    },
+    calendarPickerDay: {
+        width: `${100 / 7}%`,
+        aspectRatio: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 8,
+    },
+    calendarPickerDaySelected: {
+        backgroundColor: colors.primary,
+    },
+    calendarPickerDayText: {
+        color: '#64748b',
+        fontSize: 12,
     },
 });
 

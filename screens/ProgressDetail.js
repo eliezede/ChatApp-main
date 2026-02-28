@@ -12,6 +12,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import AppHeader from '../components/AppHeader';
 import colors from '../colors';
 
 const { width } = Dimensions.get('window');
@@ -74,16 +75,13 @@ const ProgressDetail = ({ navigation }) => {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>DETALHES DO PROCESSO</Text>
-                <View style={{ width: 40 }} />
-            </View>
+            <AppHeader
+                variant="nav"
+                title="Sessões"
+                subtitle="BIBLIOTECA"
+            />
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* Phase Overview */}
                 <View style={styles.phaseOverview}>
                     <Text style={styles.phaseLabel}>FASE ATUAL</Text>

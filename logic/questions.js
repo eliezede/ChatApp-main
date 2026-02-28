@@ -1,86 +1,45 @@
 export const questions = [
-    // RISK BLOCK
+    // PHASE 1: GRIEF / TIME
     {
-        id: 'q4',
-        block: 'risk',
-        question: 'Com que frequência você consome pornografia ou conteúdo hiperstimulante?',
-        options: ['Nunca', 'Raramente', '1-2 vezes por semana', 'Diariamente', 'Múltiplas vezes ao dia'],
-        weights: [0, 2, 5, 8, 10]
-    },
-    {
-        id: 'q6',
-        block: 'risk',
-        question: 'Você teve episódios de perda de controle emocional ou "recaídas" nos últimos 30 dias?',
-        options: ['Nenhum', '1 episódio', '2-3 episódios', 'Frequente (semanal)', 'Quase diário'],
-        weights: [0, 3, 6, 8, 10]
-    },
-    {
-        id: 'q7',
-        block: 'risk',
-        question: 'Qual o seu nível de exposição a ambientes ou pessoas que prejudicam sua disciplina?',
-        options: ['Baixo/Nenhum', 'Moderado', 'Alto', 'Incontrolável'],
-        weights: [0, 4, 8, 10]
+        id: 'timeframe',
+        block: 'stability',
+        question: 'Há quanto tempo ocorreu o término?',
+        options: [
+            'Menos de 1 mês',
+            'Entre 1 e 3 meses',
+            'Entre 3 e 6 meses',
+            'Mais de 6 meses'
+        ],
+        weights: [10, 7, 4, 2]
     },
 
-    // STABILITY BLOCK
+    // PHASE 2: PAIN POINTS
     {
-        id: 'q8',
-        block: 'stability',
-        type: 'scale',
-        question: 'Em uma escala de 0 a 10, quão estável você sente seu humor hoje?',
-    },
-    {
-        id: 'q9',
-        block: 'stability',
-        type: 'scale',
-        question: 'De 0 a 10, quão bem você tem dormido ultimamente?',
-    },
-    {
-        id: 'q10',
-        block: 'stability',
-        type: 'scale',
-        question: 'De 0 a 10, qual o seu nível de ansiedade diária? (10 é o mais alto)',
-    },
-    {
-        id: 'q11',
-        block: 'stability',
-        type: 'scale',
-        question: 'De 0 a 10, quão presente você consegue estar nas suas tarefas?',
-    },
-    {
-        id: 'q22',
-        block: 'stability',
-        type: 'scale',
-        question: 'De 0 a 10, quão satisfeito você está com sua clareza mental?',
+        id: 'pain_points',
+        block: 'risk',
+        question: 'Qual tem sido o seu maior desafio no momento?',
+        type: 'multiple', // Handled in Questionnaire.js
+        options: [
+            'Pensamentos obsessivos',
+            'Vontade de mandar mensagem/redes sociais',
+            'Sentimento de raiva ou injustiça',
+            'Sensação de vazio ou perda de identidade',
+            'Dificuldade para dormir ou focar'
+        ],
+        weights: [8, 10, 6, 7, 5]
     },
 
-    // STRUCTURE BLOCK
+    // PHASE 3: GOALS
     {
-        id: 'q14',
-        block: 'structure',
-        question: 'Como você descreveria sua rotina de trabalho/estudo?',
-        options: ['Totalmente caótica', 'Tenho horários, mas não sigo', 'Sigo parcialmente', 'Muito estruturada'],
-        weights: [0, 3, 7, 10]
-    },
-    {
-        id: 'q16',
-        block: 'structure',
-        question: 'Você planeja o seu dia no dia anterior ou na mesma manhã?',
-        options: ['Nunca planejo', 'Planejo mentalmente', 'Anoto as vezes', 'Sempre planejo'],
-        weights: [0, 4, 7, 10]
-    },
-
-    // DISCIPLINE BLOCK
-    {
-        id: 'goal',
+        id: 'main_goal',
         block: 'discipline',
-        question: 'Qual o seu foco principal agora?',
-        options: ['Reconstrução Física', 'Estabilidade Mental', 'Disciplina e Estrutura'],
-    },
-    {
-        id: 'time',
-        block: 'discipline',
-        question: 'Quanto tempo você pode dedicar por dia?',
-        options: ['15-30 min', '30-60 min', 'Mais de 1 hora'],
-    },
+        question: 'Qual é o seu principal objetivo com o nosso app?',
+        options: [
+            'Manter o Contato Zero com sucesso',
+            'Recuperar minha autoestima e confiança',
+            'Entender o que deu errado (Padrões de Apego)',
+            'Focar em mim (Treino, hobbies)'
+        ],
+        weights: [10, 8, 6, 9]
+    }
 ];
