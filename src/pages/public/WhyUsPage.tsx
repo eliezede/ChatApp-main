@@ -22,116 +22,32 @@ import {
     X,
     Star
 } from 'lucide-react';
+import { PublicNavbar } from '../../components/ui/PublicNavbar';
 
 const WhyUsPage = () => {
     const { user } = useAuth();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     const scrollToSection = (id: string) => {
         const el = document.getElementById(id);
         if (el) el.scrollIntoView({ behavior: 'smooth' });
-        setMobileMenuOpen(false);
     };
-
     return (
-        <div className="min-h-screen bg-slate-950 font-sans selection:bg-blue-500/30 text-slate-200">
+        <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-200 text-slate-900">
 
-            {/* --- NAVBAR --- */}
-            <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-slate-950/90 backdrop-blur-md border-b border-white/5 py-4' : 'bg-transparent py-6'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center">
-                        {/* Logo */}
-                        <Link to="/" className="flex items-center cursor-pointer group">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white mr-3 shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform duration-300">
-                                <Globe2 size={22} />
-                            </div>
-                            <span className="text-xl font-bold tracking-tight text-white transition-colors">Lingland</span>
-                        </Link>
-
-                        {/* Desktop Links */}
-                        <div className="hidden md:flex space-x-1 items-center">
-                            <Link to="/why-us" className="px-4 py-2 text-sm font-semibold rounded-full text-white bg-white/10">Why Us</Link>
-                            <Link to="/services" className="px-4 py-2 text-sm font-semibold rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors">Services</Link>
-                            <Link to="/interpreters" className="px-4 py-2 text-sm font-semibold rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors">Interpreters</Link>
-                        </div>
-
-                        <div className="hidden md:flex items-center space-x-4">
-                            {user ? (
-                                <Link
-                                    to={user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
-                                    className="px-6 py-2.5 text-sm font-bold rounded-full bg-white text-blue-900 hover:bg-blue-50 transition-all shadow-lg"
-                                >
-                                    Dashboard
-                                </Link>
-                            ) : (
-                                <>
-                                    <Link to="/login" className="text-sm font-bold text-white hover:text-blue-200 transition-colors">
-                                        Log in
-                                    </Link>
-                                    <Link
-                                        to="/request"
-                                        className="px-6 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-full hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/30"
-                                    >
-                                        Book Interpreter
-                                    </Link>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Mobile Menu Button */}
-                        <div className="md:hidden">
-                            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 rounded-lg text-white hover:bg-white/10 transition-colors">
-                                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Mobile Menu Overlay */}
-                {mobileMenuOpen && (
-                    <div className="md:hidden absolute top-full left-0 w-full bg-slate-900 border-b border-white/5 shadow-xl animate-in slide-in-from-top-4 duration-300">
-                        <div className="p-6 space-y-4">
-                            <Link to="/why-us" className="block w-full text-left p-4 rounded-xl bg-white/5 font-bold text-white" onClick={() => setMobileMenuOpen(false)}>Why Us</Link>
-                            <Link to="/services" className="block w-full text-left p-4 rounded-xl hover:bg-white/5 font-bold text-slate-300" onClick={() => setMobileMenuOpen(false)}>Services</Link>
-                            <Link to="/interpreters" className="block w-full text-left p-4 rounded-xl hover:bg-white/5 font-bold text-slate-300" onClick={() => setMobileMenuOpen(false)}>Interpreters</Link>
-                            <div className="pt-4 border-t border-white/5 flex flex-col gap-3">
-                                {user ? (
-                                    <Link
-                                        to={user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
-                                        className="w-full py-4 text-center font-bold text-blue-900 bg-white rounded-2xl shadow-lg"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                    >
-                                        Dashboard
-                                    </Link>
-                                ) : (
-                                    <>
-                                        <Link to="/login" className="w-full py-4 text-center font-bold text-white bg-white/5 rounded-2xl" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-                                        <Link to="/request" className="w-full py-4 text-center font-bold text-white bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20" onClick={() => setMobileMenuOpen(false)}>Book Interpreter</Link>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </nav>
+            <PublicNavbar transparent />
 
             {/* --- HERO SECTION --- */}
-            <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-                <div className="absolute inset-0 bg-slate-950">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/40 via-slate-950 to-slate-950"></div>
-                    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
-                    {/* Animated Background Mesh */}
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+            <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-slate-900">
+                <div className="absolute inset-0 bg-slate-900">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl">
+                        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[120px] -mr-40 -mt-40 mix-blend-screen animate-pulse-slow"></div>
+                        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[100px] -ml-20 -mb-20 mix-blend-screen"></div>
+                    </div>
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
                 </div>
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
@@ -162,9 +78,9 @@ const WhyUsPage = () => {
             <section className="py-24 relative overflow-hidden">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                     <div className="mb-20">
-                        <h2 className="text-3xl lg:text-4xl font-black text-white mb-6">Engineered for Excellence</h2>
-                        <div className="w-20 h-1 bg-blue-600 rounded-full"></div>
-                        <p className="mt-6 text-slate-400 max-w-2xl font-medium">
+                        <h2 className="text-3xl lg:text-4xl font-black text-slate-900 mb-6 tracking-tight">Engineered for Excellence</h2>
+                        <div className="w-20 h-1.5 bg-blue-600 rounded-full"></div>
+                        <p className="mt-6 text-slate-600 max-w-2xl font-medium text-lg">
                             We don't just translate words; we bridge cultures with infrastructure built for the modern enterprise.
                         </p>
                     </div>
@@ -172,59 +88,59 @@ const WhyUsPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6 auto-rows-[minmax(180px,auto)]">
 
                         {/* Card 1: Experience (Large) */}
-                        <div className="md:col-span-3 lg:col-span-4 row-span-2 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col justify-between hover:border-blue-500/30 transition-colors group relative overflow-hidden">
-                            <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-colors"></div>
-                            <div>
-                                <div className="p-3 bg-blue-500/20 rounded-xl w-fit mb-4 text-blue-400"><Users size={24} /></div>
-                                <h3 className="text-2xl font-bold text-white mb-2">Professional Experience</h3>
-                                <p className="text-slate-400 text-sm">Access a global network of vetted linguists with deep industry expertise in Law, MedTech, and Finance.</p>
+                        <div className="md:col-span-3 lg:col-span-4 row-span-2 bg-white rounded-[2rem] p-8 flex flex-col justify-between hover:border-blue-500/30 transition-all duration-500 group relative overflow-hidden shadow-xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-1">
+                            <div className="absolute inset-0 bg-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="relative z-10">
+                                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl w-fit mb-6 group-hover:scale-110 transition-transform"><Users size={24} /></div>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-3">Professional Experience</h3>
+                                <p className="text-slate-600 text-sm leading-relaxed">Access a global network of vetted linguists with deep industry expertise in Law, MedTech, and Finance.</p>
                             </div>
-                            <div className="mt-8">
-                                <span className="text-6xl font-black text-white tracking-tighter">100<span className="text-blue-500">%</span></span>
-                                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mt-1">Human Expertise</p>
+                            <div className="mt-8 relative z-10">
+                                <span className="text-6xl font-black text-slate-900 tracking-tighter">100<span className="text-blue-500">%</span></span>
+                                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mt-1">Human Expertise</p>
                             </div>
                         </div>
 
                         {/* Card 2: Security (Medium) */}
-                        <div className="md:col-span-3 lg:col-span-4 row-span-1 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:border-emerald-500/30 transition-colors group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity"><Lock size={80} /></div>
-                            <div className="p-3 bg-emerald-500/20 rounded-xl w-fit mb-4 text-emerald-400"><Shield size={24} /></div>
-                            <h3 className="text-xl font-bold text-white mb-2">Bank-Grade Security</h3>
-                            <p className="text-slate-400 text-sm">ISO 27001 certified with end-to-end encryption for all data in transit and at rest.</p>
+                        <div className="md:col-span-3 lg:col-span-4 row-span-1 bg-white rounded-[2rem] p-8 hover:border-emerald-500/30 transition-all duration-500 group relative overflow-hidden shadow-xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-1">
+                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity text-slate-900"><Lock size={80} /></div>
+                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl w-fit mb-6 group-hover:scale-110 transition-transform"><Shield size={24} /></div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Bank-Grade Security</h3>
+                            <p className="text-slate-600 text-sm">ISO 27001 certified with end-to-end encryption for all data in transit and at rest.</p>
                         </div>
 
                         {/* Card 3: Global Reach (Medium) */}
-                        <div className="md:col-span-6 lg:col-span-4 row-span-1 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-8 text-white relative overflow-hidden group shadow-2xl shadow-blue-900/20">
+                        <div className="md:col-span-6 lg:col-span-4 row-span-1 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white relative overflow-hidden group shadow-2xl shadow-blue-500/20 hover:scale-[1.02] transition-transform duration-500">
                             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
                             <div className="relative z-10 flex flex-col h-full justify-between">
-                                <div className="flex justify-between items-start">
-                                    <Globe2 size={32} className="text-blue-200" />
+                                <div className="flex justify-between items-start mb-6">
+                                    <Globe2 size={32} className="text-blue-100" />
                                     <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md">Global</span>
                                 </div>
-                                <div>
+                                <div className="mt-auto">
                                     <h3 className="text-3xl font-black mb-1">200+</h3>
-                                    <p className="font-medium text-blue-100">Languages & Dialects</p>
-                                    <p className="text-xs text-blue-200/70 mt-1">Nuanced local context awareness.</p>
+                                    <p className="font-medium text-blue-50">Languages & Dialects</p>
+                                    <p className="text-xs text-blue-100/70 mt-1 leading-relaxed">Nuanced local context awareness.</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Card 4: Compliance (Medium) */}
-                        <div className="md:col-span-3 lg:col-span-4 row-span-1 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:border-purple-500/30 transition-colors group">
-                            <div className="p-3 bg-purple-500/20 rounded-xl w-fit mb-4 text-purple-400"><FileText size={24} /></div>
-                            <h3 className="text-xl font-bold text-white mb-2">GDPR & HIPAA</h3>
-                            <p className="text-slate-400 text-sm">Full compliance with global data protection standards, ensuring your sensitive info stays private.</p>
+                        <div className="md:col-span-3 lg:col-span-4 row-span-1 bg-white rounded-[2rem] p-8 hover:border-purple-500/30 transition-all duration-500 group shadow-xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-1">
+                            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl w-fit mb-6 group-hover:scale-110 transition-transform"><FileText size={24} /></div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">GDPR & HIPAA</h3>
+                            <p className="text-slate-600 text-sm">Full compliance with global data protection standards, ensuring your sensitive info stays private.</p>
                         </div>
 
                         {/* Card 5: Uptime (Wide) */}
-                        <div className="md:col-span-6 lg:col-span-8 row-span-1 bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-3xl p-8 flex items-center relative overflow-hidden group">
-                            <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-colors"></div>
-                            <div className="relative z-10">
+                        <div className="md:col-span-6 lg:col-span-8 row-span-1 bg-white rounded-[2rem] p-8 flex items-center relative overflow-hidden group shadow-xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-1 transition-all duration-500">
+                            <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-50 rounded-full blur-3xl group-hover:bg-indigo-100 transition-colors"></div>
+                            <div className="relative z-10 w-full">
                                 <div className="flex items-center space-x-4 mb-4">
-                                    <div className="p-3 bg-yellow-500/20 rounded-xl text-yellow-400"><Clock size={24} /></div>
-                                    <h3 className="text-2xl font-bold text-white">99.9% Uptime SLA</h3>
+                                    <div className="p-3 bg-yellow-50 text-yellow-600 rounded-xl group-hover:scale-110 transition-transform"><Clock size={24} /></div>
+                                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">99.9% Uptime SLA</h3>
                                 </div>
-                                <p className="text-slate-400 max-w-xl">
+                                <p className="text-slate-600 max-w-xl text-sm leading-relaxed">
                                     Our infrastructure is designed for high-availability. Never miss a critical communication window again.
                                 </p>
                             </div>

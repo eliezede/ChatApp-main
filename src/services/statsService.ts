@@ -9,7 +9,7 @@ export const StatsService = {
   getAdminStats: async () => {
     return safeFetch(async () => {
       const allBookingsSnap = await getDocs(collection(db, 'bookings'));
-      const bookingsSnap = await getDocs(query(collection(db, 'bookings'), where('status', '==', BookingStatus.REQUESTED)));
+      const bookingsSnap = await getDocs(query(collection(db, 'bookings'), where('status', '==', BookingStatus.INCOMING)));
       const interpretersSnap = await getDocs(query(collection(db, 'interpreters'), where('status', '==', 'ACTIVE')));
       const invoicesSnap = await getDocs(query(collection(db, 'clientInvoices'), where('status', '==', 'SENT')));
 
@@ -18,7 +18,7 @@ export const StatsService = {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const paidBookingsSnapshot = await getDocs(query(
         collection(db, 'bookings'),
-        where('status', 'in', [BookingStatus.CONFIRMED, BookingStatus.COMPLETED, BookingStatus.PAID])
+        where('status', 'in', [BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID])
       ));
 
       const revenue = paidBookingsSnapshot.docs
@@ -35,7 +35,7 @@ export const StatsService = {
       };
     }, {
       totalBookings: MOCK_BOOKINGS.length,
-      pendingRequests: MOCK_BOOKINGS.filter(b => b.status === BookingStatus.REQUESTED).length,
+      pendingRequests: MOCK_BOOKINGS.filter(b => b.status === BookingStatus.INCOMING).length,
       activeInterpreters: MOCK_INTERPRETERS.length,
       unpaidInvoices: 3,
       revenueMonth: 12500
@@ -56,8 +56,8 @@ export const StatsService = {
 
       return {
         totalBookings: snap.size,
-        upcomingBookings: bookings.filter(b => b.status === BookingStatus.CONFIRMED).length,
-        completedBookings: bookings.filter(b => [BookingStatus.COMPLETED, BookingStatus.PAID].includes(b.status)).length,
+        upcomingBookings: bookings.filter(b => b.status === BookingStatus.BOOKED).length,
+        completedBookings: bookings.filter(b => [BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length,
         unpaidInvoices: invoicesSnap.size
       };
     }, {
@@ -82,8 +82,8 @@ export const StatsService = {
 
       return {
         totalBookings: snap.size,
-        upcomingBookings: bookings.filter(b => b.status === BookingStatus.CONFIRMED).length,
-        completedBookings: bookings.filter(b => [BookingStatus.COMPLETED, BookingStatus.PAID].includes(b.status)).length,
+        upcomingBookings: bookings.filter(b => b.status === BookingStatus.BOOKED).length,
+        completedBookings: bookings.filter(b => [BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length,
         liveOffers: offersSnap.size
       };
     }, {

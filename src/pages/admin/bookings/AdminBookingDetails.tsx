@@ -171,7 +171,7 @@ const AdminBookingDetails = () => {
 
     return allBookings.filter(b =>
       b.interpreterId === interpreterId &&
-      (b.status === BookingStatus.CONFIRMED || b.status === BookingStatus.COMPLETED) &&
+      [BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status) &&
       new Date(b.date) >= startOfWeek && new Date(b.date) <= endOfWeek
     ).length;
   };
@@ -179,7 +179,7 @@ const AdminBookingDetails = () => {
   const getInterpreterSchedule = (interpreterId: string) => {
     return allBookings.filter((b: Booking) =>
       b.interpreterId === interpreterId &&
-      (b.status === BookingStatus.CONFIRMED || b.status === BookingStatus.COMPLETED)
+      [BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)
     ).sort((a: Booking, b: Booking) => a.date.localeCompare(b.date));
   };
 
@@ -307,16 +307,13 @@ const AdminBookingDetails = () => {
 
             <div className="space-y-3">
               {booking.interpreterId ? (
-                <div className={`p-4 rounded-xl border shadow-sm ${booking.status === BookingStatus.ACCEPTED ? 'bg-purple-50 border-purple-200' : 'bg-white border-blue-200'}`}>
-                  <p className={`text-[10px] font-black uppercase mb-1 ${booking.status === BookingStatus.ACCEPTED ? 'text-purple-600' : 'text-blue-500'}`}>
-                    {booking.status === BookingStatus.ACCEPTED ? 'Interpreter Accepted' : 'Confirmed Interpreter'}
+                <div className="p-4 rounded-xl border shadow-sm bg-white border-blue-200">
+                  <p className="text-[10px] font-black uppercase mb-1 text-blue-500">
+                    Confirmed Interpreter
                   </p>
                   <div className="flex items-center justify-between">
                     <p className="font-bold text-slate-900">{booking.interpreterName || interpretersMap[booking.interpreterId]?.name}</p>
                     <div className="flex items-center gap-2">
-                      {booking.status === BookingStatus.ACCEPTED && (
-                        <Button size="xs" onClick={() => handleConfirmAssignment(booking.interpreterId!)} isLoading={processing}>Confirm</Button>
-                      )}
                       <button
                         onClick={() => navigate(`/admin/interpreters/${booking.interpreterId}`)}
                         className="text-xs text-blue-600 hover:underline"
@@ -341,7 +338,7 @@ const AdminBookingDetails = () => {
             </div>
           </Card>
 
-          {(booking.status === BookingStatus.REQUESTED || booking.status === BookingStatus.OFFERED) && (
+          {(booking.status === BookingStatus.INCOMING || booking.status === BookingStatus.OPENED) && (
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-900 flex items-center"><User size={16} className="mr-2 text-purple-600" />Suggested</h3>

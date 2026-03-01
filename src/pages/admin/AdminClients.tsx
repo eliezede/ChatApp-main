@@ -47,7 +47,7 @@ export const AdminClients = () => {
           ...client,
           totalBookings: clientBookings.length,
           activeBookings: clientBookings.filter(b =>
-            [BookingStatus.REQUESTED, BookingStatus.OFFERED, BookingStatus.ACCEPTED, BookingStatus.CONFIRMED].includes(b.status)
+            [BookingStatus.INCOMING, BookingStatus.OPENED, BookingStatus.BOOKED].includes(b.status)
           ).length
         };
       });

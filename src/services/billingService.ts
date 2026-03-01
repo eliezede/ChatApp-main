@@ -303,5 +303,21 @@ export const BillingService = {
       saveMockData();
       return mockTs;
     }
+  },
+
+  calculateBookingTotal: async (bookingId: string): Promise<number> => {
+    try {
+      const booking = await getDoc(doc(db, 'bookings', bookingId));
+      if (!booking.exists()) return 0;
+      const data = booking.data();
+      // Simple logic: duration * rate
+      const durationHours = (data.durationMinutes || 60) / 60;
+      const rate = 45; // Default standard rate
+      return durationHours * rate;
+    } catch {
+      const b = MOCK_BOOKINGS.find(book => book.id === bookingId);
+      if (!b) return 0;
+      return (b.durationMinutes / 60) * 45;
+    }
   }
 };

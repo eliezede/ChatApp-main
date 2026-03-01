@@ -19,19 +19,13 @@ import {
     Clock,
     Scale
 } from 'lucide-react';
+import { PublicNavbar } from '../../components/ui/PublicNavbar';
 
 const InterpretersPage = () => {
     const { user } = useAuth();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     const features = [
@@ -62,76 +56,18 @@ const InterpretersPage = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-950 font-sans selection:bg-blue-500/30 text-slate-200">
-            {/* --- NAVBAR --- */}
-            <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-slate-950/90 backdrop-blur-md border-b border-white/5 py-4' : 'bg-transparent py-6'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center">
-                        <Link to="/" className="flex items-center cursor-pointer group">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white mr-3 shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform duration-300">
-                                <Globe2 size={22} />
-                            </div>
-                            <span className="text-xl font-bold tracking-tight text-white transition-colors">Lingland</span>
-                        </Link>
-
-                        <div className="hidden md:flex space-x-1 items-center">
-                            <Link to="/why-us" className="px-4 py-2 text-sm font-semibold rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors">Why Us</Link>
-                            <Link to="/services" className="px-4 py-2 text-sm font-semibold rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors">Services</Link>
-                            <Link to="/interpreters" className="px-4 py-2 text-sm font-semibold rounded-full text-white bg-white/10">Interpreters</Link>
-                        </div>
-
-                        <div className="hidden md:flex items-center space-x-4">
-                            {user ? (
-                                <Link
-                                    to={user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
-                                    className="px-6 py-2.5 text-sm font-bold rounded-full bg-white text-blue-900 hover:bg-blue-50 transition-all shadow-lg"
-                                >
-                                    Dashboard
-                                </Link>
-                            ) : (
-                                <>
-                                    <Link to="/login" className="text-sm font-bold text-white hover:text-blue-200 transition-colors">Log in</Link>
-                                    <Link to="/request" className="px-6 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-full hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/30">Book Interpreter</Link>
-                                </>
-                            )}
-                        </div>
-
-                        <div className="md:hidden">
-                            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 rounded-lg text-white hover:bg-white/10 transition-colors">
-                                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {mobileMenuOpen && (
-                    <div className="md:hidden absolute top-full left-0 w-full bg-slate-900 border-b border-white/5 p-4 space-y-4 shadow-2xl animate-in slide-in-from-top duration-300">
-                        <Link to="/why-us" className="block px-4 py-2 text-base font-bold text-slate-300 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Why Us</Link>
-                        <Link to="/services" className="block px-4 py-2 text-base font-bold text-slate-300 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Services</Link>
-                        <Link to="/interpreters" className="block px-4 py-2 text-base font-bold text-white bg-white/5 rounded-lg" onClick={() => setMobileMenuOpen(false)}>Interpreters</Link>
-                        <div className="pt-4 border-t border-white/5 space-y-4">
-                            {user ? (
-                                <Link
-                                    to={user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
-                                    className="block w-full text-center py-3 bg-white text-blue-900 font-bold rounded-xl"
-                                    onClick={() => setMobileMenuOpen(false)}
-                                >
-                                    Dashboard
-                                </Link>
-                            ) : (
-                                <>
-                                    <Link to="/login" className="block w-full text-center py-3 text-base font-bold text-white" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-                                    <Link to="/request" className="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20" onClick={() => setMobileMenuOpen(false)}>Book Now</Link>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </nav>
+        <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-200 text-slate-900">
+            <PublicNavbar transparent />
 
             {/* --- HERO SECTION --- */}
-            <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.08)_0,transparent_70%)] pointer-events-none"></div>
+            <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-slate-900">
+                <div className="absolute inset-0 bg-slate-900">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl">
+                        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[120px] -mr-40 -mt-40 mix-blend-screen animate-pulse-slow"></div>
+                        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[100px] -ml-20 -mb-20 mix-blend-screen"></div>
+                    </div>
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+                </div>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
                     <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold tracking-widest uppercase mb-8 animate-fade-in">
                         <Star size={14} className="animate-pulse" />
@@ -145,10 +81,10 @@ const InterpretersPage = () => {
                         Whether you are looking for the best professional support or ready to take the next step in your career, Lingland connects the world's finest linguists with leading global organizations.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link to="/request" className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center group transform hover:scale-105">
+                        <Link to="/request" className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white font-black rounded-full hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center group transform hover:scale-105">
                             Book a Service Now <ArrowRight size={20} className="ml-3 group-hover:translate-x-1 transition-transform" />
                         </Link>
-                        <Link to="/apply" className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white font-bold rounded-xl hover:bg-white/10 transition-all flex items-center justify-center">
+                        <Link to="/apply" className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white font-bold rounded-full hover:bg-white/10 transition-all flex items-center justify-center">
                             Work with Lingland
                         </Link>
                     </div>
@@ -156,20 +92,20 @@ const InterpretersPage = () => {
             </section>
 
             {/* --- QUALITY & STANDARDS --- */}
-            <section className="py-24 relative">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <section className="py-24 relative overflow-hidden">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl lg:text-5xl font-black text-white mb-6">Our Quality Standards</h2>
-                        <p className="text-slate-400 max-w-2xl mx-auto text-lg">We maintain the highest level of service through rigorous vetting and continuous monitoring.</p>
+                        <h2 className="text-3xl lg:text-5xl font-black text-slate-900 mb-6 tracking-tight">Our Quality Standards</h2>
+                        <p className="text-slate-600 max-w-2xl mx-auto text-lg font-medium">We maintain the highest level of service through rigorous vetting and continuous monitoring.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {features.map((feature, idx) => (
-                            <div key={idx} className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-white/[0.07] transition-all group">
-                                <div className={`w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6 ${feature.color} group-hover:scale-110 transition-transform`}>
-                                    <feature.icon size={24} />
+                            <div key={idx} className="p-8 rounded-[2rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/50 hover:border-blue-500/30 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 group">
+                                <div className={`w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 ${feature.color} group-hover:scale-110 transition-transform`}>
+                                    <feature.icon size={28} />
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                                <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
+                                <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
+                                <p className="text-slate-600 text-sm leading-relaxed">{feature.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -177,31 +113,31 @@ const InterpretersPage = () => {
             </section>
 
             {/* --- HYBRID SECTION --- */}
-            <section className="py-24 bg-white/5 border-y border-white/5">
+            <section className="py-24 bg-white/50 backdrop-blur-sm border-y border-slate-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
                         {/* For Clients */}
                         <div className="space-y-8">
-                            <div className="inline-block px-3 py-1 rounded-lg bg-blue-600/20 text-blue-400 text-xs font-bold uppercase tracking-widest">For Clients</div>
-                            <h2 className="text-4xl font-black text-white">Trust your most critical <span className="text-blue-400">conversations</span> to us.</h2>
-                            <p className="text-lg text-slate-400 leading-relaxed">
+                            <div className="inline-block px-3 py-1 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-widest border border-blue-100">For Clients</div>
+                            <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">Trust your most critical <span className="text-blue-600">conversations</span> to us.</h2>
+                            <p className="text-lg text-slate-600 leading-relaxed font-medium">
                                 Our interpreters are not just linguists; they are subject matter experts. From courtroom proceedings to medical consultations, we ensure every word is conveyed with absolute precision.
                             </p>
                             <div className="space-y-4">
-                                <div className="flex items-center space-x-3 text-slate-300">
-                                    <CheckCircle2 size={20} className="text-blue-500" />
+                                <div className="flex items-center space-x-3 text-slate-700">
+                                    <CheckCircle2 size={20} className="text-blue-600" />
                                     <span className="font-bold">24/7 Global Availability</span>
                                 </div>
-                                <div className="flex items-center space-x-3 text-slate-300">
-                                    <CheckCircle2 size={20} className="text-blue-500" />
+                                <div className="flex items-center space-x-3 text-slate-700">
+                                    <CheckCircle2 size={20} className="text-blue-600" />
                                     <span className="font-bold">Industry Specific Expertise</span>
                                 </div>
-                                <div className="flex items-center space-x-3 text-slate-300">
-                                    <CheckCircle2 size={20} className="text-blue-500" />
+                                <div className="flex items-center space-x-3 text-slate-700">
+                                    <CheckCircle2 size={20} className="text-blue-600" />
                                     <span className="font-bold">Enterprise APIs & Portal</span>
                                 </div>
                             </div>
-                            <Link to="/request" className="inline-flex items-center text-blue-400 font-bold hover:text-blue-300 group">
+                            <Link to="/request" className="inline-flex items-center text-blue-600 font-bold hover:text-blue-700 group">
                                 Book your first service <ChevronRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform" />
                             </Link>
                         </div>
@@ -229,7 +165,7 @@ const InterpretersPage = () => {
                                         <p className="text-xs text-slate-500 font-bold uppercase">Work Anywhere</p>
                                     </div>
                                 </div>
-                                <Link to="/apply" className="block w-full text-center py-5 bg-white text-slate-900 font-black rounded-2xl hover:bg-blue-50 transition-all shadow-xl shadow-black/20 group">
+                                <Link to="/apply" className="block w-full text-center py-5 bg-white text-slate-900 font-black rounded-full hover:bg-blue-50 transition-all shadow-xl shadow-black/20 group">
                                     Apply Now
                                     <ArrowRight size={20} className="inline-block ml-3 group-hover:translate-x-1 transition-transform" />
                                 </Link>

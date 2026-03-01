@@ -16,18 +16,18 @@ export const InterpreterJobDetails = () => {
 
   useEffect(() => {
     if (id) {
-      BookingService.getById(id).then(setJob).finally(() => setLoading(false));
+      BookingService.getById(id).then(res => setJob(res || null)).finally(() => setLoading(false));
     }
   }, [id]);
 
   const handleJobChat = async () => {
     if (!user || !job) return;
-    
+
     const names = {
       [user.id]: user.displayName || 'Interpreter',
       'u1': 'Sarah Admin' // Admin fallback
     };
-    
+
     const threadId = await ChatService.getOrCreateThread(
       [user.id, 'u1'],
       names,
@@ -51,7 +51,7 @@ export const InterpreterJobDetails = () => {
           </button>
           <h1 className="text-lg font-bold text-gray-900">Job Details</h1>
         </div>
-        <button 
+        <button
           onClick={handleJobChat}
           className="p-2 bg-blue-50 text-blue-600 rounded-lg"
         >
@@ -61,17 +61,17 @@ export const InterpreterJobDetails = () => {
 
       {/* Content */}
       <div className="p-4 space-y-4">
-        
+
         {/* Status Card */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-           <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide 
-             ${job.status === BookingStatus.CONFIRMED ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-             {job.status}
-           </span>
-           <h2 className="text-xl font-bold text-gray-900 mt-2">
-             {job.languageFrom} &rarr; {job.languageTo}
-           </h2>
-           <p className="text-gray-500 text-sm">{job.serviceType}</p>
+          <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide 
+             ${job.status === BookingStatus.BOOKED ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+            {job.status}
+          </span>
+          <h2 className="text-xl font-bold text-gray-900 mt-2">
+            {job.languageFrom} &rarr; {job.languageTo}
+          </h2>
+          <p className="text-gray-500 text-sm">{job.serviceType}</p>
         </div>
 
         {/* Time & Date */}
@@ -111,9 +111,9 @@ export const InterpreterJobDetails = () => {
               <div>
                 <p className="text-gray-900 font-medium">{job.address}</p>
                 <p className="text-gray-500">{job.postcode}</p>
-                <a 
-                  href={`https://maps.google.com/?q=${job.address} ${job.postcode}`} 
-                  target="_blank" 
+                <a
+                  href={`https://maps.google.com/?q=${job.address} ${job.postcode}`}
+                  target="_blank"
                   rel="noreferrer"
                   className="text-blue-600 text-sm font-medium mt-2 inline-block"
                 >
@@ -124,7 +124,7 @@ export const InterpreterJobDetails = () => {
           )}
         </div>
 
-        <button 
+        <button
           onClick={handleJobChat}
           className="w-full flex items-center justify-center p-4 bg-blue-50 text-blue-600 font-bold rounded-xl border border-blue-100 hover:bg-blue-100 transition-colors"
         >
@@ -134,32 +134,32 @@ export const InterpreterJobDetails = () => {
 
         {/* Client / Notes */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-4">
-           <div>
-             <p className="text-xs text-gray-400 uppercase font-bold mb-1">Client</p>
-             <p className="text-gray-900 font-medium">{job.clientName}</p>
-           </div>
-           {job.notes && (
-             <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
-               <p className="text-xs text-yellow-700 uppercase font-bold mb-1">Special Notes</p>
-               <p className="text-sm text-yellow-900">{job.notes}</p>
-             </div>
-           )}
+          <div>
+            <p className="text-xs text-gray-400 uppercase font-bold mb-1">Client</p>
+            <p className="text-gray-900 font-medium">{job.clientName}</p>
+          </div>
+          {job.notes && (
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+              <p className="text-xs text-yellow-700 uppercase font-bold mb-1">Special Notes</p>
+              <p className="text-sm text-yellow-900">{job.notes}</p>
+            </div>
+          )}
         </div>
 
         {/* Action Bar */}
         <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 pb-safe z-20">
-           {job.status === BookingStatus.CONFIRMED && new Date(job.date) < new Date() ? (
-             <button 
-               onClick={() => navigate(`/interpreter/timesheets/new/${job.id}`)}
-               className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center"
-             >
-               <FileText className="mr-2" size={20} /> Submit Timesheet
-             </button>
-           ) : (
-             <button disabled className="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-xl cursor-not-allowed">
-               {job.status === BookingStatus.CONFIRMED ? 'Upcoming' : job.status}
-             </button>
-           )}
+          {job.status === BookingStatus.BOOKED && new Date(job.date) < new Date() ? (
+            <button
+              onClick={() => navigate(`/interpreter/timesheets/new/${job.id}`)}
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center"
+            >
+              <FileText className="mr-2" size={20} /> Submit Timesheet
+            </button>
+          ) : (
+            <button disabled className="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-xl cursor-not-allowed">
+              {job.status === BookingStatus.BOOKED ? 'Upcoming' : job.status}
+            </button>
+          )}
         </div>
 
       </div>

@@ -95,7 +95,7 @@ export const AdminNewBooking = () => {
                 onlineLink: formData.onlineLink,
                 notes: formData.notes,
                 genderPreference: formData.genderPreference,
-                status: selectedInterpreter ? BookingStatus.CONFIRMED : BookingStatus.REQUESTED,
+                status: selectedInterpreter ? BookingStatus.OPENED : BookingStatus.INCOMING,
                 requestedByUserId: user?.id || 'admin',
                 bookingRef: `LL-${Math.floor(1000 + Math.random() * 9000)}`,
                 createdAt: new Date().toISOString(),

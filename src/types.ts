@@ -24,14 +24,14 @@ export enum ServiceType {
 }
 
 export enum BookingStatus {
-  REQUESTED = 'REQUESTED',
-  OFFERED = 'OFFERED',
-  ACCEPTED = 'ACCEPTED',
-  CONFIRMED = 'CONFIRMED',
-  COMPLETED = 'COMPLETED',
+  INCOMING = 'INCOMING', // Initial state
+  OPENED = 'OPENED', // Interpreter assigned but hasn't accepted
+  BOOKED = 'BOOKED', // Interpreter accepted
+  ADMIN = 'ADMIN', // Manual standby by admin
   CANCELLED = 'CANCELLED',
-  INVOICED = 'INVOICED',
-  PAID = 'PAID'
+  INVOICING = 'INVOICING', // Job done, timesheet submitted
+  INVOICED = 'INVOICED', // Invoice generated
+  PAID = 'PAID' // Invoice paid
 }
 
 export enum AssignmentStatus {
@@ -290,3 +290,78 @@ export interface ChatMessage {
   fileUrl?: string;
   fileType?: 'IMAGE' | 'DOCUMENT';
 }
+
+export interface ViewFilter {
+  statuses?: BookingStatus[];
+  dateRange?: 'TODAY' | 'TOMORROW' | 'NEXT_7_DAYS' | 'THIS_MONTH' | 'ALL';
+  interpreterId?: string;
+  hasInterpreter?: boolean;
+}
+
+export type SortableField = 'date' | 'status' | 'client' | 'interpreter' | 'languageTo' | 'duration' | 'amount';
+export type FilterableField = 'status' | 'languageTo' | 'serviceType' | 'locationType' | 'hasInterpreter' | 'dateRange';
+export type GroupableField = 'status' | 'languageTo' | 'serviceType' | 'locationType' | 'date';
+
+export type BookingColumnField =
+  | 'ref' | 'date' | 'time' | 'client' | 'languageFrom' | 'languageTo'
+  | 'serviceType' | 'duration' | 'location' | 'interpreter' | 'status' | 'amount';
+
+export const ALL_BOOKING_COLUMNS: { field: BookingColumnField; label: string }[] = [
+  { field: 'ref', label: 'Reference' },
+  { field: 'date', label: 'Date' },
+  { field: 'time', label: 'Time' },
+  { field: 'client', label: 'Client' },
+  { field: 'languageFrom', label: 'From Language' },
+  { field: 'languageTo', label: 'To Language' },
+  { field: 'serviceType', label: 'Service Type' },
+  { field: 'duration', label: 'Duration' },
+  { field: 'location', label: 'Location' },
+  { field: 'interpreter', label: 'Interpreter' },
+  { field: 'status', label: 'Status' },
+  { field: 'amount', label: 'Amount' },
+];
+
+export interface ViewSortRule {
+  field: SortableField;
+  direction: 'asc' | 'desc';
+}
+
+export interface ViewFilterRule {
+  id: string;
+  field: FilterableField;
+  operator: 'is' | 'isNot' | 'contains';
+  value: any;
+}
+
+export interface BookingView {
+  id: string;
+  name: string;
+  icon?: string;
+  isSystem?: boolean;
+  // Legacy (kept for backward compat)
+  filters: ViewFilter;
+  sortBy: 'dateAsc' | 'dateDesc' | 'status' | 'client';
+  // Advanced customization
+  hiddenFields?: BookingColumnField[];
+  filterRules?: ViewFilterRule[];
+  groupBy?: GroupableField | '';
+  sortRules?: ViewSortRule[];
+}
+
+export interface EmailTemplate {
+  id: string; // e.g., 'INCOMING_CLIENT', 'BOOKED_INTERPRETER'
+  triggerStatus: BookingStatus;
+  recipientType: 'CLIENT' | 'INTERPRETER' | 'ADMIN';
+  name: string;
+  subject: string;
+  body: string; // Markdown or HTML content
+  allowedVariables: string[]; // e.g., ['{{clientName}}', '{{interpreterName}}', '{{bookingRef}}']
+  isActive: boolean;
+  updatedAt?: string;
+}
+
+export const EMAIL_VARIABLES = {
+  CLIENT: ['{{clientName}}', '{{bookingRef}}', '{{date}}', '{{time}}', '{{location}}', '{{languageFrom}}', '{{languageTo}}', '{{serviceType}}', '{{durationMinutes}}', '{{totalAmount}}'],
+  INTERPRETER: ['{{interpreterName}}', '{{bookingRef}}', '{{date}}', '{{time}}', '{{location}}', '{{languageFrom}}', '{{languageTo}}', '{{serviceType}}', '{{durationMinutes}}'],
+  ADMIN: ['{{clientName}}', '{{interpreterName}}', '{{bookingRef}}', '{{status}}']
+};

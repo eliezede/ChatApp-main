@@ -14,15 +14,15 @@ export const useBookings = () => {
     try {
       const data = await BookingService.getAll();
       // Garantir que data é um array e normalizar campos críticos
-      // Fix: Use BookingStatus.REQUESTED enum member instead of 'REQUESTED' string literal
+      // Fix: Use BookingStatus.INCOMING enum member instead of 'REQUESTED' string literal
       // to ensure normalizedData is assignable to Booking[]
       const normalizedData = (data ?? []).map(b => ({
         ...b,
         clientName: b?.clientName ?? 'Unknown Client',
-        status: b?.status ?? BookingStatus.REQUESTED,
+        status: b?.status ?? BookingStatus.INCOMING,
         bookingRef: b?.bookingRef ?? ''
       })) as Booking[];
-      
+
       setBookings(normalizedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (err) {
       console.error(err);

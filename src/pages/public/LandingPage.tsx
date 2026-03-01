@@ -7,6 +7,7 @@ import {
   Layers, Presentation, FileCheck, Scale, History, Hand, MessagesSquare,
   Shield, Star, Users, Zap
 } from 'lucide-react';
+import { PublicNavbar } from '../../components/ui/PublicNavbar';
 
 const services = [
   {
@@ -52,103 +53,16 @@ const stats = [
 
 export const LandingPage = () => {
   const { user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
-    setMobileMenuOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-200 selection:text-blue-900">
 
-      {/* --- NAVBAR --- */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            {/* Logo */}
-            <div className="flex items-center cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white mr-3 shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform duration-300">
-                <Globe2 size={22} />
-              </div>
-              <span className={`text-xl font-bold tracking-tight transition-colors ${scrolled ? 'text-slate-900' : 'text-slate-900 lg:text-white'}`}>Lingland</span>
-            </div>
-
-            {/* Desktop Links */}
-            <div className="hidden md:flex space-x-1 items-center">
-              <Link to="/why-us" className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors ${scrolled ? 'text-slate-600 hover:text-blue-600 hover:bg-slate-50' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}>Why Us</Link>
-              <Link to="/services" className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors ${scrolled ? 'text-slate-600 hover:text-blue-600 hover:bg-slate-50' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}>Services</Link>
-              <Link to="/interpreters" className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors ${scrolled ? 'text-slate-600 hover:text-blue-600 hover:bg-slate-50' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}>For Interpreters</Link>
-            </div>
-
-            <div className="hidden md:flex items-center space-x-4">
-              {user ? (
-                <Link
-                  to={user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
-                  className={`px-6 py-2.5 text-sm font-bold rounded-full transition-all shadow-lg hover:-translate-y-0.5 ${scrolled ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20' : 'bg-white text-blue-900 hover:bg-blue-50 shadow-black/10'}`}
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <>
-                  <Link to="/login" className={`text-sm font-bold transition-colors ${scrolled ? 'text-slate-900 hover:text-blue-600' : 'text-white hover:text-blue-200'}`}>
-                    Log in
-                  </Link>
-                  <Link
-                    to="/request"
-                    className="px-6 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-full hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5"
-                  >
-                    Book Interpreter
-                  </Link>
-                </>
-              )}
-            </div>
-
-            {/* Mobile Menu Button */}
-            <div className="md:hidden">
-              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className={`p-2 rounded-lg transition-colors ${scrolled ? 'text-slate-900 hover:bg-slate-100' : 'text-white hover:bg-white/10'}`}>
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Menu Overlay */}
-        {mobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-slate-100 shadow-xl animate-in slide-in-from-top-4 duration-300">
-            <div className="p-6 space-y-4">
-              <Link to="/why-us" className="block w-full text-left p-4 rounded-xl hover:bg-slate-50 font-bold text-slate-700">Why Us</Link>
-              <Link to="/services" className="block w-full text-left p-4 rounded-xl hover:bg-slate-50 font-bold text-slate-700">Services</Link>
-              <Link to="/interpreters" className="block w-full text-left p-4 rounded-xl hover:bg-slate-50 font-bold text-slate-700">Interpreters</Link>
-              <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
-                {user ? (
-                  <Link
-                    to={user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
-                    className="w-full py-4 text-center font-bold text-white bg-slate-900 rounded-2xl shadow-lg"
-                  >
-                    Dashboard
-                  </Link>
-                ) : (
-                  <>
-                    <Link to="/login" className="w-full py-4 text-center font-bold text-slate-900 bg-slate-100 rounded-2xl">Log in</Link>
-                    <Link to="/request" className="w-full py-4 text-center font-bold text-white bg-blue-600 rounded-2xl shadow-lg shadow-blue-600/20">Book Interpreter</Link>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </nav>
+      <PublicNavbar transparent />
 
       {/* --- HERO SECTION --- */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-40 overflow-hidden bg-slate-900">

@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
+import App from './App';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -8,6 +8,7 @@ if (!rootElement) {
 }
 
 // Service Worker Registration for PWA
+/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -19,6 +20,7 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+*/
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>

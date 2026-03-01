@@ -31,7 +31,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
           <p className="text-gray-600 mb-6">
-            Please use the "Debug: Switch Role" button in the bottom right to log in as a specific user role.
+            Please log in with the appropriate account type to view this page.
           </p>
         </div>
       </div>
@@ -42,7 +42,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     // Loop Prevention: Removed <Navigate to="/" /> which caused infinite loops with root redirect
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-         <div className="max-w-md text-center bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+        <div className="max-w-md text-center bg-white p-8 rounded-xl shadow-sm border border-gray-200">
           <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="text-red-600" size={24} />
           </div>

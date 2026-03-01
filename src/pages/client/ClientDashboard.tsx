@@ -2,15 +2,17 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useClientBookings, useClientInvoices } from '../../hooks/useClientHooks';
-import { CalendarDays, PlusCircle, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, PlusCircle, AlertCircle, Clock, CheckCircle2, History } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BookingStatus } from '../../types';
+import { BookingService, BillingService } from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 
 export const ClientDashboard = () => {
   const { user } = useAuth();
   const { bookings, loading: bookingsLoading } = useClientBookings(user?.profileId);
   const { invoices, loading: invoicesLoading } = useClientInvoices(user?.profileId);
-  
+
   const [stats, setStats] = useState({
     upcoming: 0,
     completed: 0,
@@ -18,17 +20,51 @@ export const ClientDashboard = () => {
     unpaidAmount: 0
   });
 
+  const { showToast } = useToast();
+  const [isScanning, setIsScanning] = useState(false);
+  const [estimatedCosts, setEstimatedCosts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const scanHistory = async () => {
+      if (!user?.email || !user?.profileId) return;
+      setIsScanning(true);
+      try {
+        const linkedCount = await BookingService.linkOrphanedBookings(user.email, user.profileId);
+        if (linkedCount > 0) {
+          showToast(`Found and linked ${linkedCount} previous guest bookings to your profile!`, 'success');
+        }
+      } catch (e) {
+        console.error("History scan failed", e);
+      } finally {
+        setIsScanning(false);
+      }
+    };
+
+    scanHistory();
+  }, [user, showToast]);
+
   useEffect(() => {
     if (!bookingsLoading && !invoicesLoading) {
       const upcoming = bookings.filter(b => new Date(b.date) >= new Date() && b.status !== BookingStatus.CANCELLED).length;
-      const completed = bookings.filter(b => b.status === BookingStatus.COMPLETED).length;
+      const completed = bookings.filter(b => [BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length;
       const unpaidInv = invoices.filter(i => i.status !== 'PAID');
-      
+
       setStats({
         upcoming,
         completed,
         unpaidInvoices: unpaidInv.length,
         unpaidAmount: unpaidInv.reduce((acc, curr) => acc + curr.totalAmount, 0)
+      });
+
+      // Calculate estimated costs for completed bookings without invoices
+      const completedWithoutInvoices = bookings.filter(b =>
+        [BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status) &&
+        !invoices.some(inv => inv.items?.some((item: any) => item.bookingId === b.id))
+      );
+
+      completedWithoutInvoices.forEach(async (b) => {
+        const cost = await BillingService.calculateBookingTotal(b.id);
+        setEstimatedCosts(prev => ({ ...prev, [b.id]: cost }));
       });
     }
   }, [bookings, invoices, bookingsLoading, invoicesLoading]);
@@ -45,8 +81,8 @@ export const ClientDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-           <h1 className="text-2xl font-bold text-gray-900">Client Dashboard</h1>
-           <p className="text-gray-500">Welcome back, {user?.displayName}</p>
+          <h1 className="text-2xl font-bold text-gray-900">Client Dashboard</h1>
+          <p className="text-gray-500">Welcome back, {user?.displayName}</p>
         </div>
         <Link to="/client/new-booking" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 flex items-center">
           <PlusCircle size={18} className="mr-2" /> New Booking
@@ -106,30 +142,35 @@ export const ClientDashboard = () => {
           {nextBookings.map(booking => (
             <div key={booking.id} className="p-6 hover:bg-gray-50 transition-colors">
               <div className="flex justify-between items-center">
-                 <div className="flex items-start space-x-4">
-                   <div className="bg-blue-100 p-3 rounded-lg text-blue-600">
-                     <CalendarDays size={20} />
-                   </div>
-                   <div>
-                     <p className="font-bold text-gray-900">{booking.languageTo} Interpreting</p>
-                     <p className="text-sm text-gray-500">{new Date(booking.date).toLocaleDateString()} • {booking.startTime}</p>
-                     <div className="mt-1 flex items-center text-xs text-gray-500">
-                       <span className="bg-gray-100 px-2 py-0.5 rounded mr-2">{booking.serviceType}</span>
-                       <span>{booking.locationType === 'ONLINE' ? 'Remote' : booking.postcode}</span>
-                     </div>
-                   </div>
-                 </div>
-                 <div className="text-right">
-                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium 
-                     ${booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                     {booking.status}
-                   </span>
-                   <div className="mt-2">
-                     <Link to={`/client/bookings/${booking.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                       Details &rarr;
-                     </Link>
-                   </div>
-                 </div>
+                <div className="flex items-start space-x-4">
+                  <div className="bg-blue-100 p-3 rounded-lg text-blue-600">
+                    <CalendarDays size={20} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">{booking.languageTo} Interpreting</p>
+                    <p className="text-sm text-gray-500">{new Date(booking.date).toLocaleDateString()} • {booking.startTime}</p>
+                    <div className="mt-1 flex items-center text-xs text-gray-500">
+                      <span className="bg-gray-100 px-2 py-0.5 rounded mr-2">{booking.serviceType}</span>
+                      <span>{booking.locationType === 'ONLINE' ? 'Remote' : booking.postcode}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium 
+                      ${booking.status === BookingStatus.BOOKED ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    {booking.status}
+                  </span>
+                  {[BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(booking.status) && estimatedCosts[booking.id] && (
+                    <div className="mt-1 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                      Est. Billing: £{estimatedCosts[booking.id].toFixed(2)}
+                    </div>
+                  )}
+                  <div className="mt-2">
+                    <Link to={`/client/bookings/${booking.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                      Details &rarr;
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
           ))}

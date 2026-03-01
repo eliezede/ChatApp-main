@@ -33,14 +33,14 @@ const DEFAULT_BOOKINGS: Booking[] = [
     serviceType: ServiceType.FACE_TO_FACE, languageFrom: 'English', languageTo: 'Arabic',
     date: getDate(1), startTime: '10:00', durationMinutes: 90,
     locationType: 'ONSITE', address: 'Ward 4, North Hospital', postcode: 'NW1 2BU',
-    status: BookingStatus.REQUESTED, costCode: 'PO-9921', notes: 'Patient is elderly male.'
+    status: BookingStatus.INCOMING, costCode: 'PO-9921', notes: 'Patient is elderly male.'
   },
   {
     id: 'b2', clientId: 'c2', clientName: 'Smith & Co Solicitors', requestedByUserId: 'u_temp',
     serviceType: ServiceType.VIDEO, languageFrom: 'English', languageTo: 'Spanish',
     date: getDate(-1), startTime: '14:00', durationMinutes: 60,
     locationType: 'ONLINE', onlineLink: 'https://zoom.us/j/123',
-    status: BookingStatus.COMPLETED, interpreterId: 'i2', interpreterName: 'Maria Garcia',
+    status: BookingStatus.BOOKED, interpreterId: 'i2', interpreterName: 'Maria Garcia',
     costCode: 'CASE-123'
   }
 ];

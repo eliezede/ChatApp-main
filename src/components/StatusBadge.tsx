@@ -7,19 +7,21 @@ export const StatusBadge: React.FC<{ status: BookingStatus | string | null | und
 
   const getStyles = () => {
     switch (normalizedStatus) {
-      case BookingStatus.COMPLETED:
+      case BookingStatus.INVOICED:
       case BookingStatus.PAID:
       case 'ACTIVE':
         return 'bg-green-100 text-green-800 border-green-200';
-      case BookingStatus.CONFIRMED:
-      case BookingStatus.INVOICED:
+      case BookingStatus.BOOKED:
         return 'bg-blue-100 text-blue-800 border-blue-200';
-      case BookingStatus.REQUESTED:
-      case BookingStatus.OFFERED:
+      case BookingStatus.INCOMING:
       case 'ONBOARDING':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case BookingStatus.ACCEPTED:
+      case BookingStatus.OPENED:
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case BookingStatus.ADMIN:
         return 'bg-purple-100 text-purple-800 border-purple-200';
+      case BookingStatus.INVOICING:
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       case BookingStatus.CANCELLED:
       case 'SUSPENDED':
         return 'bg-red-100 text-red-800 border-red-200';

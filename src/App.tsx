@@ -1,65 +1,66 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext.tsx';
-import { ThemeProvider } from './context/ThemeContext.tsx';
-import { ToastProvider } from './context/ToastContext.tsx';
-import { SettingsProvider } from './context/SettingsContext.tsx';
-import { ChatProvider } from './context/ChatContext.tsx';
-import { ErrorBoundary } from './components/ErrorBoundary.tsx';
-import { ProtectedRoute } from './components/routing/ProtectedRoute.tsx';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
+import { SettingsProvider } from './context/SettingsContext';
+import { ChatProvider } from './context/ChatContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { UserRole } from './types.ts';
 
 // Layouts
-import { AdminLayout } from './layouts/AdminLayout.tsx';
-import { InterpreterLayout } from './layouts/InterpreterLayout.tsx';
-import { ClientLayout } from './layouts/ClientLayout.tsx';
+import { AdminLayout } from './layouts/AdminLayout';
+import { InterpreterLayout } from './layouts/InterpreterLayout';
+import { ClientLayout } from './layouts/ClientLayout';
 
 // Shared Pages
-import { NotFound } from './pages/NotFound.tsx';
-import { Dashboard } from './pages/Dashboard.tsx';
-import { LoginPage } from './pages/LoginPage.tsx';
-import { LandingPage } from './pages/public/LandingPage.tsx';
-import { GuestBookingRequest } from './pages/public/GuestBookingRequest.tsx';
-import { InterpreterApplication } from './pages/public/InterpreterApplication.tsx';
-import { ServicesPage } from './pages/public/ServicesPage.tsx';
-import WhyUsPage from './pages/public/WhyUsPage.tsx';
-import InterpretersPage from './pages/public/InterpretersPage.tsx';
+import { NotFound } from './pages/NotFound';
+import { Dashboard } from './pages/Dashboard';
+import { LoginPage } from './pages/LoginPage';
+import { LandingPage } from './pages/public/LandingPage';
+import { GuestBookingRequest } from './pages/public/GuestBookingRequest';
+import { InterpreterApplication } from './pages/public/InterpreterApplication';
+import { ServicesPage } from './pages/public/ServicesPage';
+import WhyUsPage from './pages/public/WhyUsPage';
+import InterpretersPage from './pages/public/InterpretersPage';
 
 // Admin Pages
-import { AdminBookings } from './pages/admin/AdminBookings.tsx';
-import AdminBookingDetails from './pages/admin/bookings/AdminBookingDetails.tsx';
-import { AdminTimesheets } from './pages/admin/billing/TimesheetsPage.tsx';
-import { AdminBillingDashboard } from './pages/admin/billing/AdminBillingDashboard.tsx';
-import { AdminClientInvoicesPage } from './pages/admin/billing/AdminClientInvoicesPage.tsx';
-import { AdminClientInvoiceDetailsPage } from './pages/admin/billing/AdminClientInvoiceDetailsPage.tsx';
-import { AdminInterpreterInvoicesPage } from './pages/admin/billing/AdminInterpreterInvoicesPage.tsx';
-import { AdminInterpreterInvoiceDetailsPage } from './pages/admin/billing/AdminInterpreterInvoiceDetailsPage.tsx';
-import { AdminClients } from './pages/admin/AdminClients.tsx';
-import { AdminInterpreters } from './pages/admin/AdminInterpreters.tsx';
-import { AdminInterpreterDetails } from './pages/admin/interpreters/AdminInterpreterDetails.tsx';
+import { AdminBookings } from './pages/admin/AdminBookings';
+import AdminBookingDetails from './pages/admin/bookings/AdminBookingDetails';
+import { AdminTimesheets } from './pages/admin/billing/TimesheetsPage';
+import { AdminBillingDashboard } from './pages/admin/billing/AdminBillingDashboard';
+import { AdminClientInvoicesPage } from './pages/admin/billing/AdminClientInvoicesPage';
+import { AdminClientInvoiceDetailsPage } from './pages/admin/billing/AdminClientInvoiceDetailsPage';
+import { AdminInterpreterInvoicesPage } from './pages/admin/billing/AdminInterpreterInvoicesPage';
+import { AdminInterpreterInvoiceDetailsPage } from './pages/admin/billing/AdminInterpreterInvoiceDetailsPage';
+import { AdminClients } from './pages/admin/AdminClients';
+import { AdminInterpreters } from './pages/admin/AdminInterpreters';
+import { AdminInterpreterDetails } from './pages/admin/interpreters/AdminInterpreterDetails';
 import { AdminNewBooking } from './pages/admin/bookings/AdminNewBooking';
-import { AdminUsers } from './pages/admin/AdminUsers.tsx';
-import { AdminSettings } from './pages/admin/AdminSettings.tsx';
-import { AdminApplications } from './pages/admin/AdminApplications.tsx';
-import { AdminMessages } from './pages/admin/AdminMessages.tsx';
+import { AdminUsers } from './pages/admin/AdminUsers';
+import { AdminSettings } from './pages/admin/AdminSettings';
+import { AdminEmailTemplates } from './pages/admin/settings/AdminEmailTemplates';
+import { AdminApplications } from './pages/admin/AdminApplications';
+import { AdminMessages } from './pages/admin/AdminMessages';
 
 // Interpreter Pages
-import { InterpreterDashboard } from './pages/interpreter/InterpreterDashboard.tsx';
-import { InterpreterJobs } from './pages/interpreter/InterpreterJobs.tsx';
-import { InterpreterJobDetails } from './pages/interpreter/InterpreterJobDetails.tsx';
-import { InterpreterTimesheets } from './pages/interpreter/InterpreterTimesheets.tsx';
-import { InterpreterTimesheetForm } from './pages/interpreter/InterpreterTimesheetForm.tsx';
-import { InterpreterPayments } from './pages/interpreter/InterpreterPayments.tsx';
-import { InterpreterProfile } from './pages/interpreter/InterpreterProfile.tsx';
+import { InterpreterDashboard } from './pages/interpreter/InterpreterDashboard';
+import { InterpreterJobs } from './pages/interpreter/InterpreterJobs';
+import { InterpreterJobDetails } from './pages/interpreter/InterpreterJobDetails';
+import { InterpreterTimesheets } from './pages/interpreter/InterpreterTimesheets';
+import { InterpreterTimesheetForm } from './pages/interpreter/InterpreterTimesheetForm';
+import { InterpreterPayments } from './pages/interpreter/InterpreterPayments';
+import { InterpreterProfile } from './pages/interpreter/InterpreterProfile';
 
 // Client Pages
-import { ClientDashboard } from './pages/client/ClientDashboard.tsx';
-import { ClientBookingsList } from './pages/client/bookings/ClientBookingsList.tsx';
-import { ClientNewBooking } from './pages/client/bookings/ClientNewBooking.tsx';
-import { ClientBookingDetails } from './pages/client/bookings/ClientBookingDetails.tsx';
-import { ClientInvoicesList } from './pages/client/invoices/ClientInvoicesList.tsx';
-import { ClientInvoiceDetails } from './pages/client/invoices/ClientInvoiceDetails.tsx';
-import { ClientProfile } from './pages/client/ClientProfile.tsx';
+import { ClientDashboard } from './pages/client/ClientDashboard';
+import { ClientBookingsList } from './pages/client/bookings/ClientBookingsList';
+import { ClientNewBooking } from './pages/client/bookings/ClientNewBooking';
+import { ClientBookingDetails } from './pages/client/bookings/ClientBookingDetails';
+import { ClientInvoicesList } from './pages/client/invoices/ClientInvoicesList';
+import { ClientInvoiceDetails } from './pages/client/invoices/ClientInvoiceDetails';
+import { ClientProfile } from './pages/client/ClientProfile';
 
 const RootRoute = () => {
   const { user, isLoading } = useAuth();
@@ -146,6 +147,7 @@ const App = () => {
                             <Route path="interpreters/:id" element={<AdminInterpreterDetails />} />
                             <Route path="users" element={<AdminUsers />} />
                             <Route path="settings" element={<AdminSettings />} />
+                            <Route path="settings/email-templates" element={<AdminEmailTemplates />} />
                             <Route path="billing" element={<AdminBillingDashboard />} />
                             <Route path="billing/client-invoices" element={<AdminClientInvoicesPage />} />
                             <Route path="billing/client-invoices/:id" element={<AdminClientInvoiceDetailsPage />} />
