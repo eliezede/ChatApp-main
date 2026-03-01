@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebase';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import colors from '../colors';
 import AppHeader from '../components/AppHeader';
 import { AuthenticatedUserContext } from '../App';
@@ -29,6 +29,7 @@ const JOURNAL_TOOLS = [
         subtitle: 'Monitoramento emocional diário',
         icon: 'emoticon-neutral-outline',
         color: '#818cf8',
+        requiredDays: 0,
         science: 'O monitoramento contínuo ajuda a identificar padrões em picos de ansiedade.'
     },
     {
@@ -37,6 +38,7 @@ const JOURNAL_TOOLS = [
         subtitle: 'Combate ao vício neural',
         icon: 'brain',
         color: '#fbbf24',
+        requiredDays: 3,
         science: 'Focar nas falhas da ex reduz o "recall eufórico" e acelera a superação.'
     },
     {
@@ -45,6 +47,7 @@ const JOURNAL_TOOLS = [
         subtitle: 'Escrita expressiva ritual',
         icon: 'email-lock',
         color: '#f43f5e',
+        requiredDays: 3,
         science: 'Escrever sobre traumas reorganiza memórias e reduz o stress fisiológico.'
     },
     {
@@ -53,6 +56,7 @@ const JOURNAL_TOOLS = [
         subtitle: 'Dicotomia do Controle',
         icon: 'scale-balance',
         color: '#22c55e',
+        requiredDays: 7,
         science: 'Separar o que você controla do que não controla traz paz imediata.'
     }
 ];
@@ -61,6 +65,17 @@ const Journal = () => {
     const { user } = useContext(AuthenticatedUserContext);
     const [activeTool, setActiveTool] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [czDays, setCzDays] = useState(0);
+
+    useEffect(() => {
+        if (!user) return;
+        const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snapshot) => {
+            if (snapshot.exists()) {
+                setCzDays(snapshot.data().contactZero?.currentStreak || 0);
+            }
+        });
+        return () => unsubscribe();
+    }, [user]);
 
     // Tool States
     const [mood, setMood] = useState(3);
@@ -240,25 +255,38 @@ const Journal = () => {
                 </View>
 
                 <View style={styles.toolsGrid}>
-                    {JOURNAL_TOOLS.map(tool => (
-                        <TouchableOpacity
-                            key={tool.id}
-                            style={styles.toolCard}
-                            onPress={() => setActiveTool(tool.id)}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.iconBox, { backgroundColor: tool.color + '15' }]}>
-                                <MaterialCommunityIcons name={tool.icon} size={28} color={tool.color} />
-                            </View>
-                            <View style={styles.toolInfo}>
-                                <Text style={styles.toolTitle}>{tool.title}</Text>
-                                <Text style={styles.toolSubtitle}>{tool.subtitle}</Text>
-                                <View style={styles.scienceBadge}>
-                                    <Text style={styles.scienceText}>{tool.science}</Text>
+                    {JOURNAL_TOOLS.map(tool => {
+                        const isLocked = czDays < tool.requiredDays;
+                        return (
+                            <TouchableOpacity
+                                key={tool.id}
+                                style={[styles.toolCard, isLocked && styles.toolCardLocked]}
+                                onPress={() => isLocked ? null : setActiveTool(tool.id)}
+                                activeOpacity={isLocked ? 1 : 0.8}
+                            >
+                                <View style={[styles.iconBox, { backgroundColor: isLocked ? '#1e293b' : tool.color + '15' }]}>
+                                    <MaterialCommunityIcons
+                                        name={isLocked ? 'lock' : tool.icon}
+                                        size={28}
+                                        color={isLocked ? '#475569' : tool.color}
+                                    />
                                 </View>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
+                                <View style={styles.toolInfo}>
+                                    <Text style={[styles.toolTitle, isLocked && { color: '#64748b' }]}>
+                                        {tool.title}
+                                    </Text>
+                                    <Text style={[styles.toolSubtitle, isLocked && { color: '#475569' }]}>
+                                        {isLocked ? `Liberta no Dia ${tool.requiredDays}` : tool.subtitle}
+                                    </Text>
+                                    {!isLocked && (
+                                        <View style={styles.scienceBadge}>
+                                            <Text style={styles.scienceText}>{tool.science}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             </ScrollView>
 
@@ -294,17 +322,32 @@ const styles = StyleSheet.create({
     pageTitle: { color: '#fff', fontSize: 28, fontWeight: '900' },
     pageSubtitle: { color: '#64748b', fontSize: 14, marginTop: 4, lineHeight: 20 },
 
-    toolsGrid: { paddingHorizontal: 20, gap: 16 },
+    toolsGrid: {
+        paddingHorizontal: 24, // Standard 24px margin
+        gap: 16
+    },
     toolCard: {
-        backgroundColor: colors.surfaceDark,
-        borderRadius: 24,
-        padding: 20,
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
+        padding: colors.cardPadding,
         flexDirection: 'row',
         gap: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: colors.cardBorder,
     },
-    iconBox: { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+    toolCardLocked: {
+        opacity: 0.5,
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        borderColor: 'rgba(255, 255, 255, 0.02)',
+        borderStyle: 'dashed'
+    },
+    iconBox: {
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
     toolInfo: { flex: 1 },
     toolTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
     toolSubtitle: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
@@ -375,15 +418,15 @@ const styles = StyleSheet.create({
 
     saveBtn: {
         backgroundColor: colors.primary,
-        height: 56,
-        borderRadius: 28,
+        height: colors.buttonHeight,
+        borderRadius: colors.buttonRadius,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 32,
         gap: 8
     },
-    saveBtnText: { color: '#120f0b', fontSize: 16, fontWeight: '900' }
+    saveBtnText: { color: colors.backgroundDark, fontSize: 16, fontWeight: '900' }
 });
 
 export default Journal;

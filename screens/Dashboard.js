@@ -17,7 +17,10 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebase';
-import { doc, onSnapshot, updateDoc, serverTimestamp, setDoc, arrayUnion, arrayUnion as fArrayUnion } from 'firebase/firestore';
+import {
+    doc, onSnapshot, updateDoc, serverTimestamp, setDoc, arrayUnion, arrayUnion as fArrayUnion,
+    query, collection, where, orderBy, limit, getDocs
+} from 'firebase/firestore';
 import Svg, { Polygon, Line, Circle, G, Text as SvgText } from 'react-native-svg';
 import colors from '../colors';
 import { AuthenticatedUserContext } from '../App';
@@ -32,6 +35,55 @@ const Dashboard = ({ navigation }) => {
     const [dailyPlan, setDailyPlan] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [showSOSModal, setShowSOSModal] = useState(false);
+    const [sosTimer, setSosTimer] = useState(300); // 5 minutes
+    const [isTimerActive, setIsTimerActive] = useState(false);
+    const [breathingPhase, setBreathingPhase] = useState('Pronto?'); // Box breathing phase
+    const [breathingAnim] = useState(new Animated.Value(1));
+    const [timeUntilMidnight, setTimeUntilMidnight] = useState('');
+
+    // SOS Quiz State
+    const [currentSosQuizStep, setCurrentSosQuizStep] = useState(0);
+    const [sosQuizAnswers, setSosQuizAnswers] = useState([]);
+    const [showSosQuizFeedback, setShowSosQuizFeedback] = useState(false);
+
+    const SOS_QUIZ_QUESTIONS = [
+        {
+            question: "O que está a motivar este impulso agora?",
+            options: [
+                { label: "FACTOS REAIS", isPositive: true },
+                { label: "CARÊNCIA", isPositive: false }
+            ]
+        },
+        {
+            question: "Entrar em contacto vai resolver algo a longo prazo?",
+            options: [
+                { label: "SIM, RESOLVE", isPositive: false },
+                { label: "NÃO, SÓ PIORA", isPositive: true }
+            ]
+        },
+        {
+            question: "Estás disposto(a) a perder o teu progresso de reconstrução?",
+            options: [
+                { label: "SIM, DESISTO", isPositive: false },
+                { label: "NÃO, MANTENHO", isPositive: true }
+            ]
+        },
+        {
+            question: "O silêncio é a tua melhor proteção neste momento?",
+            options: [
+                { label: "NÃO, EXPOSTO", isPositive: false },
+                { label: "SIM, PROTEGE", isPositive: true }
+            ]
+        },
+        {
+            question: "Consegues aguentar o desconforto até o fim do timer?",
+            options: [
+                { label: "NÃO, VOU CEDER", isPositive: false },
+                { label: "SIM, CONSIGO", isPositive: true }
+            ]
+        }
+    ];
 
     // Check-in modal state
     const [showCheckin, setShowCheckin] = useState(false);
@@ -131,6 +183,76 @@ const Dashboard = ({ navigation }) => {
         checkPlan();
     }, [loading, !!dailyPlan, userProfile]);
 
+    // SOS Timer Logic
+    useEffect(() => {
+        let interval;
+        if (isTimerActive && sosTimer > 0) {
+            interval = setInterval(() => {
+                setSosTimer(prev => prev - 1);
+            }, 1000);
+        } else if (sosTimer === 0) {
+            setIsTimerActive(false);
+            // Alert omitted to avoid web-crash if Alert is not imported, using console instead or just stopping
+        }
+        return () => clearInterval(interval);
+    }, [isTimerActive, sosTimer]);
+
+    // SOS Breathing Animation
+    const startBreathing = () => {
+        const sequence = Animated.sequence([
+            Animated.timing(breathingAnim, { toValue: 1.5, duration: 4000, useNativeDriver: true }),
+            Animated.delay(4000),
+            Animated.timing(breathingAnim, { toValue: 1, duration: 4000, useNativeDriver: true }),
+            Animated.delay(4000),
+        ]);
+
+        const phases = ['Inspira...', 'Retém...', 'Expira...', 'Retém...'];
+        let phaseIdx = 0;
+        setBreathingPhase(phases[0]);
+
+        const phaseInterval = setInterval(() => {
+            phaseIdx = (phaseIdx + 1) % 4;
+            setBreathingPhase(phases[phaseIdx]);
+        }, 4000);
+
+        Animated.loop(sequence).start();
+
+        return () => {
+            clearInterval(phaseInterval);
+            Animated.loop(sequence).stop();
+            breathingAnim.setValue(1);
+            setBreathingPhase('Pronto?');
+        };
+    };
+
+    // Quiz Logic
+    const handleQuizAnswer = (answer) => {
+        const updatedAnswers = [...sosQuizAnswers, answer];
+        setSosQuizAnswers(updatedAnswers);
+
+        if (currentSosQuizStep < SOS_QUIZ_QUESTIONS.length - 1) {
+            setCurrentSosQuizStep(currentSosQuizStep + 1);
+        } else {
+            setShowSosQuizFeedback(true);
+        }
+    };
+
+    // Cleanup SOS on close
+    useEffect(() => {
+        if (!showSOSModal) {
+            setIsTimerActive(false);
+            setSosTimer(300);
+            breathingAnim.stopAnimation();
+            breathingAnim.setValue(1);
+            setBreathingPhase('Pronto?');
+
+            // Reset Quiz
+            setCurrentSosQuizStep(0);
+            setSosQuizAnswers([]);
+            setShowSosQuizFeedback(false);
+        }
+    }, [showSOSModal]);
+
     const handleCompleteMission = async (missionId) => {
         const user = auth.currentUser;
         if (!user) return;
@@ -147,6 +269,36 @@ const Dashboard = ({ navigation }) => {
         }
     };
 
+    // Calculate time until next day (midnight)
+    useEffect(() => {
+        const updateTimer = () => {
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setHours(24, 0, 0, 0);
+
+            const diffMs = tomorrow - now;
+            const h = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+            const padded = (num) => num.toString().padStart(2, '0');
+            setTimeUntilMidnight(`${padded(h)}:${padded(m)}:${padded(s)}`);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const alreadyCheckedInToday = React.useMemo(() => {
+        if (!userProfile?.contactZero?.history) return false;
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        return userProfile.contactZero.history.some(entry => entry.date === todayStr);
+    }, [userProfile?.contactZero?.history]);
+
+    const isFirstCheckin = !userProfile?.contactZero?.history || userProfile.contactZero.history.length === 0;
+
     const handleCheckIn = () => {
         setCheckinResult(null);
         setShowCheckin(true);
@@ -155,9 +307,12 @@ const Dashboard = ({ navigation }) => {
     const submitCheckin = async (didHold) => {
         const user = auth.currentUser;
         if (!user) return;
-        const today = new Date().toISOString().split('T')[0];
+
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
         const userRef = doc(db, 'users', user.uid);
-        const historyEntry = { date: today, success: didHold };
+        const historyEntry = { date: todayStr, success: didHold };
 
         try {
             if (didHold) {
@@ -248,6 +403,41 @@ const Dashboard = ({ navigation }) => {
         );
     };
 
+    // Visual theme per category
+    const MISSION_THEME = {
+        detox: { bg: '#1a0510', accent: '#f43f5e', icon: 'shield-lock', label: 'DESINTOXICAÇÃO', image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=600&auto=format&fit=crop' },
+        action: { bg: '#051a05', accent: '#22c55e', icon: 'lightning-bolt', label: 'AÇÃO & CORPO', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=600&auto=format&fit=crop' },
+        stoic: { bg: '#050f1a', accent: '#3b82f6', icon: 'head-heart', label: 'MENTE ESTOICA', image: 'https://images.unsplash.com/photo-1505664159854-2326119c8152?q=80&w=600&auto=format&fit=crop' },
+        identity: { bg: '#10051a', accent: '#a855f7', icon: 'compass-outline', label: 'AUTOEXPANSÃO', image: 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=600&auto=format&fit=crop' },
+    };
+
+    const czDays = userProfile?.contactZero?.currentStreak || 0;
+
+    const galleryMissions = React.useMemo(() => {
+        if (!dailyPlan?.tasks) return [];
+        return dailyPlan.tasks.map(t => {
+            const libMatch = MISSIONS_LIBRARY.find(lib => lib.id === t.id);
+            if (libMatch) return { ...libMatch, ...t };
+
+            // Fallback for system tasks
+            let category = 'stoic';
+            if (t.id === 'origin_contact_zero' || t.id === 'origin_sos') category = 'detox';
+            else if (t.id === 'aerobic_stimulus' || t.actionType === 'PHYSICAL_TRAINING') category = 'action';
+
+            return {
+                id: t.id,
+                title: t.title,
+                category: category,
+                difficulty: t.difficulty || 'Normal',
+                duration: t.duration || (category === 'detox' ? '24h' : '15 min'),
+                science_fact: t.rationale || t.description,
+                image: (MISSION_THEME[category] || MISSION_THEME.stoic).image,
+                requiredDays: 0,
+                ...t
+            };
+        });
+    }, [dailyPlan?.tasks, czDays, completedIds]);
+
     if (loading) {
         return (
             <View style={styles.centered}>
@@ -256,38 +446,31 @@ const Dashboard = ({ navigation }) => {
         );
     }
 
-    const czDays = userProfile?.contactZero?.currentStreak || 0;
+    const toolkitItems = [
+        { id: 'biblioteca', title: 'Biblioteca', sub: 'Cursos & Áudios', icon: 'headphones', color: '#f43f5e', required: 0, onPress: () => navigation.navigate('Sessions') },
+        { id: 'respiracao', title: 'Respiração', sub: '4 · 7 · 8', icon: 'lungs', color: colors.primary, required: 0, onPress: () => setShowBreathing(true) },
+        {
+            id: 'sos',
+            title: 'Protocolo SOS',
+            sub: 'Impulsionador de Emergência',
+            icon: 'alert-octagon',
+            color: '#ef4444',
+            required: 0,
+            onPress: () => {
+                setShowSOSModal(true);
+            }
+        },
+        { id: 'realidade', title: 'Realidade', sub: 'Quebra-Vínculo', icon: 'eye-off-outline', color: '#8b5cf6', required: 3, onPress: () => navigation.navigate('Diario') },
+        { id: 'estoica', title: 'Matriz Estoica', sub: 'Controle Real', icon: 'scale-balance', color: '#3b82f6', required: 7, onPress: () => alert('Matriz Estoica Desbloqueada!') },
+        { id: 'mandala', title: 'Bússola', sub: 'Autoexpansão', icon: 'compass-outline', color: '#a855f7', required: 14, onPress: () => alert('Bússola de Autoexpansão Desbloqueada!') }
+    ];
 
-    // --- Progressive Disclosure: unlock missions by streak ---
-    const getUnlockedCategories = (streak) => {
-        if (streak >= 14) return ['detox', 'action', 'stoic', 'identity'];
-        if (streak >= 7) return ['detox', 'action', 'stoic'];
-        if (streak >= 3) return ['detox', 'action'];
-        return ['detox'];
-    };
-    const unlockedCategories = getUnlockedCategories(czDays);
-
-    // --- Mission gallery logic ---
-    const planMissionIds = dailyPlan?.tasks?.map(t => t.id) || [];
     const completedIds = userProfile?.completed_missions || [];
-    // All missions filtered by unlocked categories (fallback: all detox + stoic03)
-    const allUnlocked = MISSIONS_LIBRARY.filter(m => unlockedCategories.includes(m.category));
-    const todayMissions = planMissionIds.length > 0
-        ? planMissionIds.map(id => MISSIONS_LIBRARY.find(m => m.id === id)).filter(Boolean)
-        : allUnlocked.slice(0, 3);
-    const galleryMissions = todayMissions.length > 0 ? todayMissions : allUnlocked.slice(0, 3);
     const activeMission = galleryMissions.find(m => !completedIds.includes(m.id)) || galleryMissions[0];
     const todayDone = galleryMissions.filter(m => completedIds.includes(m.id)).length;
     const todayTotal = Math.max(galleryMissions.length, 1);
-    const allDoneToday = todayDone === todayTotal && todayTotal > 0;
+    const allDoneToday = todayDone === todayTotal && galleryMissions.length > 0;
 
-    // Visual theme per category
-    const MISSION_THEME = {
-        detox: { bg: '#1a0510', accent: '#f43f5e', icon: 'shield-lock', label: 'DESINTOXICAÇÃO', image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=600&auto=format&fit=crop' },
-        action: { bg: '#051a05', accent: '#22c55e', icon: 'lightning-bolt', label: 'AÇÃO & CORPO', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=600&auto=format&fit=crop' },
-        stoic: { bg: '#050f1a', accent: '#3b82f6', icon: 'head-heart', label: 'MENTE ESTOICA', image: 'https://images.unsplash.com/photo-1505664159854-2326119c8152?q=80&w=600&auto=format&fit=crop' },
-        identity: { bg: '#10051a', accent: '#a855f7', icon: 'compass-outline', label: 'AUTOEXPANSÃO', image: 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=600&auto=format&fit=crop' },
-    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -327,9 +510,18 @@ const Dashboard = ({ navigation }) => {
                         </View>
                         <Text style={styles.czMessage}>Você está recuperando seu espaço mental. Continue firme.</Text>
                         <View style={styles.czActions}>
-                            <TouchableOpacity style={styles.primaryBtn} onPress={handleCheckIn}>
-                                <Text style={styles.primaryBtnText}>Check-in</Text>
-                            </TouchableOpacity>
+                            {alreadyCheckedInToday ? (
+                                <View style={[styles.primaryBtn, { backgroundColor: '#1e293b', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}>
+                                    <Text style={[styles.primaryBtnText, { color: '#64748b' }]}>{timeUntilMidnight}</Text>
+                                    <MaterialCommunityIcons name="timer-sand" size={16} color="#64748b" style={{ marginLeft: 6 }} />
+                                </View>
+                            ) : (
+                                <TouchableOpacity style={styles.primaryBtn} onPress={handleCheckIn}>
+                                    <Text style={styles.primaryBtnText}>
+                                        {isFirstCheckin ? 'Iniciar Contato Zero' : 'Check-in de Hoje'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                             <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('CheckinHistory')}>
                                 <Text style={styles.secondaryBtnText}>Histórico</Text>
                             </TouchableOpacity>
@@ -341,11 +533,14 @@ const Dashboard = ({ navigation }) => {
                     <View style={styles.missionGallerySection}>
                         {/* Section header */}
                         <View style={styles.missionGalleryHeader}>
-                            <View>
-                                <Text style={styles.missionGalleryTitle}>Missões do Dia</Text>
-                                <Text style={styles.missionGalleryMeta}>
-                                    {allDoneToday ? 'Todas concluídas!' : `${todayDone} de ${todayTotal} concluídas`}
-                                </Text>
+                            <View style={styles.toolkitHeaderLeft}>
+                                <MaterialCommunityIcons name="clipboard-list-outline" size={20} color="#fbbf24" style={{ marginRight: 8 }} />
+                                <View>
+                                    <Text style={styles.missionGalleryTitle}>Missões do Dia</Text>
+                                    <Text style={styles.missionGalleryMeta}>
+                                        {allDoneToday ? 'Todas concluídas!' : `${todayDone} de ${todayTotal} concluídas`}
+                                    </Text>
+                                </View>
                             </View>
                             <TouchableOpacity onPress={() => navigation.navigate('Missoes')} style={styles.missionSeeAll}>
                                 <Text style={styles.seeAllText}>Ver Todas</Text>
@@ -369,69 +564,82 @@ const Dashboard = ({ navigation }) => {
                                 horizontal
                                 pagingEnabled={false}
                                 showsHorizontalScrollIndicator={false}
-                                snapToInterval={width - 84}
+                                snapToInterval={width * 0.85 + 12}
                                 snapToAlignment="start"
                                 disableIntervalMomentum={true}
                                 decelerationRate="fast"
-                                contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
+                                contentContainerStyle={{
+                                    paddingHorizontal: 0, // Removed double padding (scrollContent already has 24px)
+                                    gap: 12,
+                                    paddingBottom: 20
+                                }}
                                 keyExtractor={item => item.id}
                                 renderItem={({ item }) => {
                                     const done = completedIds.includes(item.id);
+                                    const isLocked = czDays < (item.requiredDays || 0);
                                     const theme = MISSION_THEME[item.category] || MISSION_THEME.stoic;
+
                                     return (
                                         <TouchableOpacity
-                                            activeOpacity={0.9}
-                                            style={[styles.missionGalleryCard, { width: width - 96 }]}
-                                            onPress={() => { setSelectedDashMission(item); setShowMissionDetail(true); }}
+                                            activeOpacity={isLocked ? 1 : 0.9}
+                                            style={[
+                                                styles.missionGalleryCard,
+                                                { width: width * 0.85, flexDirection: 'row' },
+                                                isLocked && { opacity: 0.6 }
+                                            ]}
+                                            onPress={() => {
+                                                if (isLocked) return;
+                                                setSelectedDashMission(item);
+                                                setShowMissionDetail(true);
+                                            }}
                                         >
-                                            {/* Visual header */}
-                                            <View style={[styles.missionCardVisual, { backgroundColor: '#0f1318' }]}>
-                                                <Image source={{ uri: item.image || theme.image }} style={styles.missionCardBgImage} resizeMode="cover" />
-                                                <View style={[styles.missionCardVisualOverlay, { backgroundColor: theme.bg || '#000', opacity: 0.15 }]} />
-                                                <View style={[styles.missionCardVisualOverlay, { backgroundColor: '#000000', opacity: 0.4 }]} />
-                                                <MaterialCommunityIcons
-                                                    name={theme.icon}
-                                                    size={48}
-                                                    color={theme.accent + '55'}
-                                                    style={styles.missionCardBgIcon}
-                                                />
-                                                {done ? (
-                                                    <View style={[styles.missionDonePill, { backgroundColor: 'rgba(34,197,94,0.9)' }]}>
-                                                        <MaterialCommunityIcons name="check-decagram" size={13} color="#fff" />
-                                                        <Text style={[styles.missionDonePillText, { color: '#fff' }]}>CONCLUÍDA</Text>
-                                                    </View>
-                                                ) : (
-                                                    <View style={[styles.missionActivePill, { backgroundColor: theme.accent }]}>
-                                                        <MaterialCommunityIcons name="lightning-bolt" size={11} color="#120f0b" />
-                                                        <Text style={[styles.missionActivePillText, { color: '#120f0b' }]}>ATIVO AGORA</Text>
-                                                    </View>
-                                                )}
-                                                <View style={[styles.missionCardCategoryBar, { backgroundColor: theme.accent }]} />
-                                            </View>
+                                            {/* Vertical Accent Bar */}
+                                            <View style={[styles.missionVerticalBar, { backgroundColor: isLocked ? '#475569' : theme.accent }]} />
 
-                                            {/* Content */}
-                                            <View style={styles.missionCardBody}>
-                                                <View style={styles.missionCardMeta}>
-                                                    <Text style={[styles.missionCardCat, { color: theme.accent }]}>
-                                                        {theme.label} · {item.difficulty?.toUpperCase()}
+                                            <View style={{ flex: 1 }}>
+                                                <View style={styles.missionCardBody}>
+                                                    <View style={styles.missionCardMeta}>
+                                                        <Text style={[styles.missionCardCat, { color: isLocked ? '#475569' : theme.accent }]}>
+                                                            {isLocked ? 'BLOQUEADO' : `${theme.label} · ${(item.difficulty || 'Normal').toUpperCase()}`}
+                                                        </Text>
+
+                                                        <View style={styles.missionMetaRight}>
+                                                            <Text style={styles.missionCardDuration}>{item.duration}</Text>
+                                                            {done ? (
+                                                                <View style={[styles.missionStatusPill, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+                                                                    <MaterialCommunityIcons name="check-decagram" size={10} color="#22c55e" />
+                                                                    <Text style={[styles.missionStatusPillText, { color: '#22c55e' }]}>V</Text>
+                                                                </View>
+                                                            ) : !isLocked && (
+                                                                <View style={[styles.missionStatusPill, { backgroundColor: theme.accent + '22' }]}>
+                                                                    <MaterialCommunityIcons name="lightning-bolt" size={9} color={theme.accent} />
+                                                                </View>
+                                                            )}
+                                                        </View>
+                                                    </View>
+
+                                                    <Text style={[styles.missionCardTitleLarge, done && styles.missionTitleDoneGallery, isLocked && { color: '#64748b' }]}>
+                                                        {isLocked ? 'Missão Bloqueada' : item.title}
                                                     </Text>
-                                                    <Text style={styles.missionCardDuration}>{item.duration}</Text>
-                                                </View>
-                                                <Text style={[styles.missionCardTitle, done && styles.missionTitleDoneGallery]}>
-                                                    {item.title}
-                                                </Text>
-                                                <Text style={styles.missionCardDesc} numberOfLines={2}>
-                                                    {item.science_fact}
-                                                </Text>
-                                                <View style={[styles.missionExecBtn, done && styles.missionExecBtnDone, { borderColor: done ? '#22c55e44' : theme.accent + '66' }]}>
-                                                    <MaterialCommunityIcons
-                                                        name={done ? 'check-decagram' : 'lightning-bolt'}
-                                                        size={14}
-                                                        color={done ? '#22c55e' : theme.accent}
-                                                    />
-                                                    <Text style={[styles.missionExecText, { color: done ? '#22c55e' : theme.accent }]}>
-                                                        {done ? 'CONCLUÍDA' : 'EXECUTAR'}
+
+                                                    <Text style={styles.missionCardDescLarge} numberOfLines={3}>
+                                                        {isLocked ? `Conclui ${item.requiredDays} dias de Contato Zero para libertar esta missão.` : item.science_fact}
                                                     </Text>
+
+                                                    <View style={[
+                                                        styles.missionFooterBtn,
+                                                        done && styles.missionFooterBtnDone,
+                                                        { borderColor: isLocked ? '#334155' : (done ? '#22c55e44' : theme.accent + '44') }
+                                                    ]}>
+                                                        <MaterialCommunityIcons
+                                                            name={isLocked ? 'lock' : (done ? 'check-decagram' : 'play-circle')}
+                                                            size={16}
+                                                            color={isLocked ? '#475569' : (done ? '#22c55e' : theme.accent)}
+                                                        />
+                                                        <Text style={[styles.missionFooterBtnText, { color: isLocked ? '#475569' : (done ? '#22c55e' : theme.accent) }]}>
+                                                            {isLocked ? `DESBLOQUEIA NO DIA ${item.requiredDays}` : (done ? 'CONCLUÍDA' : 'EXECUTAR MISSÃO')}
+                                                        </Text>
+                                                    </View>
                                                 </View>
                                             </View>
                                         </TouchableOpacity>
@@ -453,51 +661,204 @@ const Dashboard = ({ navigation }) => {
                         )}
                     </View>
 
-                    {/* Arsenal */}
+                    {/* Toolkit Section */}
+
+                    {/* Arsenal de Mindset Section */}
                     <View style={styles.toolkitSection}>
-                        <View style={styles.sectionHeader}>
-                            <MaterialCommunityIcons name="lightning-bolt" size={20} color={colors.primary} />
-                            <Text style={styles.sectionTitle}>Arsenal de Ferramentas</Text>
+                        <View style={styles.toolkitHeader}>
+                            <View style={styles.toolkitHeaderLeft}>
+                                <MaterialCommunityIcons name="head-cog-outline" size={20} color="#fbbf24" style={{ marginRight: 8 }} />
+                                <View>
+                                    <Text style={styles.missionGalleryTitle}>Arsenal de Mindset</Text>
+                                    <Text style={styles.missionGalleryMeta}>Evolui com a tua disciplina</Text>
+                                </View>
+                            </View>
                         </View>
                         <View style={styles.toolkitGrid}>
+                            {toolkitItems.map(item => {
+                                const isLocked = czDays < item.required;
+                                return (
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        style={[styles.toolkitItemPill, isLocked && styles.toolkitLocked]}
+                                        onPress={isLocked ? null : item.onPress}
+                                        activeOpacity={isLocked ? 1 : 0.85}
+                                    >
+                                        <View style={styles.toolkitPillTop}>
+                                            <View style={[styles.toolkitIconCircle, { backgroundColor: isLocked ? '#1e293b' : (item.color + '22') }]}>
+                                                <MaterialCommunityIcons
+                                                    name={isLocked ? "lock" : item.icon}
+                                                    size={14}
+                                                    color={isLocked ? "#475569" : item.color}
+                                                />
+                                            </View>
+                                            <Text style={[styles.toolkitItemTitlePill, isLocked && { color: '#475569' }]} numberOfLines={1}>
+                                                {item.title}
+                                            </Text>
+                                        </View>
 
-                            {/* Biblioteca */}
-                            <TouchableOpacity
-                                style={[styles.glassCard, styles.toolkitItemLarge]}
-                                onPress={() => navigation.navigate('Sessions')}
-                                activeOpacity={0.85}
-                            >
-                                <View style={[styles.toolkitIconGlow, { backgroundColor: 'rgba(244, 63, 94, 0.08)' }]}>
-                                    <View style={[styles.breathRing, { borderColor: '#f43f5e' }]}>
-                                        <MaterialCommunityIcons name="headphones" size={20} color="#f43f5e" />
-                                    </View>
-                                </View>
-                                <Text style={styles.toolkitItemTitle}>Biblioteca</Text>
-                                <Text style={styles.toolkitItemSub}>Cursos & Áudios</Text>
-                            </TouchableOpacity>
-
-                            {/* Respiração */}
-                            <TouchableOpacity
-                                style={[styles.glassCard, styles.toolkitItemLarge]}
-                                onPress={() => setShowBreathing(true)}
-                                activeOpacity={0.85}
-                            >
-                                <View style={styles.toolkitIconGlow}>
-                                    <View style={styles.breathRing}>
-                                        <View style={styles.breathInner} />
-                                    </View>
-                                </View>
-                                <Text style={styles.toolkitItemTitle}>Respiração</Text>
-                                <Text style={styles.toolkitItemSub}>4 · 7 · 8</Text>
-                            </TouchableOpacity>
-
+                                        <Text style={[styles.toolkitItemSubPill, isLocked && { color: '#334155' }]} numberOfLines={1}>
+                                            {isLocked ? `Liberta no Dia ${item.required}` : item.sub}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
                     </View>
 
                 </ScrollView>
             </View>
 
-            {/* === MISSION DETAIL MODAL === */}
+            {/* SOS EMERGENCY MODAL */}
+            <Modal
+                visible={showSOSModal}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setShowSOSModal(false)}
+            >
+                <View style={[styles.sosOverlay, { backgroundColor: 'rgba(5, 5, 5, 0.98)' }]}>
+                    <SafeAreaView style={styles.sosContainer}>
+                        {/* Header */}
+                        <View style={styles.sosHeaderDesign}>
+                            <View style={styles.sosHeaderLeft}>
+                                <View style={styles.sosHeaderIconPulse}>
+                                    <MaterialCommunityIcons name="alert" size={28} color="#FF4B4B" />
+                                </View>
+                                <Text style={styles.sosHeaderTitle}>PROTOCOLO DE EMERGÊNCIA</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.sosHeaderClose}
+                                onPress={() => setShowSOSModal(false)}
+                            >
+                                <MaterialCommunityIcons name="close" size={24} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Progress Bar */}
+                        <View style={styles.sosProgressBar}>
+                            <View style={[styles.sosProgressStep, { backgroundColor: '#FF4B4B' }]} />
+                            <View style={[styles.sosProgressStep, { backgroundColor: '#1A1A1A' }]} />
+                            <View style={[styles.sosProgressStep, { backgroundColor: '#1A1A1A' }]} />
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                            {/* Phase 1: Physiological Reset */}
+                            <View style={styles.sosSectionDesign}>
+                                <View style={styles.sosSectionLabelRow}>
+                                    <Text style={styles.sosSectionBadge}>Fase 1</Text>
+                                    <Text style={styles.sosSectionTitleDesign}>Reset Fisiológico</Text>
+                                </View>
+                                <View style={styles.sosGlassCardDesign}>
+                                    <View style={styles.sosBreathingCenter}>
+                                        <View style={styles.sosBreathingPulse} />
+                                        <TouchableOpacity
+                                            style={styles.sosBreathingCircleDesign}
+                                            activeOpacity={0.9}
+                                            onPress={startBreathing}
+                                        >
+                                            <Animated.View style={{ transform: [{ scale: breathingAnim }], alignItems: 'center' }}>
+                                                <Text style={styles.sosOriginLabel}>ORIGIN</Text>
+                                                <Text style={styles.sosBreathingText}>{breathingPhase.toUpperCase()}</Text>
+                                            </Animated.View>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <Text style={styles.sosSectionHint}>Sincronize sua respiração com o círculo para baixar o cortisol.</Text>
+                                    <TouchableOpacity
+                                        style={styles.sosPrimaryBtn}
+                                        onPress={startBreathing}
+                                    >
+                                        <MaterialCommunityIcons name="air-filter" size={20} color="#fff" style={{ marginRight: 8 }} />
+                                        <Text style={styles.sosPrimaryBtnText}>INICIAR RESPIRAÇÃO GUIADA</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Phase 2: Reality Quiz */}
+                            <View style={styles.sosSectionDesign}>
+                                <View style={styles.sosSectionLabelRow}>
+                                    <Text style={[styles.sosSectionBadge, { color: '#FFB347' }]}>Fase 2</Text>
+                                    <Text style={styles.sosSectionTitleDesign}>Reality Quiz</Text>
+                                </View>
+
+                                {!showSosQuizFeedback ? (
+                                    <View style={styles.sosAmberCard}>
+                                        <Text style={styles.sosQuizProgress}>Pergunta {currentSosQuizStep + 1} de 5</Text>
+                                        <Text style={styles.sosQuizQuestion}>{SOS_QUIZ_QUESTIONS[currentSosQuizStep].question}</Text>
+                                        <View style={styles.sosQuizOptions}>
+                                            {SOS_QUIZ_QUESTIONS[currentSosQuizStep].options.map((opt, idx) => (
+                                                <TouchableOpacity
+                                                    key={idx}
+                                                    style={[styles.sosQuizBtn, { borderColor: opt.isPositive ? '#FFB347' : '#94a3b8' }]}
+                                                    onPress={() => handleQuizAnswer(opt.isPositive)}
+                                                >
+                                                    <Text style={[styles.sosQuizBtnText, { color: opt.isPositive ? '#FFB347' : '#94a3b8' }]}>{opt.label}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={[styles.sosAmberCard, { backgroundColor: '#FFB34722' }]}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                            <MaterialCommunityIcons
+                                                name={sosQuizAnswers.filter(a => a).length >= 3 ? "shield-check" : "weather-fog"}
+                                                size={24}
+                                                color="#FFB347"
+                                            />
+                                            <Text style={styles.sosFeedbackTitle}>
+                                                {sosQuizAnswers.filter(a => a).length >= 3 ? "FORTALEZA MENTAL" : "NEBLINA DE IMPULSO"}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.sosFeedbackText}>
+                                            {sosQuizAnswers.filter(a => a).length >= 3
+                                                ? "Estás no controle. O teu lado racional está a vencer a batalha contra o impulso carência. Mantém o silêncio."
+                                                : "O teu cérebro está a tentar enganar-te. Respira fundo mais 4 vezes antes de tomar qualquer decisão."}
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={styles.sosQuizRetry}
+                                            onPress={() => {
+                                                setCurrentSosQuizStep(0);
+                                                setSosQuizAnswers([]);
+                                                setShowSosQuizFeedback(false);
+                                            }}
+                                        >
+                                            <Text style={styles.sosQuizRetryText}>REPETIR QUIZ</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Phase 3: 5-Minute Rule */}
+                            <View style={styles.sosSectionDesign}>
+                                <View style={styles.sosSectionLabelRow}>
+                                    <Text style={styles.sosSectionBadge}>Fase 3</Text>
+                                    <Text style={styles.sosSectionTitleDesign}>A Regra dos 5 Minutos</Text>
+                                </View>
+                                <View style={styles.sosDarkCard}>
+                                    <View style={styles.sosTimerLabelDesign}>
+                                        <MaterialCommunityIcons name="timer-outline" size={16} color="#FF4B4B" />
+                                        <Text style={styles.sosTimerLabelText}>TEMPO DE SOBREVIVÊNCIA</Text>
+                                    </View>
+                                    <Text style={styles.sosBigTimer}>
+                                        {Math.floor(sosTimer / 60).toString().padStart(2, '0')}:{(sosTimer % 60).toString().padStart(2, '0')}
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={[styles.sosPrimaryBtn, { height: 64 }, isTimerActive && { backgroundColor: '#1A1A1A' }]}
+                                        onPress={() => setIsTimerActive(!isTimerActive)}
+                                    >
+                                        <MaterialCommunityIcons name={isTimerActive ? "clock-outline" : "lock"} size={22} color="#fff" style={{ marginRight: 8 }} />
+                                        <Text style={styles.sosPrimaryBtnText}>
+                                            {isTimerActive ? 'ESPERA ATIVA...' : 'BLOQUEAR IMPULSO (5MIN)'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <Text style={styles.sosTimerScience}>
+                                        A CIÊNCIA EXPLICA: O CÉREBRO PRECISA DE 5-10MIN PARA SAIR DO MODO EMOCIONAL REATIVO E RETOMAR O CONTROLE FRONTAL.
+                                    </Text>
+                                </View>
+                            </View>
+                        </ScrollView>
+                    </SafeAreaView>
+                </View>
+            </Modal>
             <Modal
                 visible={showMissionDetail}
                 animationType="slide"
@@ -577,7 +938,7 @@ const Dashboard = ({ navigation }) => {
             </Modal >
 
             {/* === CHECK-IN MODAL === */}
-            < Modal
+            <Modal
                 visible={showCheckin}
                 animationType="slide"
                 transparent={true}
@@ -588,31 +949,54 @@ const Dashboard = ({ navigation }) => {
                         <View style={styles.dragBar} />
 
                         {!checkinResult ? (
-                            // Question stage
-                            <View style={styles.checkinContent}>
-                                <View style={styles.checkinIconBig}>
-                                    <MaterialCommunityIcons name="shield-half-full" size={48} color={colors.primary} />
+                            isFirstCheckin ? (
+                                // Initiation stage
+                                <View style={styles.checkinContent}>
+                                    <View style={styles.checkinIconBig}>
+                                        <MaterialCommunityIcons name="shield-lock" size={48} color={colors.primary} />
+                                    </View>
+                                    <Text style={styles.checkinQuestion}>
+                                        Iniciação ao Silêncio
+                                    </Text>
+                                    <Text style={styles.checkinSub}>
+                                        Ao iniciares o Contato Zero, comprometes-te a cortar todas as vias de comunicação.
+                                        Sem mensagens, chamadas ou espreitar redes sociais.{'\n\n'}Estás pronto para desaparecer e recuperar o teu poder?
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.checkinYes}
+                                        onPress={() => submitCheckin(true)}
+                                    >
+                                        <MaterialCommunityIcons name="sword-cross" size={20} color="#120f0b" />
+                                        <Text style={styles.checkinYesText}>ACEITO O CÓDIGO</Text>
+                                    </TouchableOpacity>
                                 </View>
-                                <Text style={styles.checkinQuestion}>
-                                    Você se manteve firme no Contato Zero hoje?
-                                </Text>
-                                <Text style={styles.checkinSub}>
-                                    Isso inclui não enviar mensagens, não ligar e não vigiar as redes sociais.
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.checkinYes}
-                                    onPress={() => submitCheckin(true)}
-                                >
-                                    <MaterialCommunityIcons name="check-bold" size={20} color="#120f0b" />
-                                    <Text style={styles.checkinYesText}>SIM, MANTIVE O SILÊNCIO</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.checkinNo}
-                                    onPress={() => submitCheckin(false)}
-                                >
-                                    <Text style={styles.checkinNoText}>Não consegui hoje...</Text>
-                                </TouchableOpacity>
-                            </View>
+                            ) : (
+                                // Normal Question stage
+                                <View style={styles.checkinContent}>
+                                    <View style={styles.checkinIconBig}>
+                                        <MaterialCommunityIcons name="shield-half-full" size={48} color={colors.primary} />
+                                    </View>
+                                    <Text style={styles.checkinQuestion}>
+                                        Você se manteve firme no Contato Zero hoje?
+                                    </Text>
+                                    <Text style={styles.checkinSub}>
+                                        Isso inclui não enviar mensagens, não ligar e não vigiar as redes sociais.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.checkinYes}
+                                        onPress={() => submitCheckin(true)}
+                                    >
+                                        <MaterialCommunityIcons name="check-bold" size={20} color="#120f0b" />
+                                        <Text style={styles.checkinYesText}>SIM, MANTIVE O SILÊNCIO</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.checkinNo}
+                                        onPress={() => submitCheckin(false)}
+                                    >
+                                        <Text style={styles.checkinNoText}>Não consegui hoje...</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )
                         ) : checkinResult === 'success' ? (
                             // Success stage
                             <Animated.View style={[styles.checkinContent, { opacity: fadeAnim, transform: [{ scale: fadeAnim }] }]}>
@@ -656,7 +1040,7 @@ const Dashboard = ({ navigation }) => {
             </Modal >
 
             {/* === BREATHING MODAL === */}
-            < Modal
+            <Modal
                 visible={showBreathing}
                 animationType="fade"
                 transparent={true}
@@ -757,7 +1141,7 @@ const Dashboard = ({ navigation }) => {
             </Modal >
 
             {/* === BALANCE MODAL === */}
-            < Modal
+            <Modal
                 visible={showBalance}
                 animationType="slide"
                 transparent={true}
@@ -919,11 +1303,11 @@ const styles = StyleSheet.create({
         paddingBottom: 100,
     },
     glassCard: {
-        backgroundColor: 'rgba(23, 28, 35, 0.6)',
-        borderRadius: 20,
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-        padding: 24,
+        borderColor: colors.cardBorder,
+        padding: colors.cardPadding,
     },
     czSection: {
         position: 'relative',
@@ -979,21 +1363,27 @@ const styles = StyleSheet.create({
     primaryBtn: {
         backgroundColor: colors.primary,
         paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 20,
+        height: 40, // Keeping specific height for these dashboard buttons
+        borderRadius: colors.buttonRadius, // Standardizing radius
+        justifyContent: 'center',
     },
     primaryBtnText: {
         color: colors.backgroundDark,
         fontSize: 13,
         fontWeight: '800',
     },
+    toolsGrid: {
+        paddingHorizontal: 24, // Standard margem
+        gap: 16
+    },
     secondaryBtn: {
         paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 20,
+        height: 40,
+        borderRadius: colors.buttonRadius,
         backgroundColor: 'rgba(23, 28, 35, 0.6)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
+        justifyContent: 'center',
     },
     secondaryBtnText: {
         color: '#fff',
@@ -1120,43 +1510,6 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         letterSpacing: 1,
     },
-    toolkitSection: {
-        marginBottom: 20,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 16,
-    },
-    sectionTitle: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '800',
-    },
-    toolkitGrid: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    toolkitItem: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        padding: 16,
-    },
-    toolIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    toolLabel: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '700',
-    },
 
     // ---- Check-in Modal ----
     checkinOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
@@ -1179,40 +1532,7 @@ const styles = StyleSheet.create({
     },
     checkinQuestion: { color: '#fff', fontSize: 22, fontWeight: '900', textAlign: 'center', lineHeight: 30 },
     checkinSub: { color: '#64748b', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
-    checkinYes: {
-        backgroundColor: colors.primary,
-        height: 54,
-        borderRadius: 27,
-        paddingHorizontal: 28,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        width: '100%',
-        marginTop: 8,
-    },
-    checkinYesText: { color: '#120f0b', fontSize: 15, fontWeight: '900' },
-    checkinNo: { paddingVertical: 14, alignItems: 'center', width: '100%' },
-    checkinNoText: { color: '#64748b', fontSize: 14 },
-    resultEmoji: { fontSize: 56, marginBottom: 4 },
-    resultTitle: { color: '#fff', fontSize: 26, fontWeight: '900', textAlign: 'center' },
-    resultSub: { color: '#64748b', fontSize: 13, textAlign: 'center', lineHeight: 20 },
-    streakBadge: {
-        flexDirection: 'row', alignItems: 'center', gap: 8,
-        backgroundColor: colors.primary + '15',
-        paddingHorizontal: 16, paddingVertical: 10,
-        borderRadius: 20,
-        borderWidth: 1, borderColor: colors.primary + '40',
-    },
-    streakText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
-
-    // ---- Card Tap Hint ----
-    cardTapHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    closeBtn: { position: 'absolute', top: 16, right: 20, padding: 4 },
-
-    // ---- Balance Modal ----
-    balanceTitle: { color: '#fff', fontSize: 22, fontWeight: '900', marginBottom: 4 },
-    balanceSub: { color: '#64748b', fontSize: 12, lineHeight: 18 },
+    // Removed accidentally added styles
     balanceDimCard: {
         backgroundColor: '#0f1722',
         borderRadius: 18,
@@ -1251,41 +1571,6 @@ const styles = StyleSheet.create({
     seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 10, paddingHorizontal: 4 },
     seeAllText: { color: '#475569', fontSize: 11, fontWeight: '600' },
 
-    // ---- Arsenal toolkit cards ----
-    toolkitItemLarge: {
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: 20,
-        paddingHorizontal: 12,
-        gap: 10,
-        minHeight: 140,
-        justifyContent: 'center',
-    },
-    toolkitIconGlow: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: 'rgba(0,242,255,0.08)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    breathRing: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        borderWidth: 2,
-        borderColor: colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    breathInner: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: colors.primary + '55',
-    },
-    toolkitItemTitle: { color: '#e2e8f0', fontSize: 13, fontWeight: '700', textAlign: 'center' },
-    toolkitItemSub: { color: '#475569', fontSize: 10, fontWeight: '600', textAlign: 'center' },
 
     // ---- Breathing Modal ----
     breathOverlay: {
@@ -1439,139 +1724,89 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     missionGalleryCard: {
-        backgroundColor: colors.backgroundLight,
-        borderRadius: 16,
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#1e293b',
     },
-    toolkitGrid: {
-        flexDirection: 'row',
-        gap: 16,
-    },
-    missionCardVisual: {
-        height: 100,
-        position: 'relative',
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    missionCardBgImage: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: '100%',
+    missionVerticalBar: {
+        width: 4,
         height: '100%',
     },
-    missionCardVisualOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        opacity: 0.85,
-    },
-    missionCardBgIcon: {
-        position: 'absolute',
-        opacity: 0.15,
-        transform: [{ scale: 1.2 }],
-    },
-    missionActivePill: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
+    missionMetaRight: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 12,
-        zIndex: 10,
+        gap: 8,
     },
-    missionActivePillText: {
-        fontSize: 9,
-        fontWeight: '900',
-        letterSpacing: 1,
-    },
-    missionDonePill: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
+    missionStatusPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 12,
-        zIndex: 10,
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
     },
-    missionDonePillText: {
-        fontSize: 9,
+    missionStatusPillText: {
+        fontSize: 8,
         fontWeight: '900',
-        letterSpacing: 1,
-    },
-    missionCardCategoryBar: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 2,
     },
     missionCardBody: {
-        padding: 16,
+        flex: 1,
+        padding: 20,
+        justifyContent: 'center',
     },
     missionCardMeta: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
     },
     missionCardCat: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 0.5,
+        fontSize: 11,
+        fontWeight: '900',
+        letterSpacing: 1,
     },
     missionCardDuration: {
         color: '#64748b',
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '700',
     },
-    missionCardTitle: {
+    missionCardTitleLarge: {
         color: '#fff',
-        fontSize: 16,
-        fontWeight: '800',
+        fontSize: 20,
+        fontWeight: '900',
         marginBottom: 8,
-        lineHeight: 22,
+        lineHeight: 24,
     },
-    missionTitleDoneGallery: {
-        textDecorationLine: 'line-through',
-        color: '#94a3b8',
-    },
-    missionCardDesc: {
+    missionCardDescLarge: {
         color: '#94a3b8',
         fontSize: 13,
-        lineHeight: 18,
-        marginBottom: 16,
+        lineHeight: 20,
+        marginBottom: 20,
     },
-    missionExecBtn: {
+    missionFooterBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 12,
-        borderRadius: 8,
-        borderWidth: 1,
+        gap: 8,
+        paddingVertical: 14,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        backgroundColor: 'rgba(255,255,255,0.03)',
     },
-    missionExecBtnDone: {
-        backgroundColor: 'rgba(34,197,94,0.05)',
+    missionFooterBtnDone: {
+        backgroundColor: 'rgba(34,197,94,0.02)',
         borderColor: 'rgba(34,197,94,0.2)',
     },
-    missionExecText: {
-        fontSize: 12,
-        fontWeight: '800',
-        letterSpacing: 0.5,
+    missionFooterBtnText: {
+        fontSize: 13,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    missionTitleDoneGallery: {
+        textDecorationLine: 'line-through',
+        color: '#475569',
     },
     missionDots: {
         flexDirection: 'row',
@@ -1721,6 +1956,495 @@ const styles = StyleSheet.create({
         color: '#94a3b8',
         fontSize: 13,
         fontWeight: '700',
+    },
+    toolkitSection: {
+        marginTop: 32,
+        paddingHorizontal: 0, // Removed double padding
+    },
+    toolkitHeader: {
+        marginBottom: 16,
+    },
+    toolkitHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    toolkitGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    toolkitItemPill: {
+        width: '48%',
+        padding: 12,
+        borderRadius: colors.cardRadius,
+        backgroundColor: '#171c2399',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+        marginBottom: 12,
+        minHeight: 70,
+    },
+    toolkitPillTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    toolkitIconCircle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+    },
+    toolkitItemTitlePill: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '800',
+        flex: 1,
+    },
+    toolkitItemSubPill: {
+        color: '#64748b',
+        fontSize: 10,
+        fontWeight: '500',
+        paddingLeft: 2,
+    },
+    toolkitLocked: {
+        opacity: 0.5,
+        borderStyle: 'dashed',
+    },
+    missionLockOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 20,
+    },
+    missionLockText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '900',
+        marginTop: 8,
+        letterSpacing: 1,
+    },
+
+    // ---- SOS Modal Styles ----
+    sosOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(10, 12, 20, 0.9)',
+    },
+    sosContainer: {
+        flex: 1,
+        // padding: 24, // Removed as new design has padding in header and sections
+    },
+    sosHeader: { // Old header, keeping for reference if needed, but new design uses sosHeaderDesign
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 32,
+        position: 'relative',
+        height: 60,
+    },
+    sosTitle: { // Old title
+        color: '#ef4444',
+        fontSize: 14,
+        fontWeight: '900',
+        letterSpacing: 2,
+        marginLeft: 12,
+    },
+    sosClose: { // Old close button
+        position: 'absolute',
+        right: 0,
+        top: 15,
+    },
+    sosSection: { // Old section
+        marginBottom: 24,
+    },
+    sosSectionLabel: { // Old section label
+        color: '#475569',
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 1.5,
+        marginBottom: 12,
+    },
+    breathingCard: { // Old breathing card
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
+        padding: 32,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.1)',
+    },
+    breathingCircle: { // Old breathing circle
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 2,
+        borderColor: 'rgba(239, 68, 68, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    breathingPhaseText: { // Old breathing phase text
+        color: '#ef4444',
+        fontSize: 16,
+        fontWeight: '900',
+    },
+    breathingBtn: { // Old breathing button
+        backgroundColor: '#ef444422',
+        paddingHorizontal: 20,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#ef444444',
+        marginBottom: 12,
+    },
+    breathingBtnText: { // Old breathing button text
+        color: '#ef4444',
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    realityRecallCard: { // Old reality recall card
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
+    },
+    realityTitle: { // Old reality title
+        color: '#94a3b8',
+        fontSize: 13,
+        fontWeight: '700',
+        marginBottom: 16,
+    },
+    factRow: { // Old fact row
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        marginBottom: 12,
+    },
+    factText: { // Old fact text
+        color: '#fff',
+        fontSize: 15,
+        lineHeight: 22,
+        flex: 1,
+    },
+    factPlaceholder: { // Old fact placeholder
+        color: '#475569',
+        fontSize: 12,
+        fontStyle: 'italic',
+        textAlign: 'center',
+    },
+    timerCard: { // Old timer card
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
+        padding: 32,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
+    },
+    timerValue: { // Old timer value
+        color: '#fff',
+        fontSize: 48,
+        fontWeight: '900',
+        marginBottom: 16,
+    },
+    timerBtn: { // Old timer button
+        backgroundColor: '#ef4444',
+        width: '100%',
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    timerBtnText: { // Old timer button text
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '900',
+    },
+    sosHint: { // Old hint
+        color: '#475569',
+        fontSize: 11,
+        textAlign: 'center',
+        lineHeight: 16,
+    },
+
+    // SOS MODAL NEW DESIGN STYLES
+    sosHeaderDesign: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        paddingBottom: 8,
+    },
+    sosHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    sosHeaderIconPulse: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        // Pulse effect simulated by design if possible, simple View here
+    },
+    sosHeaderTitle: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '800',
+        marginLeft: 12,
+        letterSpacing: -0.5,
+    },
+    sosHeaderClose: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#1A1A1A',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sosProgressBar: {
+        flexDirection: 'row',
+        gap: 4,
+        paddingHorizontal: 24,
+        marginVertical: 12,
+    },
+    sosProgressStep: {
+        height: 4,
+        flex: 1,
+        borderRadius: 2,
+    },
+    sosSectionDesign: {
+        paddingHorizontal: 24,
+        marginTop: 24,
+    },
+    sosSectionLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    sosSectionBadge: {
+        color: '#FF4B4B',
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: 2,
+        marginRight: 8,
+    },
+    sosSectionTitleDesign: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    sosGlassCardDesign: {
+        backgroundColor: 'rgba(40, 40, 40, 0.4)',
+        borderRadius: 24,
+        padding: 32,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 75, 75, 0.1)',
+        // Backdrop-filter simulated with background on web fallback
+    },
+    sosBreathingCenter: {
+        position: 'relative',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: 24,
+    },
+    sosBreathingPulse: {
+        position: 'absolute',
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: 'rgba(255, 75, 75, 0.1)',
+    },
+    sosBreathingCircleDesign: {
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        borderWidth: 4,
+        borderColor: '#FF4B4B',
+        backgroundColor: '#0A0A0A',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#FF4B4B',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 10,
+    },
+    sosOriginLabel: {
+        color: '#FF4B4B',
+        fontSize: 10,
+        fontWeight: 'bold',
+        letterSpacing: 3,
+        marginBottom: 4,
+    },
+    sosBreathingText: {
+        color: '#fff',
+        fontSize: 24,
+        fontWeight: '900',
+        letterSpacing: -1,
+    },
+    sosSectionHint: {
+        color: '#94a3b8',
+        fontSize: 14,
+        textAlign: 'center',
+        lineHeight: 20,
+        marginTop: 8,
+        marginBottom: 24,
+    },
+    sosPrimaryBtn: {
+        width: '100%',
+        height: 56,
+        backgroundColor: '#FF4B4B',
+        borderRadius: 28,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#FF4B4B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    sosPrimaryBtnText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '800',
+        letterSpacing: 1.2,
+    },
+    sosAmberCard: {
+        backgroundColor: '#1A1A1A',
+        borderRadius: 24,
+        padding: 24,
+        borderLeftWidth: 4,
+        borderLeftColor: '#FFB347',
+    },
+    realityTitleDesign: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: 'bold',
+        fontStyle: 'italic',
+        marginBottom: 12,
+    },
+    realityQuoteBox: {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    factTextDesign: {
+        color: '#94a3b8',
+        fontSize: 14,
+        fontStyle: 'italic',
+        lineHeight: 22,
+    },
+    factPlaceholderDesign: {
+        color: '#64748b',
+        fontSize: 13,
+        fontStyle: 'italic',
+        lineHeight: 20,
+    },
+    sosDarkCard: {
+        backgroundColor: '#000',
+        borderRadius: 24,
+        padding: 32,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 75, 75, 0.2)',
+    },
+    sosTimerLabelDesign: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    sosTimerLabelText: {
+        color: '#FF4B4B',
+        fontSize: 10,
+        fontWeight: 'bold',
+        marginLeft: 6,
+        letterSpacing: 0.5,
+    },
+    sosBigTimer: {
+        color: '#fff',
+        fontSize: 64,
+        fontWeight: '900',
+        letterSpacing: -2,
+        marginVertical: 12,
+        fontVariant: ['tabular-nums'],
+    },
+    sosTimerScience: {
+        color: '#475569',
+        fontSize: 10,
+        fontWeight: '700',
+        textAlign: 'center',
+        marginTop: 24,
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
+        lineHeight: 14,
+    },
+    // SOS QUIZ STYLES
+    sosQuizProgress: {
+        color: '#FFB347',
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 8,
+    },
+    sosQuizQuestion: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+        lineHeight: 24,
+        marginBottom: 20,
+    },
+    sosQuizOptions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    sosQuizBtn: {
+        flex: 1,
+        height: 44,
+        borderRadius: 22,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sosQuizBtnText: {
+        fontSize: 13,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    sosFeedbackTitle: {
+        color: '#FFB347',
+        fontSize: 14,
+        fontWeight: '900',
+        marginLeft: 10,
+        letterSpacing: 1,
+    },
+    sosFeedbackText: {
+        color: '#cbd5e1',
+        fontSize: 14,
+        lineHeight: 22,
+        fontStyle: 'italic',
+        marginTop: 4,
+    },
+    sosQuizRetry: {
+        marginTop: 16,
+        alignSelf: 'flex-start',
+    },
+    sosQuizRetryText: {
+        color: '#FFB347',
+        fontSize: 11,
+        fontWeight: '800',
+        textDecorationLine: 'underline',
     },
 });
 

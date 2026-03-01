@@ -56,19 +56,31 @@ const CheckinHistory = ({ navigation }) => {
                 setTotalDays(history.filter(h => h.success).length);
             }
 
-            // Fetch mood entries
+            // Fetch mood entries (removed orderBy to prevent missing index error)
             const moodQ = query(
                 collection(db, 'cbt_journal_entries'),
                 where('user_id', '==', user.uid),
-                where('entry_type', '==', 'mood_checkin'),
-                orderBy('timestamp', 'desc')
+                where('entry_type', '==', 'mood_checkin')
             );
             const snap = await getDocs(moodQ);
+
+            // Map and sort in memory
+            // Helper function to safely get local date string (YYYY-MM-DD) avoiding UTC shifts
+            const getLocalDateString = (d) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
             const moodArr = snap.docs.map(d => {
                 const dt = d.data().timestamp?.toDate?.();
-                const dateStr = dt ? dt.toISOString().split('T')[0] : null;
-                return { date: dateStr, mood: d.data().mood_score };
-            }).filter(m => m.date);
+                const dateStr = dt ? getLocalDateString(dt) : null;
+                return { date: dateStr, mood: d.data().mood_score, timeMs: dt?.getTime() || 0 };
+            })
+                .filter(m => m.date)
+                .sort((a, b) => b.timeMs - a.timeMs); // sort descending by time
+
             setMoodData(moodArr);
         } catch (e) {
             console.error('Error fetching history:', e);
@@ -102,7 +114,10 @@ const CheckinHistory = ({ navigation }) => {
         for (let i = 13; i >= 0; i--) {
             const d = new Date(today);
             d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
             const dayLabel = `${d.getDate()}/${d.getMonth() + 1}`;
             const checkin = checkinDates[dateStr];
             const moodEntry = moodData.find(m => m.date === dateStr);
@@ -181,7 +196,9 @@ const CheckinHistory = ({ navigation }) => {
                                 const entry = checkinDates[item.dateStr];
                                 const isSuccess = entry?.success === true;
                                 const isRelapse = entry?.success === false;
-                                const isToday = item.dateStr === new Date().toISOString().split('T')[0];
+                                const todayDate = new Date();
+                                const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
+                                const isToday = item.dateStr === todayStr;
                                 return (
                                     <View key={item.dateStr} style={[
                                         styles.dayCell,
@@ -267,7 +284,7 @@ const CheckinHistory = ({ navigation }) => {
     );
 };
 
-const CELL_SIZE = Math.floor((width - 48) / 7);
+const CELL_SIZE = Math.floor((width - 40) / 7); // Exactly account for 20px left + 20px right padding of scrollContent
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.backgroundDark },
@@ -332,13 +349,14 @@ const styles = StyleSheet.create({
     correlationGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 6,
+        justifyContent: 'space-between',
         marginBottom: 8,
     },
     correlationCell: {
-        width: (width - 80) / 7,
+        width: '13%',
         alignItems: 'center',
         gap: 4,
+        marginBottom: 16,
     },
     corrDate: { color: '#475569', fontSize: 8, textAlign: 'center' },
     silenceBar: { width: 20, height: 8, borderRadius: 4, backgroundColor: '#1e293b' },

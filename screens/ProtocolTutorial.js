@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     Dimensions,
     StatusBar,
+    ScrollView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWindowDimensions } from 'react-native';
@@ -72,7 +73,11 @@ const slides = [
 ];
 
 const SlideItem = ({ item }) => (
-    <View style={[styles.slide, { width }]}>
+    <ScrollView
+        style={{ width }}
+        contentContainerStyle={[styles.slide, { flexGrow: 1, justifyContent: 'center' }]}
+        showsVerticalScrollIndicator={false}
+    >
         <View style={[styles.iconCircle, { borderColor: `${item.color}30`, backgroundColor: `${item.color}10` }]}>
             <MaterialCommunityIcons name={item.icon} size={44} color={item.color} />
         </View>
@@ -120,7 +125,7 @@ const SlideItem = ({ item }) => (
                 ))}
             </View>
         )}
-    </View>
+    </ScrollView>
 );
 
 const ProtocolTutorial = () => {
@@ -128,6 +133,14 @@ const ProtocolTutorial = () => {
     const { width } = useWindowDimensions();
     const flatListRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
+
+    const onViewableItemsChanged = useRef(({ viewableItems }) => {
+        if (viewableItems.length > 0) {
+            setCurrentIndex(viewableItems[0].index);
+        }
+    }).current;
+
+    const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
     const handleNext = async () => {
         if (currentIndex < slides.length - 1) {
@@ -185,7 +198,8 @@ const ProtocolTutorial = () => {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                scrollEnabled={false}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
                 style={{ flex: 1 }}
                 getItemLayout={(_, index) => ({
                     length: width,

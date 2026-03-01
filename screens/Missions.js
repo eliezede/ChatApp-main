@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
     View,
     Text,
@@ -23,41 +23,44 @@ import { MISSIONS_LIBRARY, MISSION_CATEGORIES } from '../logic/missionsData';
 
 const { width } = Dimensions.get('window');
 
-const MissionCard = ({ mission, isCompleted, onPress }) => {
+const MissionCard = ({ mission, isCompleted, onPress, isLocked }) => {
     const category = MISSION_CATEGORIES.find(c => c.id === mission.category);
 
     return (
         <TouchableOpacity
-            style={[styles.missionCard, isCompleted && styles.missionCardCompleted]}
-            onPress={() => onPress(mission)}
-            activeOpacity={0.8}
+            style={[styles.missionCard, isCompleted && styles.missionCardCompleted, isLocked && styles.missionCardLocked]}
+            onPress={() => isLocked ? null : onPress(mission)}
+            activeOpacity={isLocked ? 1 : 0.8}
         >
-            {mission.image && (
-                <Image source={{ uri: mission.image }} style={[styles.missionCardBgImage, { opacity: 0.15 }]} resizeMode="cover" />
-            )}
-            <View style={[styles.categoryBorder, { backgroundColor: category?.color || colors.primary }]} />
+            <View style={[styles.categoryBorder, { backgroundColor: isLocked ? '#1e293b' : (category?.color || colors.primary) }]} />
 
             <View style={styles.missionContent}>
                 <View style={styles.missionTop}>
-                    <View style={styles.difficultyBadge}>
-                        <Text style={styles.difficultyText}>{mission.difficulty.toUpperCase()}</Text>
+                    <View style={[styles.difficultyBadge, isLocked && { backgroundColor: '#1e293b', borderColor: '#334155' }]}>
+                        <Text style={[styles.difficultyText, isLocked && { color: '#475569' }]}>
+                            {isLocked ? 'RESTRITO' : (mission.difficulty || 'Normal').toUpperCase()}
+                        </Text>
                     </View>
-                    <Text style={styles.durationText}>{mission.duration}</Text>
+                    <Text style={[styles.durationText, isLocked && { color: '#334155' }]}>
+                        {isLocked ? `Dia ${mission.requiredDays || 0}+` : (mission.duration || 'Daily')}
+                    </Text>
                 </View>
 
-                <Text style={[styles.missionTitle, isCompleted && styles.missionTitleCompleted]}>
-                    {mission.title}
+                <Text style={[styles.missionTitle, isCompleted && styles.missionTitleCompleted, isLocked && { color: '#475569' }]}>
+                    {isLocked ? 'Missão Bloqueada' : mission.title}
                 </Text>
 
                 <View style={styles.missionBottom}>
                     <MaterialCommunityIcons
-                        name={category?.icon || 'target'}
+                        name={isLocked ? 'lock' : (category?.icon || 'target')}
                         size={16}
-                        color={isCompleted ? '#94a3b8' : (category?.color || colors.textSecondary)}
+                        color={isLocked ? '#334155' : (isCompleted ? '#94a3b8' : (category?.color || colors.textSecondary))}
                     />
-                    <Text style={[styles.categoryLabel, { color: category?.color || colors.textSecondary }]}>{category?.label}</Text>
+                    <Text style={[styles.categoryLabel, { color: isLocked ? '#334155' : (category?.color || colors.textSecondary) }]}>
+                        {isLocked ? `${mission.requiredDays} dias de Contato Zero` : category?.label}
+                    </Text>
 
-                    {isCompleted && (
+                    {isCompleted && !isLocked && (
                         <View style={styles.completedBadge}>
                             <MaterialCommunityIcons name="check-decagram" size={14} color="#22c55e" />
                             <Text style={styles.completedText}>CONCLUÍDO</Text>
@@ -66,11 +69,13 @@ const MissionCard = ({ mission, isCompleted, onPress }) => {
                 </View>
             </View>
 
-            <MaterialCommunityIcons
-                name="chevron-right"
-                size={20}
-                color="rgba(255,255,255,0.1)"
-            />
+            {!isLocked && (
+                <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={20}
+                    color="rgba(255,255,255,0.1)"
+                />
+            )}
         </TouchableOpacity>
     );
 };
@@ -106,11 +111,11 @@ const MissionDetailsModal = ({ mission, isVisible, onClose, isCompleted, onToggl
                         <View style={styles.modalStatsRow}>
                             <View style={styles.modalStat}>
                                 <MaterialCommunityIcons name="speedometer" size={16} color={colors.textSecondary} />
-                                <Text style={styles.modalStatText}>{mission.difficulty}</Text>
+                                <Text style={styles.modalStatText}>{mission.difficulty || 'Normal'}</Text>
                             </View>
                             <View style={styles.modalStat}>
                                 <MaterialCommunityIcons name="clock-outline" size={16} color={colors.textSecondary} />
-                                <Text style={styles.modalStatText}>{mission.duration}</Text>
+                                <Text style={styles.modalStatText}>{mission.duration || 'Daily'}</Text>
                             </View>
                         </View>
 
@@ -151,25 +156,39 @@ const MissionDetailsModal = ({ mission, isVisible, onClose, isCompleted, onToggl
 
 const Missions = () => {
     const { user } = useContext(AuthenticatedUserContext);
-    const [selectedCategory, setSelectedCategory] = useState('detox');
+    const [selectedCategory, setSelectedCategory] = useState('hoje');
     const [userProfile, setUserProfile] = useState(null);
+    const [dailyPlan, setDailyPlan] = useState(null);
     const [completedMissions, setCompletedMissions] = useState([]);
+    const [czDays, setCzDays] = useState(0);
     const [selectedMission, setSelectedMission] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!user) return;
 
-        const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snapshot) => {
+        const unsubscribeUser = onSnapshot(doc(db, 'users', user.uid), (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.data();
                 setUserProfile(data);
                 setCompletedMissions(data.completed_missions || []);
+                setCzDays(data.contactZero?.currentStreak || 0);
+            }
+        });
+
+        const today = new Date().toISOString().split('T')[0];
+        const planDocRef = doc(db, 'plans', user.uid, 'daily', today);
+        const unsubscribePlan = onSnapshot(planDocRef, (snapshot) => {
+            if (snapshot.exists()) {
+                setDailyPlan(snapshot.data());
             }
             setLoading(false);
         });
 
-        return unsubscribe;
+        return () => {
+            unsubscribeUser();
+            unsubscribePlan();
+        };
     }, [user]);
 
     const handleToggleComplete = async (missionId) => {
@@ -195,7 +214,44 @@ const Missions = () => {
         }
     };
 
-    const filteredMissions = MISSIONS_LIBRARY.filter(m => m.category === selectedCategory);
+    const MISSION_THEME = {
+        detox: { bg: '#1a0510', accent: '#f43f5e', icon: 'shield-lock', label: 'DESINTOXICAÇÃO', image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=600&auto=format&fit=crop' },
+        action: { bg: '#051a05', accent: '#22c55e', icon: 'lightning-bolt', label: 'AÇÃO & CORPO', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=600&auto=format&fit=crop' },
+        stoic: { bg: '#050f1a', accent: '#3b82f6', icon: 'head-heart', label: 'MENTE ESTOICA', image: 'https://images.unsplash.com/photo-1505664159854-2326119c8152?q=80&w=600&auto=format&fit=crop' },
+        identity: { bg: '#10051a', accent: '#a855f7', icon: 'compass-outline', label: 'AUTOEXPANSÃO', image: 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=600&auto=format&fit=crop' },
+    };
+
+    const categoriesWithToday = [
+        { id: 'hoje', label: 'HOJE', icon: 'calendar-check', color: colors.primary },
+        ...MISSION_CATEGORIES
+    ];
+
+    const filteredMissions = useMemo(() => {
+        if (selectedCategory === 'hoje') {
+            if (!dailyPlan?.tasks) return [];
+            return dailyPlan.tasks.map(t => {
+                const libMatch = MISSIONS_LIBRARY.find(lib => lib.id === t.id);
+                if (libMatch) return { ...libMatch, ...t };
+
+                let category = 'stoic';
+                if (t.id === 'origin_contact_zero' || t.id === 'origin_sos') category = 'detox';
+                else if (t.id === 'aerobic_stimulus' || t.actionType === 'PHYSICAL_TRAINING') category = 'action';
+
+                return {
+                    id: t.id,
+                    title: t.title,
+                    category: category,
+                    difficulty: t.difficulty || 'Normal',
+                    duration: t.duration || (category === 'detox' ? '24h' : '15 min'),
+                    science_fact: t.rationale || t.description,
+                    image: (MISSION_THEME[category] || MISSION_THEME.stoic).image,
+                    requiredDays: 0,
+                    ...t
+                };
+            });
+        }
+        return MISSIONS_LIBRARY.filter(m => m.category === selectedCategory);
+    }, [selectedCategory, dailyPlan, MISSIONS_LIBRARY]);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -204,7 +260,7 @@ const Missions = () => {
 
             <View style={styles.categoryTabs}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-                    {MISSION_CATEGORIES.map(cat => (
+                    {categoriesWithToday.map(cat => (
                         <TouchableOpacity
                             key={cat.id}
                             style={[styles.tab, selectedCategory === cat.id && styles.tabActive]}
@@ -238,6 +294,7 @@ const Missions = () => {
                                 key={mission.id}
                                 mission={mission}
                                 isCompleted={completedMissions.includes(mission.id)}
+                                isLocked={czDays < (mission.requiredDays || 0)}
                                 onPress={setSelectedMission}
                             />
                         ))}
@@ -286,16 +343,16 @@ const styles = StyleSheet.create({
 
     missionsGrid: { padding: 20, gap: 16 },
     missionCard: {
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
         flexDirection: 'row',
-        backgroundColor: colors.surfaceDark,
-        borderRadius: 20,
-        overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: colors.cardBorder,
         alignItems: 'center',
         paddingRight: 16,
         position: 'relative',
-        height: 120
+        minHeight: 110,
+        marginBottom: 12,
     },
     missionCardBgImage: {
         position: 'absolute',
@@ -307,6 +364,12 @@ const styles = StyleSheet.create({
     missionCardCompleted: {
         opacity: 0.6,
         borderColor: '#22c55e40'
+    },
+    missionCardLocked: {
+        opacity: 0.5,
+        backgroundColor: 'rgba(15, 23, 42, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.02)',
+        borderStyle: 'dashed',
     },
     categoryBorder: { width: 4, height: '100%' },
     missionContent: { flex: 1, padding: 16 },
@@ -353,18 +416,13 @@ const styles = StyleSheet.create({
     scienceExplanation: { color: '#94a3b8', fontSize: 15, lineHeight: 24, fontStyle: 'italic' },
     actionButton: {
         backgroundColor: colors.primary,
-        height: 64,
-        borderRadius: 32,
+        height: colors.buttonHeight,
+        borderRadius: colors.buttonRadius,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 12,
         marginTop: 20,
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8
     },
     actionButtonCompleted: {
         backgroundColor: 'transparent',

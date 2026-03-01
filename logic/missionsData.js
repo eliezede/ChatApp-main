@@ -13,6 +13,7 @@ export const MISSIONS_LIBRARY = [
         title: '24 Horas de Silêncio Digital',
         difficulty: 'Easy',
         duration: '24h',
+        requiredDays: 0,
         science_fact: 'Sobreviver 24 horas sem olhar as redes sociais dela. Vitória rápida para ganhar tração e quebrar o ciclo de busca por dopamina.',
         logic: 'O cérebro apaixonado age como um dependente. Ver fotos dela reinicia o ciclo de abstinência. Evitar isso é o primeiro passo para a extinção neural.',
         image: 'https://images.unsplash.com/photo-1512314889357-e157c22f938d?q=80&w=600&auto=format&fit=crop'
@@ -23,6 +24,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Política da Terra Arrasada',
         difficulty: 'Medium',
         duration: '15 min',
+        requiredDays: 0,
         science_fact: 'Ocultar, silenciar ou bloquear a ex em todas as plataformas.',
         logic: 'Isso não é imaturidade, mas uma tática de higiene mental prática para eliminar gatilhos visuais que disparam o cortisol.',
         image: 'https://images.unsplash.com/photo-1614064641938-3bbee52942c7?q=80&w=600&auto=format&fit=crop'
@@ -33,6 +35,7 @@ export const MISSIONS_LIBRARY = [
         title: 'O Purgatório Digital',
         difficulty: 'Hard',
         duration: '30 min',
+        requiredDays: 0,
         science_fact: 'Arquivar ou apagar fotos antigas do casal do rolo de câmera.',
         logic: 'Isso evita a reativação cognitiva intrusiva controlada por memórias visuais que impedem o cérebro de seguir em frente.',
         image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=600&auto=format&fit=crop'
@@ -43,6 +46,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Contato Zero Absoluto (3 Dias)',
         difficulty: 'Hard',
         duration: '3 dias',
+        requiredDays: 0,
         science_fact: 'Zero mensagens, zero likes, zero notícias através de terceiros.',
         logic: 'O contato zero é a única forma de permitir que os níveis de dopamina e oxitocina se estabilizem após o "choque" do término.',
         image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=600&auto=format&fit=crop'
@@ -55,6 +59,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Suar por 20 Minutos',
         difficulty: 'Medium',
         duration: '20 min',
+        requiredDays: 3,
         science_fact: 'Qualquer exercício intenso: corrida, musculação ou funcional.',
         logic: 'O exercício libera endorfinas e BDNF, essenciais para a neuroplasticidade e regulação do cortisol no cérebro sob estresse.',
         image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=600&auto=format&fit=crop'
@@ -65,6 +70,7 @@ export const MISSIONS_LIBRARY = [
         title: 'A Armadura Externa',
         difficulty: 'Easy',
         duration: '15 min',
+        requiredDays: 3,
         science_fact: 'Vestir-se bem, fazer a barba e cuidar da aparência hoje.',
         logic: 'A imagem exterior disciplina a interior. Envia uma mensagem de controle e ordem ao cérebro, combatendo a letargia do luto.',
         image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=600&auto=format&fit=crop'
@@ -75,6 +81,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Batismo de Gelo',
         difficulty: 'Hard',
         duration: '5 min',
+        requiredDays: 3,
         science_fact: 'Tomar um banho totalmente frio hoje.',
         logic: 'Baseado no desconforto voluntário estoico. Treina a mente para suportar choques e não ser escrava do conforto imediato.',
         image: 'https://images.unsplash.com/photo-1519750783826-e2420f4d687f?q=80&w=600&auto=format&fit=crop'
@@ -87,6 +94,7 @@ export const MISSIONS_LIBRARY = [
         title: 'O Diário da Realidade',
         difficulty: 'Medium',
         duration: '10 min',
+        requiredDays: 3,
         science_fact: 'Escrever 3 motivos concretos pelos quais o relacionamento não era ideal.',
         logic: 'Combate o "recall eufórico" (tendência de lembrar apenas o lado bom), forçando uma reavaliação negativa baseada em fatos.',
         image: 'https://images.unsplash.com/photo-1517842645767-c639042777db?q=80&w=600&auto=format&fit=crop'
@@ -97,6 +105,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Arte da Resposta Tardia',
         difficulty: 'Medium',
         duration: '2h delay',
+        requiredDays: 7,
         science_fact: 'Se houver contato inevitável, espere 2 horas antes de responder.',
         logic: 'Não agir por impulso devolve o peso e o valor da sua própria presença e quebra a reatividade emocional.',
         image: 'https://images.unsplash.com/photo-1501139083538-0139583c060f?q=80&w=600&auto=format&fit=crop'
@@ -107,6 +116,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Lista de Epicteto',
         difficulty: 'Hard',
         duration: '15 min',
+        requiredDays: 7,
         science_fact: 'Listar o que você não controla vs. o que você controla hoje.',
         logic: 'A Dicotomia do Controle é a base da paz estoica. Focar no que você controla economiza energia mental vital.',
         image: 'https://images.unsplash.com/photo-1505664159854-2326119c8152?q=80&w=600&auto=format&fit=crop'
@@ -117,6 +127,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Amor Fati: Aceitação Radical',
         difficulty: 'Hard',
         duration: '5 min',
+        requiredDays: 7,
         science_fact: 'Agradecer por uma lição aprendida através da dor atual.',
         logic: 'Transforma o obstáculo em ferramenta. A aceitação radical interrompe o ciclo de negação e sofrimento prolongado.',
         image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=600&auto=format&fit=crop'
@@ -129,6 +140,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Ressuscitar um Laço',
         difficulty: 'Medium',
         duration: '10 min',
+        requiredDays: 14,
         science_fact: 'Reconectar-se com um amigo que se afastou durante o namoro.',
         logic: 'O apoio social é crucial para amortecer o isolamento. Reconstruir sua rede social é reconstruir sua rede de segurança.',
         image: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=600&auto=format&fit=crop'
@@ -139,6 +151,7 @@ export const MISSIONS_LIBRARY = [
         title: '15 Minutos de Novidade',
         difficulty: 'Medium',
         duration: '15 min',
+        requiredDays: 14,
         science_fact: 'Estudar ou praticar algo totalmente novo (Xadrez, Idioma, etc).',
         logic: 'A competência gera confiança. Novos desafios forçam o cérebro a ocupar o espaço deixado pela relação com novos neurônios.',
         image: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=600&auto=format&fit=crop'
@@ -149,6 +162,7 @@ export const MISSIONS_LIBRARY = [
         title: 'Descartar as Relíquias',
         difficulty: 'Hard',
         duration: '20 min',
+        requiredDays: 14,
         science_fact: 'Guardar ou descartar presentes e objetos da ex.',
         logic: 'Limpar o ambiente visual de lembretes constantes é essencial para a libertação emocional e renovação do "self".',
         image: 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=600&auto=format&fit=crop'

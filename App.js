@@ -26,6 +26,7 @@ import About from './screens/About';
 import ProgressDetail from './screens/ProgressDetail';
 import CheckinHistory from './screens/CheckinHistory';
 import ProtocolTutorial from './screens/ProtocolTutorial';
+import ProfileSetup from './screens/ProfileSetup';
 import SplashScreen from './screens/SplashScreen';
 import TrainingSettings from './screens/TrainingSettings';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -175,6 +176,7 @@ function ChatStack() {
 function OnboardingStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name='ProfileSetup' component={ProfileSetup} />
       <Stack.Screen name='ProtocolTutorial' component={ProtocolTutorial} />
     </Stack.Navigator>
   );

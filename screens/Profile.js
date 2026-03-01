@@ -23,6 +23,7 @@ import AppHeader from '../components/AppHeader';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { AuthenticatedUserContext } from '../App';
 import * as ImagePicker from 'expo-image-picker';
+import CustomAlert from '../components/CustomAlert';
 import colors from '../colors';
 
 const STOIC_AVATAR = require('../assets/stoic_avatar.jpg');
@@ -35,6 +36,8 @@ const Profile = ({ navigation }) => {
     const [editFocus, setEditFocus] = React.useState('');
     const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
     const [uploading, setUploading] = React.useState(false);
+
+    const [alertConfig, setAlertConfig] = React.useState({ visible: false });
 
     React.useEffect(() => {
         const user = auth.currentUser;
@@ -117,37 +120,37 @@ const Profile = ({ navigation }) => {
     };
 
     const handleUpdatePhoto = async () => {
-        if (Platform.OS === 'web') {
-            const choice = window.confirm('Deseja alterar sua fotografia?\n\nOK = Escolher da Galeria\nCancelar = Restaurar Avatar Estoico');
-            if (choice) { pickImage(); }
-            else {
-                const user = auth.currentUser;
-                await updateDoc(doc(db, 'users', user.uid), { photoURL: null });
-            }
-            return;
-        }
-        Alert.alert('Identidade Visual', 'Como deseja proceder?', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Restaurar Estoico', onPress: async () => {
-                    const user = auth.currentUser;
-                    await updateDoc(doc(db, 'users', user.uid), { photoURL: null });
-                }, style: 'destructive'
-            },
-            { text: 'Escolher Foto', onPress: pickImage }
-        ]);
+        setAlertConfig({
+            visible: true,
+            title: 'Identidade Visual',
+            message: 'Como deseja proceder com o seu avatar militar?',
+            icon: 'camera-outline',
+            iconColor: colors.primary,
+            buttons: [
+                { text: 'Escolher da Galeria', style: 'default', onPress: pickImage },
+                {
+                    text: 'Restaurar Modo Estoico', style: 'destructive', onPress: async () => {
+                        const user = auth.currentUser;
+                        await updateDoc(doc(db, 'users', user.uid), { photoURL: null });
+                    }
+                },
+                { text: 'Cancelar', style: 'cancel' }
+            ]
+        });
     };
 
     const handleLogout = () => {
-        if (Platform.OS === 'web') {
-            const choice = window.confirm('Deseja realmente encerrar a sessão?');
-            if (choice) signOut(auth);
-            return;
-        }
-        Alert.alert('Encerrar Sessão', 'Deseja realmente sair?', [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Sair', onPress: () => signOut(auth), style: 'destructive' }
-        ]);
+        setAlertConfig({
+            visible: true,
+            title: 'Encerrar Sessão',
+            message: 'Deseja realmente abandonar o seu posto de combate?',
+            icon: 'logout-variant',
+            iconColor: '#ef4444',
+            buttons: [
+                { text: 'Sair Imediatamente', style: 'destructive', onPress: () => signOut(auth) },
+                { text: 'Permanecer Firme', style: 'cancel' }
+            ]
+        });
     };
 
     const phase = userProfile?.profile?.phase;
@@ -399,6 +402,16 @@ const Profile = ({ navigation }) => {
                     </View>
                 </ScrollView>
             </View>
+
+            <CustomAlert
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                icon={alertConfig.icon}
+                iconColor={alertConfig.iconColor}
+                buttons={alertConfig.buttons}
+                onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+            />
         </SafeAreaView>
     );
 };
@@ -547,7 +560,7 @@ const styles = StyleSheet.create({
     },
     // Settings
     settingsSections: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 24, // Standard 24px margin
         gap: 4,
     },
     sectionTitle: {
@@ -560,10 +573,10 @@ const styles = StyleSheet.create({
         marginTop: 24,
     },
     settingsGroup: {
-        backgroundColor: colors.surfaceDark,
-        borderRadius: 16,
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
         borderWidth: 1,
-        borderColor: colors.borderDark,
+        borderColor: colors.cardBorder,
         overflow: 'hidden',
     },
     settingsRow: {
@@ -639,8 +652,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 16,
-        borderRadius: 16,
+        height: colors.buttonHeight,
+        borderRadius: colors.buttonRadius,
         borderWidth: 1,
         borderColor: 'rgba(239, 68, 68, 0.2)',
         backgroundColor: 'rgba(239, 68, 68, 0.04)',
@@ -648,8 +661,9 @@ const styles = StyleSheet.create({
     },
     logoutText: {
         color: '#ef4444',
-        fontWeight: '700',
+        fontWeight: '900',
         fontSize: 14,
+        letterSpacing: 1,
     },
     // Quote
     quoteSection: {
@@ -676,10 +690,10 @@ const styles = StyleSheet.create({
     // Contato Zero row
     czStatsRow: {
         flexDirection: 'column',
-        backgroundColor: 'rgba(23, 28, 35, 0.7)',
-        borderRadius: 20,
+        backgroundColor: colors.cardBackground,
+        borderRadius: colors.cardRadius,
         borderWidth: 1,
-        borderColor: 'rgba(0, 242, 255, 0.1)',
+        borderColor: colors.cardBorder,
         marginHorizontal: 24,
         marginBottom: 24,
         paddingTop: 14,
