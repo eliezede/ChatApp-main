@@ -1,6 +1,6 @@
 import { collection, doc, getDocs, getDoc, setDoc, query, where, addDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { Booking, BookingStatus, EmailTemplate, EMAIL_VARIABLES, UserRole } from '../types';
+import { Booking, BookingStatus, EmailTemplate, EMAIL_VARIABLES, UserRole, ServiceType } from '../types';
 
 export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     {
@@ -178,6 +178,54 @@ export const EmailService = {
             }
         } catch (e) {
             console.error("[EmailService] Failed to process status email trigger", e);
+        }
+    },
+
+    // Send a manual test email
+    sendTestEmail: async (template: EmailTemplate, testRecipient: string) => {
+        console.log(`[EmailService] Sending test email for template: ${template.name} to ${testRecipient}`);
+
+        // Mock a booking for variable parsing
+        const mockBooking: Booking = {
+            id: 'TEST-123',
+            bookingRef: 'REF-TEST',
+            clientName: 'Test Client',
+            requestedByUserId: 'system',
+            date: new Date().toISOString().split('T')[0],
+            startTime: '10:00',
+            durationMinutes: 60,
+            languageFrom: 'English',
+            languageTo: 'Portuguese',
+            serviceType: ServiceType.FACE_TO_FACE,
+            locationType: 'ONSITE',
+            postcode: 'SW1A 1AA',
+            status: BookingStatus.BOOKED,
+            totalAmount: 150.00,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            clientId: 'system',
+            notes: 'Test'
+        };
+
+        const subject = EmailService.parseTemplate(template.subject, mockBooking, { interpreterName: 'Test Interpreter' });
+        const body = EmailService.parseTemplate(template.body, mockBooking, { interpreterName: 'Test Interpreter' });
+
+        try {
+            await addDoc(collection(db, 'mail'), {
+                to: [testRecipient],
+                message: {
+                    subject: `[TEST] ${subject}`,
+                    html: body
+                },
+                isTest: true,
+                templateId: template.id,
+                createdAt: new Date().toISOString()
+            });
+            console.log(`[EmailService] ✅ Test email queued for ${testRecipient}`);
+            return true;
+        } catch (error) {
+            console.error(`[EmailService] ❌ Failed to queue test email:`, error);
+            throw error;
         }
     }
 };

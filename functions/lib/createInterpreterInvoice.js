@@ -1,8 +1,7 @@
-
+"use strict";
 // Pseudo-code for Cloud Function
-
 /*
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 
 export const createInterpreterInvoice = functions.https.onCall(async (data, context) => {
@@ -33,3 +32,4 @@ export const createInterpreterInvoice = functions.https.onCall(async (data, cont
   return { invoiceId: invoiceRef.id };
 });
 */
+//# sourceMappingURL=createInterpreterInvoice.js.map

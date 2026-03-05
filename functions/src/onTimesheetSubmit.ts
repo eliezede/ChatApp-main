@@ -3,7 +3,7 @@
 // In a real repo, this would be in a separate 'functions' directory with its own package.json
 
 /*
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 
 export const onTimesheetSubmit = functions.firestore

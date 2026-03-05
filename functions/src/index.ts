@@ -6,3 +6,4 @@ admin.initializeApp();
 export * from './billing/onTimesheetAdminApproved';
 export * from './billing/generateClientInvoice';
 export * from './billing/generateInterpreterInvoices';
+export * from './mail/onEmailCreated';

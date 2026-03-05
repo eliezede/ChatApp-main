@@ -12,6 +12,8 @@ export const AdminEmailTemplates: React.FC = () => {
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+    const [testRecipient, setTestRecipient] = useState('');
+    const [sendingTest, setSendingTest] = useState(false);
     const { showToast } = useToast();
 
     useEffect(() => {
@@ -38,6 +40,22 @@ export const AdminEmailTemplates: React.FC = () => {
             fetchTemplates();
         } catch (error) {
             showToast('Failed to save template', 'error');
+        }
+    };
+
+    const handleSendTest = async () => {
+        if (!editingTemplate || !testRecipient) {
+            showToast('Please enter a recipient email', 'info');
+            return;
+        }
+        setSendingTest(true);
+        try {
+            await EmailService.sendTestEmail(editingTemplate, testRecipient);
+            showToast('Test email queued. Check "mail" logs.', 'success');
+        } catch (error) {
+            showToast('Failed to send test email', 'error');
+        } finally {
+            setSendingTest(false);
         }
     };
 
@@ -202,14 +220,38 @@ export const AdminEmailTemplates: React.FC = () => {
 
                         </div>
 
-                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex gap-3 sticky bottom-0">
-                            <Button onClick={() => setEditingTemplate(null)} variant="secondary" className="flex-1">
-                                Cancel
-                            </Button>
-                            <Button onClick={handleSave} className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700">
-                                <Save size={18} />
-                                Save Changes
-                            </Button>
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 space-y-4 sticky bottom-0">
+                            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
+                                <div className="flex-1">
+                                    <input
+                                        type="email"
+                                        placeholder="test-email@example.com"
+                                        value={testRecipient}
+                                        onChange={(e) => setTestRecipient(e.target.value)}
+                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <Button
+                                    onClick={handleSendTest}
+                                    variant="secondary"
+                                    size="sm"
+                                    className="gap-2 whitespace-nowrap"
+                                    disabled={sendingTest}
+                                >
+                                    {sendingTest ? <Spinner size="sm" /> : <Mail size={16} />}
+                                    Send Test
+                                </Button>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <Button onClick={() => setEditingTemplate(null)} variant="secondary" className="flex-1">
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleSave} className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700">
+                                    <Save size={18} />
+                                    Save Changes
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>

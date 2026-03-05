@@ -8,6 +8,18 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const InputGroup = ({ label, icon: Icon, required = false, children }: any) => (
+  <div className="mb-5">
+    <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center">
+      {Icon && <Icon size={16} className="mr-2 text-slate-400" />}
+      {label} {required && <span className="text-red-500 ml-1">*</span>}
+    </label>
+    {children}
+  </div>
+);
+
+const inputClasses = "w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all placeholder:text-slate-400 hover:border-blue-200";
+
 export const GuestBookingRequest = () => {
   const [step, setStep] = useState<'FORM' | 'SUCCESS'>('FORM');
   const [loading, setLoading] = useState(false);
@@ -110,18 +122,6 @@ export const GuestBookingRequest = () => {
       setLoading(false);
     }
   };
-
-  const InputGroup = ({ label, icon: Icon, required = false, children }: any) => (
-    <div className="mb-5">
-      <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center">
-        {Icon && <Icon size={16} className="mr-2 text-slate-400" />}
-        {label} {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-
-  const inputClasses = "w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all placeholder:text-slate-400 hover:border-blue-200";
 
   // --- Success View ---
   if (step === 'SUCCESS' && createdBooking) {
