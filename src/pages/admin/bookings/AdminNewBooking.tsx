@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Building2, User, Globe2, Clock, MapPin, Video,
+    Building2, Globe2, MapPin, Video,
     Search, ChevronLeft, Save, Plus, X, Phone, Mail,
     Calendar, Check, UserPlus, Info, CreditCard, ChevronRight, Zap
 } from 'lucide-react';
@@ -9,6 +9,7 @@ import { ClientService, InterpreterService, BookingService } from '../../../serv
 import { Client, Interpreter, ServiceType, BookingStatus } from '../../../types';
 import { useToast } from '../../../context/ToastContext';
 import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -136,8 +137,8 @@ export const AdminNewBooking = () => {
         }
     };
 
-    const labelClasses = "block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2 ml-1";
-    const inputClasses = "w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-slate-900 font-medium placeholder:text-slate-300";
+    const labelClasses = "block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mb-2 ml-1";
+    const inputClasses = "w-full p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-700 focus:outline-none transition-all text-slate-900 dark:text-white font-medium placeholder:text-slate-300 dark:placeholder:text-slate-600";
 
     const filteredClientsForModal = clients.filter(c =>
         c.companyName.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
@@ -150,35 +151,35 @@ export const AdminNewBooking = () => {
     );
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/admin/bookings')}
-                        className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+                        className="p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
                     >
                         <ChevronLeft size={20} />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Create Manual Booking</h1>
-                        <p className="text-slate-500 font-bold mt-1">Register a request received via email or phone</p>
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Create Manual Booking</h1>
+                        <p className="text-slate-500 dark:text-slate-400 font-medium">Register a request received via email or phone</p>
                     </div>
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 {/* Left Column: Client & Essentials */}
-                <div className="lg:col-span-7 space-y-8">
+                <div className="lg:col-span-7 space-y-6">
 
                     {/* Billing Information */}
-                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
+                    <Card padding="lg">
                         <div className="flex items-center gap-3 mb-8">
-                            <div className="bg-amber-50 p-3 rounded-2xl text-amber-600">
+                            <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-2xl text-amber-600 dark:text-amber-400">
                                 <CreditCard size={24} />
                             </div>
-                            <h2 className="text-xl font-black text-slate-900">Billing Information</h2>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white">Billing Information</h2>
                         </div>
                         <div>
                             <label className={labelClasses}>Purchase Order / Cost Code</label>
@@ -190,34 +191,34 @@ export const AdminNewBooking = () => {
                                 onChange={e => setFormData({ ...formData, costCode: e.target.value })}
                             />
                             {selectedClient && (
-                                <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase italic">
+                                <p className="mt-2 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase italic">
                                     Default format for this client: {selectedClient.defaultCostCodeType}
                                 </p>
                             )}
                         </div>
-                    </div>
+                    </Card>
 
                     {/* Client Selection */}
-                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
+                    <Card padding="lg">
                         <div className="flex items-center gap-3 mb-8">
-                            <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
+                            <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-2xl text-blue-600 dark:text-blue-400">
                                 <Building2 size={24} />
                             </div>
-                            <h2 className="text-xl font-black text-slate-900">Client Information</h2>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white">Client Information</h2>
                         </div>
 
-                        <div className="flex p-1 bg-slate-100 rounded-2xl mb-8">
+                        <div className="flex p-1 bg-slate-100 dark:bg-slate-800/50 rounded-2xl mb-8">
                             <button
                                 type="button"
                                 onClick={() => setClientSource('GUEST')}
-                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${clientSource === 'GUEST' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${clientSource === 'GUEST' ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                             >
                                 Guest / New Client
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setClientSource('EXISTING')}
-                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${clientSource === 'EXISTING' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${clientSource === 'EXISTING' ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                             >
                                 Existing Registered Client
                             </button>
@@ -232,26 +233,26 @@ export const AdminNewBooking = () => {
                                         <button
                                             type="button"
                                             onClick={() => setClientModalOpen(true)}
-                                            className="w-full flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-slate-100 hover:border-blue-200 transition-all text-left group"
+                                            className="w-full flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:border-blue-200 dark:hover:border-blue-900/50 transition-all text-left group"
                                         >
-                                            <Search className="text-slate-400 group-hover:text-blue-500 transition-colors" size={18} />
-                                            <span className="text-slate-400 font-medium group-hover:text-slate-600 transition-colors">Click to browse and select a client...</span>
+                                            <Search className="text-slate-400 dark:text-slate-600 group-hover:text-blue-500 transition-colors" size={18} />
+                                            <span className="text-slate-400 dark:text-slate-500 font-medium group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">Click to browse and select a client...</span>
                                         </button>
                                     ) : (
-                                        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                                        <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
                                             <div className="flex items-center gap-4">
                                                 <div className="bg-blue-600 p-2 rounded-xl text-white">
                                                     <Check size={16} />
                                                 </div>
                                                 <div>
-                                                    <div className="text-sm font-black text-blue-900">{selectedClient.companyName}</div>
-                                                    <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{selectedClient.contactPerson}</div>
+                                                    <div className="text-sm font-black text-blue-900 dark:text-blue-100">{selectedClient.companyName}</div>
+                                                    <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">{selectedClient.contactPerson}</div>
                                                 </div>
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => setSelectedClient(null)}
-                                                className="p-2 text-blue-400 hover:text-blue-600 transition-colors"
+                                                className="p-2 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 transition-colors"
                                             >
                                                 <X size={18} />
                                             </button>
@@ -318,15 +319,15 @@ export const AdminNewBooking = () => {
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </Card>
 
                     {/* Service Details */}
-                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
+                    <Card padding="lg">
                         <div className="flex items-center gap-3 mb-8">
-                            <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-2xl text-emerald-600 dark:text-emerald-400">
                                 <Globe2 size={24} />
                             </div>
-                            <h2 className="text-xl font-black text-slate-900">Service Logistics</h2>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white">Service Logistics</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -404,7 +405,7 @@ export const AdminNewBooking = () => {
                                             key={gender}
                                             type="button"
                                             onClick={() => setFormData({ ...formData, genderPreference: gender as any })}
-                                            className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${formData.genderPreference === gender ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                            className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${formData.genderPreference === gender ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'}`}
                                         >
                                             {gender}
                                         </button>
@@ -413,13 +414,13 @@ export const AdminNewBooking = () => {
                             </div>
                         </div>
 
-                        <div className="mt-8 pt-8 border-t border-slate-50">
+                        <div className="mt-8 pt-8 border-t border-slate-50 dark:border-slate-800">
                             <label className={labelClasses}>Meeting Method</label>
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     type="button"
                                     onClick={() => setFormData({ ...formData, locationType: 'ONSITE' })}
-                                    className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONSITE' ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                    className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONSITE' ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'}`}
                                 >
                                     <MapPin size={24} className="mb-2" />
                                     <span className="text-[10px] font-black uppercase tracking-widest">Face to Face</span>
@@ -427,7 +428,7 @@ export const AdminNewBooking = () => {
                                 <button
                                     type="button"
                                     onClick={() => setFormData({ ...formData, locationType: 'ONLINE' })}
-                                    className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONLINE' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                    className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONLINE' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'}`}
                                 >
                                     <Video size={24} className="mb-2" />
                                     <span className="text-[10px] font-black uppercase tracking-widest">Remote / Video</span>
@@ -470,14 +471,14 @@ export const AdminNewBooking = () => {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </Card>
                 </div>
 
                 {/* Right Column: Assignment & Notes */}
-                <div className="lg:col-span-5 space-y-8">
+                <div className="lg:col-span-5 space-y-6">
 
                     {/* Internal Notes */}
-                    <div className="bg-slate-900 rounded-[2.5rem] p-8 lg:p-10 text-white shadow-2xl shadow-slate-900/20">
+                    <div className="bg-slate-900 dark:bg-blue-950 rounded-[2.5rem] p-8 lg:p-10 text-white shadow-2xl shadow-slate-900/20">
                         <div className="flex items-center gap-3 mb-8">
                             <div className="bg-white/10 p-3 rounded-2xl text-white">
                                 <Info size={24} />
@@ -493,22 +494,22 @@ export const AdminNewBooking = () => {
                     </div>
 
                     {/* Interpreter Assignment */}
-                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-110 transition-transform duration-700"></div>
+                    <Card padding="lg" className="relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 dark:bg-amber-900/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-110 transition-transform duration-700"></div>
 
                         <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-8">
-                                <div className="bg-amber-50 p-3 rounded-2xl text-amber-600">
+                                <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-2xl text-amber-600 dark:text-amber-400">
                                     <UserPlus size={24} />
                                 </div>
-                                <h2 className="text-xl font-black text-slate-900">Immediate Assignment</h2>
+                                <h2 className="text-xl font-black text-slate-900 dark:text-white">Immediate Assignment</h2>
                             </div>
 
                             <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600" size={18} />
                                 <input
                                     type="text"
-                                    className={inputClasses + " pl-12 bg-slate-50"}
+                                    className={inputClasses + " pl-12 bg-slate-50 dark:bg-slate-800/50"}
                                     placeholder="Search for an interpreter..."
                                     value={searchingInterpreter}
                                     onChange={(e) => setSearchingInterpreter(e.target.value)}
@@ -516,7 +517,7 @@ export const AdminNewBooking = () => {
                             </div>
 
                             {searchingInterpreter && !selectedInterpreter && (
-                                <div className="mt-4 border border-slate-100 rounded-2xl max-h-60 overflow-y-auto p-2 bg-slate-50/50">
+                                <div className="mt-4 border border-slate-100 dark:border-slate-800 rounded-2xl max-h-60 overflow-y-auto p-2 bg-slate-50/50 dark:bg-slate-900/50">
                                     {filteredInterpreters.map(i => (
                                         <button
                                             key={i.id}
@@ -525,35 +526,35 @@ export const AdminNewBooking = () => {
                                                 setSelectedInterpreter(i);
                                                 setSearchingInterpreter('');
                                             }}
-                                            className="w-full flex items-center justify-between p-4 hover:bg-white rounded-xl transition-all text-left shadow-sm shadow-transparent hover:shadow-slate-200/50 mb-1"
+                                            className="w-full flex items-center justify-between p-4 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all text-left shadow-sm shadow-transparent hover:shadow-slate-200/50 dark:hover:shadow-none mb-1"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-black text-sm">
+                                                <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center font-black text-sm">
                                                     {i.name.charAt(0)}
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <div className="text-sm font-bold text-slate-900">{i.name}</div>
+                                                        <div className="text-sm font-bold text-slate-900 dark:text-white">{i.name}</div>
                                                         {i.acceptsDirectAssignment && (
                                                             <Zap size={12} className="text-amber-500 fill-amber-500 animate-pulse" />
                                                         )}
                                                     </div>
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase">{i.languages.slice(0, 2).join(', ')}</div>
+                                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{i.languages.slice(0, 2).join(', ')}</div>
                                                 </div>
                                             </div>
-                                            <Plus size={16} className="text-slate-300" />
+                                            <Plus size={16} className="text-slate-300 dark:text-slate-700" />
                                         </button>
                                     ))}
                                     {filteredInterpreters.length === 0 && (
                                         <div className="p-10 text-center">
-                                            <p className="text-xs text-slate-400 font-bold">No matches found</p>
+                                            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">No matches found</p>
                                         </div>
                                     )}
                                 </div>
                             )}
 
                             {selectedInterpreter && (
-                                <div className="mt-6 flex items-center justify-between p-6 bg-slate-900 text-white rounded-[2rem] shadow-xl shadow-slate-200">
+                                <div className="mt-6 flex items-center justify-between p-6 bg-slate-900 dark:bg-slate-950 text-white rounded-[2rem] shadow-xl shadow-slate-200 dark:shadow-none">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white font-black text-lg">
                                             {selectedInterpreter.name.charAt(0)}
@@ -565,7 +566,7 @@ export const AdminNewBooking = () => {
                                                     <Zap size={14} className="text-amber-400 fill-amber-400" />
                                                 )}
                                             </div>
-                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Assigned Directly</div>
+                                            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Assigned Directly</div>
                                         </div>
                                     </div>
                                     <button
@@ -579,24 +580,24 @@ export const AdminNewBooking = () => {
                             )}
 
                             {!selectedInterpreter && !searchingInterpreter && (
-                                <div className="mt-8 flex items-start gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                                    <div className="text-blue-500 mt-1">
+                                <div className="mt-8 flex items-start gap-4 p-6 bg-slate-50 dark:bg-slate-900/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                                    <div className="text-blue-500 dark:text-blue-400 mt-1">
                                         <Info size={16} />
                                     </div>
-                                    <p className="text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-wider">
-                                        If left empty, this job will be created as a <span className="text-blue-600">Pending Request</span> and sent to the general bidding pool.
+                                    <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed uppercase tracking-wider">
+                                        If left empty, this job will be created as a <span className="text-blue-600 dark:text-blue-400">Pending Request</span> and sent to the general bidding pool.
                                     </p>
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </Card>
 
                     {/* Submit Action */}
                     <div className="pt-4">
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full h-20 bg-blue-600 text-white rounded-[2.5rem] font-black uppercase tracking-[0.2em] text-[12px] shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-4 group"
+                            className="w-full h-20 bg-blue-600 text-white rounded-[2.5rem] font-black uppercase tracking-[0.2em] text-[12px] shadow-2xl shadow-blue-200 dark:shadow-none hover:bg-blue-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-4 group"
                         >
                             {loading ? (
                                 <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
@@ -607,7 +608,7 @@ export const AdminNewBooking = () => {
                                 </>
                             )}
                         </button>
-                        <p className="text-center mt-6 text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                        <p className="text-center mt-6 text-[9px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em]">
                             Validated Secure Submission • Lingland V3
                         </p>
                     </div>
@@ -629,7 +630,7 @@ export const AdminNewBooking = () => {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input
                             type="text"
-                            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-900 font-medium placeholder:text-slate-400"
+                            className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white font-medium placeholder:text-slate-400"
                             placeholder="Search by company name or contact person..."
                             value={clientSearchQuery}
                             onChange={(e) => setClientSearchQuery(e.target.value)}
@@ -648,31 +649,31 @@ export const AdminNewBooking = () => {
                                         setClientModalOpen(false);
                                         setClientSearchQuery('');
                                     }}
-                                    className="w-full flex items-center gap-4 p-4 bg-white hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-xl transition-all text-left group"
+                                    className="w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800 rounded-xl transition-all text-left group"
                                 >
-                                    <div className="bg-slate-100 group-hover:bg-blue-100 p-3 rounded-lg text-slate-400 group-hover:text-blue-600 transition-colors">
+                                    <div className="bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 p-3 rounded-lg text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                         <Building2 size={20} />
                                     </div>
                                     <div className="flex-1">
-                                        <div className="text-sm font-bold text-slate-900 group-hover:text-blue-900 transition-colors">{c.companyName}</div>
-                                        <div className="text-xs text-slate-500 mt-0.5">{c.contactPerson}</div>
-                                        <div className="text-[10px] text-slate-400 font-medium mt-1">{c.email}</div>
+                                        <div className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-900 dark:group-hover:text-blue-100 transition-colors">{c.companyName}</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{c.contactPerson}</div>
+                                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1">{c.email}</div>
                                     </div>
-                                    <ChevronRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                    <ChevronRight size={18} className="text-slate-300 dark:text-slate-700 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
                                 </button>
                             ))
                         ) : (
                             <div className="text-center py-12">
-                                <Building2 size={48} className="mx-auto text-slate-300 mb-4" />
-                                <p className="text-slate-500 font-medium">No clients found</p>
-                                <p className="text-xs text-slate-400 mt-1">Try adjusting your search query</p>
+                                <Building2 size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-4" />
+                                <p className="text-slate-500 dark:text-slate-400 font-medium">No clients found</p>
+                                <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Try adjusting your search query</p>
                             </div>
                         )}
                     </div>
 
                     {filteredClientsForModal.length > 0 && (
-                        <div className="pt-3 border-t border-slate-100">
-                            <p className="text-xs text-slate-400 text-center">
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                            <p className="text-xs text-slate-400 dark:text-slate-600 text-center">
                                 Showing {filteredClientsForModal.length} of {clients.length} registered clients
                             </p>
                         </div>
