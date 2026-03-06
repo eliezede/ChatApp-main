@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookings } from '../../hooks/useBookings';
 import { useAuth } from '../../context/AuthContext';
 import { useBookingViews } from '../../hooks/useBookingViews';
 import { StatusBadge } from '../../components/StatusBadge';
-import { Search, MapPin, Video, Plus, Clock, UserPlus, Building2, Globe2, User, UserCheck, X, Mail, Phone, Calendar, Info, LayoutList, TableProperties, UserMinus, PanelLeftClose, PanelLeftOpen, Pencil, Eye, EyeOff, Filter, SortAsc, Layers, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Search, MapPin, Video, Plus, Clock, UserPlus, Building2, Globe2, User, UserCheck, X, Mail, Phone, Calendar, Info, LayoutList, TableProperties, UserMinus, PanelLeftClose, PanelLeftOpen, Pencil, Eye, EyeOff, Filter, SortAsc, Layers, ChevronDown, ChevronUp, Trash2, MoreVertical, ExternalLink, Lock, Globe, Copy, CheckCircle2, AlertCircle, CreditCard } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Alert } from '../../components/ui/Alert';
@@ -15,7 +15,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Interpreter, Booking, BookingStatus, BookingColumnField, ALL_BOOKING_COLUMNS, ViewFilterRule, ViewSortRule, GroupableField, FilterableField, SortableField } from '../../types';
 
 export const AdminBookings = () => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const { bookings = [], loading, error, refresh } = useBookings();
   const { views, activeView, activeViewId, setActiveViewId, saveCustomView, deleteCustomView, updateCustomView } = useBookingViews(user?.id || '');
 
@@ -32,12 +32,56 @@ export const AdminBookings = () => {
   const [assignLoading, setAssignLoading] = useState(false);
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  // Quick-view modal
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [modalBooking, setModalBooking] = useState<Booking | null>(null);
+  const [statusChanging, setStatusChanging] = useState(false);
+  // Right-click context menu
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; booking: Booking } | null>(null);
+  const [isGlobalSettingsModalOpen, setIsGlobalSettingsModalOpen] = useState(false);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     ClientService.getAll();
     loadInterpreters();
   }, []);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    if (contextMenu) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [contextMenu]);
+
+  const openBookingModal = (booking: Booking) => {
+    setModalBooking(booking);
+    setIsBookingModalOpen(true);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, booking: Booking) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, booking });
+  };
+
+  const handleQuickStatusChange = async (booking: Booking, status: BookingStatus) => {
+    setStatusChanging(true);
+    try {
+      await RawBookingService.updateStatus(booking.id, status);
+      refresh();
+      if (modalBooking?.id === booking.id) setModalBooking((prev: Booking | null) => prev ? { ...prev, status } : null);
+    } catch (e) { alert('Failed to update status'); }
+    finally { setStatusChanging(false); setContextMenu(null); }
+  };
+
+  const handleCopyRef = (ref: string) => {
+    navigator.clipboard.writeText(ref);
+    setContextMenu(null);
+  };
 
   const loadInterpreters = async () => {
     try {
@@ -94,7 +138,7 @@ export const AdminBookings = () => {
 
   const safe = (val: unknown) => String(val ?? "").toLowerCase();
 
-  const filteredBookings = (bookings ?? []).filter(b => {
+  const filteredBookings = (bookings ?? []).filter((b: Booking) => {
     const q = safe(filter);
     const matchesSearch = !q || (
       safe(b?.clientName).includes(q) ||
@@ -144,7 +188,7 @@ export const AdminBookings = () => {
       }
     }
     return true;
-  }).sort((a, b) => {
+  }).sort((a: Booking, b: Booking) => {
     if (activeView.sortBy === 'dateDesc') {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     }
@@ -277,7 +321,7 @@ export const AdminBookings = () => {
   };
 
   const toggleGroup = (key: string) => {
-    setCollapsedGroups(prev => {
+    setCollapsedGroups((prev: Set<string>) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
@@ -287,7 +331,7 @@ export const AdminBookings = () => {
   // Build grouped structure when groupBy is active
   const groupedBookings: { key: string; bookings: Booking[] }[] | null = activeView.groupBy
     ? Object.entries(
-      filteredBookings.reduce((acc: Record<string, Booking[]>, b) => {
+      filteredBookings.reduce((acc: Record<string, Booking[]>, b: Booking) => {
         const k = getGroupKey(b, activeView.groupBy!);
         if (!acc[k]) acc[k] = [];
         acc[k].push(b);
@@ -308,13 +352,24 @@ export const AdminBookings = () => {
                 Views
               </h3>
             )}
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-200 border border-slate-200 rounded-lg shadow-sm transition-colors"
-              title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            >
-              {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-            </button>
+            <div className="flex items-center gap-1">
+              {isSidebarOpen && isSuperAdmin && (
+                <button
+                  onClick={() => setIsGlobalSettingsModalOpen(true)}
+                  className="p-1.5 text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg shadow-sm transition-colors"
+                  title="Global View Settings"
+                >
+                  <Layers size={18} />
+                </button>
+              )}
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-200 border border-slate-200 rounded-lg shadow-sm transition-colors"
+                title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              >
+                {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+              </button>
+            </div>
           </div>
           <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
             {views.map(view => (
@@ -389,18 +444,18 @@ export const AdminBookings = () => {
           <Button onClick={() => navigate('/admin/bookings/new')} icon={Plus}>Create Booking</Button>
         </div>
 
-        <Card padding="sm" className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+        <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-2">
+          <div className="flex-1 relative w-full h-10">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
               placeholder="Search clients, ref or status..."
-              className="pl-10 pr-4 py-2 border-none w-full focus:ring-0 outline-none text-sm bg-transparent text-gray-900"
+              className="pl-10 pr-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900"
               value={filter}
               onChange={e => setFilter(e.target.value)}
             />
           </div>
-        </Card>
+        </div>
 
         {/* View Toolbar */}
         {(hasActiveFilters || hiddenCount > 0 || hasGroup || hasSort) && (
@@ -447,20 +502,20 @@ export const AdminBookings = () => {
             onAction={filter ? () => setFilter('') : refresh}
           />
         ) : (
-          <Card padding="none">
+          <Card padding="none" className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full text-left border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ref / Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Interpreter</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-right"></th>
+                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Ref / Date</th>
+                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Client</th>
+                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
+                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Interpreter</th>
+                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-right"></th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-slate-100">
                   {groupedBookings ? (
                     // --- GROUPED RENDERING ---
                     groupedBookings.flatMap(({ key, bookings: groupRows }) => {
@@ -472,13 +527,13 @@ export const AdminBookings = () => {
                           className="bg-slate-50 hover:bg-slate-100 cursor-pointer select-none transition-colors"
                           onClick={() => toggleGroup(key)}
                         >
-                          <td colSpan={6} className="px-6 py-2.5">
-                            <div className="flex items-center gap-3">
+                          <td colSpan={6} className="px-4 py-2">
+                            <div className="flex items-center gap-2">
                               <span className="text-slate-400">
-                                {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                                {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
                               </span>
-                              <span className="text-sm font-black text-slate-700 uppercase tracking-wide">{key}</span>
-                              <span className="ml-auto text-xs font-semibold text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{key}</span>
+                              <span className="ml-auto text-xs font-medium text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
                                 {groupRows.length} job{groupRows.length !== 1 ? 's' : ''}
                               </span>
                             </div>
@@ -488,87 +543,94 @@ export const AdminBookings = () => {
                         ...(isCollapsed ? [] : groupRows.map((booking) => (
                           <tr
                             key={booking.id}
-                            className="hover:bg-gray-50 transition-colors cursor-pointer group"
-                            onClick={() => navigate(`/admin/bookings/${booking.id}`)}
+                            className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                            onClick={() => openBookingModal(booking)}
+                            onContextMenu={(e) => handleContextMenu(e, booking)}
                           >
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center gap-3">
-                                <div className="bg-blue-50 p-2 rounded-lg text-blue-600 hidden sm:block">
-                                  <Clock size={20} />
+                                <div className="bg-blue-50 p-1.5 rounded-lg text-blue-600 hidden sm:block border border-blue-100 shadow-sm">
+                                  <Clock size={16} />
                                 </div>
                                 <div>
-                                  <div className="text-lg font-black text-gray-900 leading-none">
+                                  <div className="text-sm font-bold text-slate-900 leading-none">
                                     {new Date(booking.date).toLocaleDateString([], { day: '2-digit', month: 'short' })}
                                   </div>
-                                  <div className="text-sm font-bold text-blue-600 mt-0.5">{booking.startTime}</div>
-                                  <div className="text-[10px] font-mono text-gray-400 uppercase mt-1">Ref: {booking.bookingRef || 'TBD'}</div>
+                                  <div className="text-xs font-bold text-blue-600 mt-1">{booking.startTime}</div>
+                                  <div className="text-[10px] font-medium text-slate-400 uppercase mt-0.5">Ref: {booking.bookingRef || 'TBD'}</div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center">
-                                <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center mr-3 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                                  <Building2 size={16} />
+                                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center mr-3 text-slate-500 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                                  <Building2 size={14} />
                                 </div>
                                 <div>
-                                  <div className="text-sm font-bold text-gray-900">{booking.guestContact?.organisation || booking.clientName}</div>
-                                  <div className="text-xs text-gray-500">{booking.guestContact?.name || 'Main Contact'}</div>
+                                  <div className="text-sm font-bold text-slate-900">{booking.guestContact?.organisation || booking.clientName}</div>
+                                  <div className="text-xs text-slate-500">{booking.guestContact?.name || 'Main Contact'}</div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <div className="space-y-1">
-                                <div className="flex items-center text-sm font-bold text-gray-800">
-                                  <Globe2 size={14} className="mr-1.5 text-blue-500" />
+                                <div className="flex items-center text-sm font-bold text-slate-800">
+                                  <Globe2 size={12} className="mr-1.5 text-blue-500" />
                                   {booking.languageFrom} &rarr; {booking.languageTo}
                                 </div>
-                                <div className="flex items-center text-xs text-gray-500">
+                                <div className="flex items-center text-xs text-slate-500">
                                   {booking.locationType === 'ONLINE' ? <Video size={12} className="mr-1.5 text-indigo-500" /> : <MapPin size={12} className="mr-1.5 text-red-500" />}
                                   {booking.serviceType}
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               {booking.interpreterId ? (
                                 <div className="flex items-center group/int">
                                   <button
                                     onClick={(e) => handleInterpreterClick(e, booking.interpreterId!)}
-                                    className="flex items-center hover:bg-slate-100 p-2 rounded-xl transition-all text-left border border-transparent hover:border-slate-200"
+                                    className="flex items-center hover:bg-slate-100 px-2 py-1.5 rounded-lg transition-all text-left border border-transparent hover:border-slate-200 max-w-[160px]"
                                   >
-                                    <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-lg flex items-center justify-center mr-2.5 shadow-sm">
-                                      <UserCheck size={16} />
+                                    <div className="w-6 h-6 bg-emerald-50 text-emerald-600 rounded flex items-center justify-center mr-2 shadow-sm border border-emerald-100 shrink-0">
+                                      <UserCheck size={12} />
                                     </div>
-                                    <div>
-                                      <div className="text-[10px] text-gray-400 font-black uppercase leading-none mb-0.5">Assigned</div>
-                                      <div className="text-xs font-bold text-gray-900 leading-tight truncate max-w-[120px]">
-                                        {booking.interpreterName || 'View Profile'}
+                                    <div className="min-w-0">
+                                      <div className="text-[9px] text-slate-400 font-bold uppercase leading-none mb-0.5">Assigned</div>
+                                      <div className="text-xs font-bold text-slate-900 leading-tight truncate">
+                                        {booking.interpreterName || 'Profile'}
                                       </div>
                                     </div>
                                   </button>
                                   <button
                                     onClick={(e) => handleUnassign(e, booking.id)}
                                     disabled={unassigningId === booking.id}
-                                    className="ml-2 p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover/int:opacity-100"
+                                    className="ml-1 p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-md transition-all opacity-0 group-hover/int:opacity-100 shrink-0 border border-transparent hover:border-red-100"
                                     title="Unassign Interpreter"
                                   >
-                                    {unassigningId === booking.id ? <Spinner size="sm" /> : <X size={14} />}
+                                    {unassigningId === booking.id ? <Spinner size="sm" /> : <X size={12} />}
                                   </button>
                                 </div>
                               ) : (
                                 <button
                                   onClick={(e) => handleAssignClick(e, booking)}
-                                  className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[11px] font-black uppercase hover:bg-amber-100 transition-all border-2 border-amber-100/50 hover:border-amber-200 shadow-sm"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold uppercase hover:bg-amber-100 transition-all border border-amber-200 shadow-sm"
                                 >
-                                  <UserPlus size={15} />
+                                  <UserPlus size={12} />
                                   Assign
                                 </button>
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <StatusBadge status={booking.status} />
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <Button variant="ghost" size="sm">Manage</Button>
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleContextMenu(e, booking); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-all"
+                                title="Quick actions"
+                              >
+                                <MoreVertical size={16} />
+                              </button>
                             </td>
                           </tr>
                         )))
@@ -579,87 +641,94 @@ export const AdminBookings = () => {
                     filteredBookings.map((booking) => (
                       <tr
                         key={booking.id}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer group"
-                        onClick={() => navigate(`/admin/bookings/${booking.id}`)}
+                        className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                        onClick={() => openBookingModal(booking)}
+                        onContextMenu={(e) => handleContextMenu(e, booking)}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="bg-blue-50 p-2 rounded-lg text-blue-600 hidden sm:block">
-                              <Clock size={20} />
+                            <div className="bg-blue-50 p-1.5 rounded-lg text-blue-600 hidden sm:block border border-blue-100 shadow-sm">
+                              <Clock size={16} />
                             </div>
                             <div>
-                              <div className="text-lg font-black text-gray-900 leading-none">
+                              <div className="text-sm font-bold text-slate-900 leading-none">
                                 {new Date(booking.date).toLocaleDateString([], { day: '2-digit', month: 'short' })}
                               </div>
-                              <div className="text-sm font-bold text-blue-600 mt-0.5">{booking.startTime}</div>
-                              <div className="text-[10px] font-mono text-gray-400 uppercase mt-1">Ref: {booking.bookingRef || 'TBD'}</div>
+                              <div className="text-xs font-bold text-blue-600 mt-1">{booking.startTime}</div>
+                              <div className="text-[10px] font-medium text-slate-400 uppercase mt-0.5">Ref: {booking.bookingRef || 'TBD'}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center mr-3 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                              <Building2 size={16} />
+                            <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center mr-3 text-slate-500 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                              <Building2 size={14} />
                             </div>
                             <div>
-                              <div className="text-sm font-bold text-gray-900">{booking.guestContact?.organisation || booking.clientName}</div>
-                              <div className="text-xs text-gray-500">{booking.guestContact?.name || 'Main Contact'}</div>
+                              <div className="text-sm font-bold text-slate-900">{booking.guestContact?.organisation || booking.clientName}</div>
+                              <div className="text-xs text-slate-500">{booking.guestContact?.name || 'Main Contact'}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="space-y-1">
-                            <div className="flex items-center text-sm font-bold text-gray-800">
-                              <Globe2 size={14} className="mr-1.5 text-blue-500" />
+                            <div className="flex items-center text-sm font-bold text-slate-800">
+                              <Globe2 size={12} className="mr-1.5 text-blue-500" />
                               {booking.languageFrom} &rarr; {booking.languageTo}
                             </div>
-                            <div className="flex items-center text-xs text-gray-500">
+                            <div className="flex items-center text-xs text-slate-500">
                               {booking.locationType === 'ONLINE' ? <Video size={12} className="mr-1.5 text-indigo-500" /> : <MapPin size={12} className="mr-1.5 text-red-500" />}
                               {booking.serviceType}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           {booking.interpreterId ? (
                             <div className="flex items-center group/int">
                               <button
                                 onClick={(e) => handleInterpreterClick(e, booking.interpreterId!)}
-                                className="flex items-center hover:bg-slate-100 p-2 rounded-xl transition-all text-left border border-transparent hover:border-slate-200"
+                                className="flex items-center hover:bg-slate-100 px-2 py-1.5 rounded-lg transition-all text-left border border-transparent hover:border-slate-200 max-w-[160px]"
                               >
-                                <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-lg flex items-center justify-center mr-2.5 shadow-sm">
-                                  <UserCheck size={16} />
+                                <div className="w-6 h-6 bg-emerald-50 text-emerald-600 rounded flex items-center justify-center mr-2 shadow-sm border border-emerald-100 shrink-0">
+                                  <UserCheck size={12} />
                                 </div>
-                                <div>
-                                  <div className="text-[10px] text-gray-400 font-black uppercase leading-none mb-0.5">Assigned</div>
-                                  <div className="text-xs font-bold text-gray-900 leading-tight truncate max-w-[120px]">
-                                    {booking.interpreterName || 'View Profile'}
+                                <div className="min-w-0">
+                                  <div className="text-[9px] text-slate-400 font-bold uppercase leading-none mb-0.5">Assigned</div>
+                                  <div className="text-xs font-bold text-slate-900 leading-tight truncate">
+                                    {booking.interpreterName || 'Profile'}
                                   </div>
                                 </div>
                               </button>
                               <button
                                 onClick={(e) => handleUnassign(e, booking.id)}
                                 disabled={unassigningId === booking.id}
-                                className="ml-2 p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover/int:opacity-100"
+                                className="ml-1 p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-md transition-all opacity-0 group-hover/int:opacity-100 shrink-0 border border-transparent hover:border-red-100"
                                 title="Unassign Interpreter"
                               >
-                                {unassigningId === booking.id ? <Spinner size="sm" /> : <X size={14} />}
+                                {unassigningId === booking.id ? <Spinner size="sm" /> : <X size={12} />}
                               </button>
                             </div>
                           ) : (
                             <button
                               onClick={(e) => handleAssignClick(e, booking)}
-                              className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[11px] font-black uppercase hover:bg-amber-100 transition-all border-2 border-amber-100/50 hover:border-amber-200 shadow-sm"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold uppercase hover:bg-amber-100 transition-all border border-amber-200 shadow-sm"
                             >
-                              <UserPlus size={15} />
+                              <UserPlus size={12} />
                               Assign
                             </button>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <StatusBadge status={booking.status} />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <Button variant="ghost" size="sm">Manage</Button>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleContextMenu(e, booking); }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-all"
+                            title="Quick actions"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -860,17 +929,17 @@ export const AdminBookings = () => {
         >
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={14} />
               <input
                 type="text"
-                placeholder="Buscar por nome ou idioma..."
-                className="w-full pl-10 pr-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-sm"
+                placeholder="Search by name or language..."
+                className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none text-sm shadow-sm transition-all"
                 value={assignSearch}
                 onChange={e => setAssignSearch(e.target.value)}
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-2 max-h-[350px] overflow-y-auto pr-1">
               {allInterpreters
                 .filter(i =>
                   i.name.toLowerCase().includes(assignSearch.toLowerCase()) ||
@@ -879,27 +948,28 @@ export const AdminBookings = () => {
                 .map(interpreter => (
                   <div
                     key={interpreter.id}
-                    className="flex items-center justify-between p-3 border rounded-xl hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between p-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm bg-white"
                   >
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mr-3 font-black text-sm">
+                      <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mr-3 font-bold text-sm shadow-sm border border-blue-100">
                         {interpreter.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900 text-sm">{interpreter.name}</p>
-                        <p className="text-[10px] text-gray-500">{interpreter.languages.slice(0, 3).join(', ')}</p>
+                        <p className="font-bold text-slate-900 text-sm leading-tight">{interpreter.name}</p>
+                        <p className="text-[10px] font-medium text-slate-500 mt-0.5">{interpreter.languages.slice(0, 3).join(', ')}</p>
                       </div>
                     </div>
                     <Button
                       size="sm"
                       onClick={() => confirmAssign(interpreter)}
                       isLoading={assignLoading}
+                      className="text-xs px-3 py-1 h-7"
                     >
                       Assign
                     </Button>
                   </div>
                 ))}
-              {allInterpreters.length === 0 && <p className="text-center text-gray-400 py-4 text-sm font-medium">Nenhum intérprete encontrado.</p>}
+              {allInterpreters.length === 0 && <p className="text-center text-slate-400 py-4 text-sm font-medium">No interpreters found.</p>}
             </div>
           </div>
         </Modal>
@@ -911,71 +981,285 @@ export const AdminBookings = () => {
           title="Interpreter Profile"
         >
           {selectedInterpreter && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <div className="w-16 h-16 bg-indigo-600 text-white rounded-full flex items-center justify-center text-2xl font-black">
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div className="w-12 h-12 bg-blue-600 text-white rounded-lg flex items-center justify-center text-xl font-black shadow-sm">
                   {selectedInterpreter.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-gray-900">{selectedInterpreter.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold uppercase">{selectedInterpreter.status}</span>
-                    {selectedInterpreter.isAvailable && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase">Available</span>}
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">{selectedInterpreter.name}</h3>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase tracking-wider">{selectedInterpreter.status}</span>
+                    {selectedInterpreter.isAvailable && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-md text-[9px] font-bold uppercase tracking-wider">Available</span>}
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase">Contact Info</label>
-                    <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
-                      <Mail size={14} /> {selectedInterpreter.email}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
-                      <Phone size={14} /> {selectedInterpreter.phone}
-                    </div>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                      <Mail size={10} /> Contact Info
+                    </label>
+                    <div className="text-[13px] font-medium text-slate-700 truncate">{selectedInterpreter.email}</div>
+                    <div className="text-[13px] font-medium text-slate-700 mt-1">{selectedInterpreter.phone}</div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase">DBS Security</label>
-                    <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
-                      <Calendar size={14} /> Expires: {selectedInterpreter.dbsExpiry}
-                    </div>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                      <Calendar size={10} /> DBS Security
+                    </label>
+                    <div className="text-[13px] font-medium text-slate-700">Expires: {selectedInterpreter.dbsExpiry}</div>
                   </div>
                 </div>
-                <div className="space-y-3">
+
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase">Languages</label>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Languages</label>
+                    <div className="flex flex-wrap gap-1.5">
                       {selectedInterpreter.languages.map(l => (
-                        <span key={l} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-medium">{l}</span>
+                        <span key={l} className="px-2 py-0.5 bg-white border border-slate-200 text-slate-600 rounded-md text-[10px] font-bold shadow-sm">{l}</span>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase">Regions</label>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Regions</label>
+                    <div className="flex flex-wrap gap-1.5">
                       {selectedInterpreter.regions.map(r => (
-                        <span key={r} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-medium">{r}</span>
+                        <span key={r} className="px-2 py-0.5 bg-white border border-slate-200 text-slate-600 rounded-md text-[10px] font-bold shadow-sm">{r}</span>
                       ))}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 border-t flex justify-end gap-3">
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => navigate(`/admin/interpreters/${selectedInterpreter.id}`)}
+                  className="text-xs px-3 py-1.5"
                 >
                   View Full Profile
                 </Button>
-                <Button onClick={() => setIsInterpreterModalOpen(false)}>Close</Button>
+                <Button onClick={() => setIsInterpreterModalOpen(false)} className="text-xs px-3 py-1.5">Close</Button>
               </div>
             </div>
           )}
         </Modal>
+
+        {/* Booking Quick-View Modal */}
+        <Modal
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          title="Booking Details"
+          maxWidth="4xl"
+        >
+          {modalBooking && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                {/* Header Information */}
+                <div className="flex items-start justify-between bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <div className="flex gap-4">
+                    <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 text-blue-600">
+                      <Clock size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Schedule</h3>
+                      <div className="text-xl font-black text-slate-900 leading-tight">
+                        {new Date(modalBooking.date).toLocaleDateString([], { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                      </div>
+                      <div className="text-lg font-bold text-blue-600 mt-1">
+                        {modalBooking.startTime} &ndash; {modalBooking.endTime} ({modalBooking.durationMinutes} min)
+                      </div>
+                    </div>
+                  </div>
+                  <StatusBadge status={modalBooking.status} size="lg" />
+                </div>
+
+                {/* Core Details Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Building2 size={16} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Client</span>
+                    </div>
+                    <div className="font-bold text-slate-900">{modalBooking.clientName}</div>
+                    <div className="text-xs text-slate-500">
+                      Organisation: {modalBooking.guestContact?.organisation || 'N/A'}
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Globe2 size={16} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Service</span>
+                    </div>
+                    <div className="font-bold text-slate-900">
+                      {modalBooking.languageFrom} &rarr; {modalBooking.languageTo}
+                    </div>
+                    <div className="flex items-center text-xs text-slate-500 gap-1.5">
+                      {modalBooking.locationType === 'ONLINE' ? <Video size={14} className="text-indigo-500" /> : <MapPin size={14} className="text-red-500" />}
+                      {modalBooking.serviceType} ({modalBooking.locationType})
+                    </div>
+                  </div>
+                </div>
+
+                {/* Patient/Guest Info */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-2 text-slate-400 mb-4">
+                    <User size={16} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Patient / Guest Details</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Name</div>
+                      <div className="text-sm font-bold text-slate-800">{modalBooking.guestContact?.name || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Contact</div>
+                      <div className="text-sm font-bold text-slate-800">{modalBooking.guestContact?.phone || modalBooking.guestContact?.email || 'N/A'}</div>
+                    </div>
+                    {modalBooking.patientReference && (
+                      <div className="col-span-2">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Patient Reference</div>
+                        <div className="text-sm font-bold text-slate-800 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 flex items-center justify-between">
+                          {modalBooking.patientReference}
+                          <button onClick={() => handleCopyRef(modalBooking.patientReference!)} className="text-blue-500 hover:text-blue-700">
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Admin Notes */}
+                {modalBooking.adminNotes && (
+                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                    <div className="flex items-center gap-2 text-amber-600 mb-2">
+                      <Info size={16} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Admin Notes</span>
+                    </div>
+                    <p className="text-sm text-amber-800 leading-relaxed font-medium">{modalBooking.adminNotes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Sidebar */}
+              <div className="space-y-4">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 h-full">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">Operational Actions</h4>
+
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full justify-start text-xs font-bold"
+                      onClick={() => navigate(`/admin/bookings/${modalBooking.id}`)}
+                      icon={ExternalLink}
+                    >
+                      Open Full Edit Page
+                    </Button>
+
+                    <div className="pt-4 border-t border-slate-200 mt-4 space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Change Status</p>
+                      {[BookingStatus.BOOKED, BookingStatus.INCOMING, BookingStatus.CANCELLED].map(status => (
+                        <button
+                          key={status}
+                          disabled={statusChanging || modalBooking.status === status}
+                          onClick={() => handleQuickStatusChange(modalBooking, status)}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all border ${modalBooking.status === status
+                            ? 'bg-blue-600 border-blue-700 text-white shadow-md'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:text-blue-600'
+                            }`}
+                        >
+                          {statusChanging && modalBooking.status !== status ? 'Updating...' : `Mark as ${status}`}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-200 mt-4 space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Interpreter</p>
+                      {modalBooking.interpreterId ? (
+                        <div className="bg-white p-3 rounded-xl border border-slate-200">
+                          <div className="text-xs font-bold text-slate-900">{modalBooking.interpreterName}</div>
+                          <button
+                            onClick={(e) => handleUnassign(e, modalBooking.id)}
+                            className="text-[10px] font-bold text-red-600 hover:text-red-800 mt-1"
+                          >
+                            Unassign Interpreter
+                          </button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
+                          icon={UserPlus}
+                          onClick={(e) => handleAssignClick(e, modalBooking)}
+                        >
+                          Assign Interpreter
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Context Menu Overlay */}
+        {contextMenu && (
+          <div
+            ref={contextMenuRef}
+            className="fixed z-[9999] bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 w-56 animate-in fade-in zoom-in duration-100"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <div className="px-3 py-2 border-b border-slate-100 mb-1">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{contextMenu.booking.bookingRef || 'Quick Actions'}</div>
+              <div className="text-xs font-bold text-slate-900 truncate">{contextMenu.booking.clientName}</div>
+            </div>
+
+            <button onClick={() => openBookingModal(contextMenu.booking)} className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+              <Eye size={16} className="text-slate-400" /> View Quick Details
+            </button>
+
+            <button onClick={() => navigate(`/admin/bookings/${contextMenu.booking.id}`)} className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+              <ExternalLink size={16} className="text-slate-400" /> Open Full Page
+            </button>
+
+            <div className="h-px bg-slate-100 my-1"></div>
+
+            <button onClick={() => handleCopyRef(contextMenu.booking.bookingRef || '')} className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+              <Copy size={16} className="text-slate-400" /> Copy Reference
+            </button>
+
+            {!contextMenu.booking.interpreterId && (
+              <button
+                onClick={(e) => handleAssignClick(e, contextMenu.booking)}
+                className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 transition-colors"
+              >
+                <UserPlus size={16} /> Assign Interpreter
+              </button>
+            )}
+
+            <div className="h-px bg-slate-100 my-1"></div>
+
+            <div className="px-3 py-1.5 text-[9px] font-bold text-slate-400 uppercase">Set Status</div>
+            <div className="grid grid-cols-1 gap-0.5 px-1.5 pb-1">
+              {[BookingStatus.BOOKED, BookingStatus.INCOMING, BookingStatus.CANCELLED].map(status => (
+                <button
+                  key={status}
+                  onClick={() => handleQuickStatusChange(contextMenu.booking, status)}
+                  className={`w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all ${contextMenu.booking.status === status
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </div >
   );
 };

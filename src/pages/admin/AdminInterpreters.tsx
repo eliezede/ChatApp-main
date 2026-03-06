@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InterpreterService } from '../../services/interpreterService';
+import { BookingService } from '../../services/bookingService';
 import { ChatService } from '../../services/chatService';
-import { Interpreter } from '../../types';
+import { Interpreter, BookingStatus } from '../../types';
 import { Spinner } from '../../components/ui/Spinner';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -11,10 +12,12 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
-import { 
-  Search, UserCircle2, MapPin, 
-  Languages, ShieldCheck, Edit, Check, MessageSquare 
+import {
+  Search, UserCircle2, MapPin,
+  Languages, ShieldCheck, Edit, Check, MessageSquare,
+  LayoutGrid, List, AlertCircle, Trash2, Calendar, Mail, Phone, ChevronRight, ExternalLink
 } from 'lucide-react';
+import { ViewToggle } from '../../components/ui/ViewToggle';
 
 export const AdminInterpreters = () => {
   const navigate = useNavigate();
@@ -23,15 +26,16 @@ export const AdminInterpreters = () => {
   const { settings } = useSettings();
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [textFilter, setTextFilter] = useState('');
   const [langFilter, setLangFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'ONBOARDING'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'ONBOARDING' | 'SUSPENDED'>('ALL');
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Interpreter>>({});
-  const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedInterpreter, setSelectedInterpreter] = useState<Interpreter | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [interpreterJobs, setInterpreterJobs] = useState<any[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
   useEffect(() => {
     loadInterpreters();
@@ -50,32 +54,25 @@ export const AdminInterpreters = () => {
   };
 
   const filteredInterpreters = interpreters.filter(i => {
-    const matchesText = i.name.toLowerCase().includes(textFilter.toLowerCase()) || 
-                        i.email.toLowerCase().includes(textFilter.toLowerCase());
+    const matchesText = i.name.toLowerCase().includes(textFilter.toLowerCase()) ||
+      i.email.toLowerCase().includes(textFilter.toLowerCase());
     const matchesLang = langFilter ? i.languages.some(l => l.toLowerCase().includes(langFilter.toLowerCase())) : true;
     const matchesStatus = statusFilter === 'ALL' ? true : i.status === statusFilter;
     return matchesText && matchesLang && matchesStatus;
   });
 
-  const handleEdit = (e: React.MouseEvent, interpreter: Interpreter) => {
-    e.stopPropagation();
-    setEditingId(interpreter.id);
-    setFormData({ ...interpreter });
-    setIsModalOpen(true);
-  };
-
-  const handleStartChat = async (e: React.MouseEvent, interpreter: Interpreter) => {
-    e.stopPropagation();
-    if (!user) return;
+  const handleStartChat = async (e: React.MouseEvent | undefined, interpreterId: string | undefined, interpreterName: string | undefined) => {
+    if (e) e.stopPropagation();
+    if (!user || !interpreterId) return;
 
     try {
       const names = {
         [user.id]: user.displayName || 'Admin',
-        [interpreter.id]: interpreter.name
+        [interpreterId]: interpreterName || 'Interpreter'
       };
 
       const threadId = await ChatService.getOrCreateThread(
-        [user.id, interpreter.id],
+        [user.id, interpreterId],
         names
       );
 
@@ -85,207 +82,319 @@ export const AdminInterpreters = () => {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingId) return;
-    
-    setSaving(true);
+  const handleOpenPreview = async (interpreter: Interpreter) => {
+    setSelectedInterpreter(interpreter);
+    setIsPreviewOpen(true);
+    setLoadingJobs(true);
     try {
-      await InterpreterService.updateProfile(editingId, formData);
-      await loadInterpreters();
-      setIsModalOpen(false);
+      const jobs = await BookingService.getByInterpreterId(interpreter.id);
+      setInterpreterJobs(jobs);
     } catch (error) {
-      alert('Error saving interpreter');
+      console.error("Failed to load interpreter jobs", error);
     } finally {
-      setSaving(false);
+      setLoadingJobs(false);
     }
   };
 
-  const toggleLanguage = (lang: string) => {
-    const current = formData.languages || [];
-    const updated = current.includes(lang)
-      ? current.filter(l => l !== lang)
-      : [...current, lang];
-    setFormData({ ...formData, languages: updated });
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Interpreters</h1>
-          <p className="text-gray-500 text-sm">Directory of freelancers and agencies.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Interpreters Matrix</h1>
+          <p className="text-slate-500 text-sm">Directory of certified freelancers and agencies.</p>
         </div>
-        <div className="text-sm text-gray-500">
-          Total: <span className="font-bold text-gray-900">{interpreters.length}</span>
+        <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Pool</span>
+          <span className="text-lg font-bold text-slate-900">{interpreters.length}</span>
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="md:col-span-2 relative">
-           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-           <input 
-             type="text" 
-             placeholder="Search name or email..." 
-             className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-             value={textFilter}
-             onChange={e => setTextFilter(e.target.value)}
-           />
+      <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-2">
+        <div className="flex-1 relative w-full h-10">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search name or email..."
+            className="pl-10 pr-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900"
+            value={textFilter}
+            onChange={e => setTextFilter(e.target.value)}
+          />
         </div>
-        <div>
-           <input 
-             type="text" 
-             placeholder="Filter language..." 
-             className="px-4 py-2 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-             value={langFilter}
-             onChange={e => setLangFilter(e.target.value)}
-           />
+        <div className="w-full lg:w-64 h-10 border-t lg:border-t-0 lg:border-l border-slate-100">
+          <input
+            type="text"
+            placeholder="Filter language..."
+            className="px-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900"
+            value={langFilter}
+            onChange={e => setLangFilter(e.target.value)}
+          />
         </div>
-        <div>
-           <select 
-             className="px-4 py-2 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-             value={statusFilter}
-             onChange={e => setStatusFilter(e.target.value as any)}
-           >
-             <option value="ALL">All Statuses</option>
-             <option value="ACTIVE">Active</option>
-             <option value="ONBOARDING">Onboarding</option>
-             <option value="SUSPENDED">Suspended</option>
-           </select>
+        <div className="w-full lg:w-48 relative h-10 border-t lg:border-t-0 lg:border-l border-slate-100">
+          <select
+            className="px-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900 cursor-pointer appearance-none font-medium"
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value as any)}
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="ONBOARDING">Onboarding</option>
+            <option value="SUSPENDED">Suspended</option>
+          </select>
+          <ChevronRight className="absolute right-3 top-1/2 -rotate-90 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+        </div>
+        <div className="border-t lg:border-t-0 lg:border-l border-slate-100 pl-2 lg:pl-2 w-full lg:w-auto flex justify-end">
+          <ViewToggle view={viewMode} onChange={setViewMode} />
         </div>
       </div>
 
       {loading ? (
-        <div className="py-12 flex justify-center"><Spinner size="lg" /></div>
+        <div className="py-20 flex flex-col items-center justify-center gap-4">
+          <Spinner size="lg" />
+          <p className="text-slate-400 text-xs font-black uppercase tracking-[0.2em]">Synchronizing base...</p>
+        </div>
       ) : filteredInterpreters.length === 0 ? (
-        <EmptyState 
-           title="No interpreters found" 
-           description="Try adjusting your search or filters."
-           actionLabel="Clear Filters"
-           onAction={() => { setTextFilter(''); setLangFilter(''); setStatusFilter('ALL'); }}
-           icon={UserCircle2}
+        <EmptyState
+          title="No matches found"
+          description="We couldn't find any interpreter matching your search criteria."
+          onAction={() => { setTextFilter(''); setLangFilter(''); setStatusFilter('ALL'); }}
+          actionLabel="View All Interpreters"
+          icon={UserCircle2}
         />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-           {filteredInterpreters.map(interpreter => (
-             <div 
-                key={interpreter.id} 
-                onClick={() => navigate(`/admin/interpreters/${interpreter.id}`)}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col cursor-pointer group"
-             >
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+          {filteredInterpreters.map(interpreter => (
+            <div
+              key={interpreter.id}
+              onClick={() => handleOpenPreview(interpreter)}
+              className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex flex-col h-full cursor-pointer"
+            >
+              <div className="relative z-10 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-4">
-                   <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold mr-3 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                        {interpreter.name.charAt(0)}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900">{interpreter.name}</h3>
-                        <p className="text-xs text-gray-500">{interpreter.email}</p>
-                      </div>
-                   </div>
-                   <Badge variant={interpreter.status === 'ACTIVE' ? 'success' : 'warning'}>
-                     {interpreter.status}
-                   </Badge>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center font-bold text-lg group-hover:bg-slate-100 transition-colors border border-slate-200">
+                      {interpreter.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors line-clamp-1">{interpreter.name}</h3>
+                      <p className="text-xs text-slate-500 line-clamp-1">{interpreter.email}</p>
+                    </div>
+                  </div>
+                  <Badge variant={interpreter.status === 'ACTIVE' ? 'success' : 'warning'}>
+                    {interpreter.status}
+                  </Badge>
                 </div>
 
-                <div className="space-y-3 mb-4 flex-1 text-sm text-gray-600">
-                   <div className="flex items-start">
-                      <Languages size={16} className="mr-2 mt-0.5 text-gray-400" />
+                <div className="space-y-2 mb-4 flex-1">
+                  <div className="flex items-start gap-2">
+                    <Languages size={14} className="text-slate-400 mt-0.5" />
+                    <div className="flex gap-1 flex-wrap">
+                      {interpreter.languages.map(lang => (
+                        <span key={lang} className="bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600 border border-slate-200">
+                          {lang}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin size={14} className="text-slate-400" />
+                    <span className="text-xs text-slate-600 truncate">{interpreter.regions.join(', ')}</span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleStartChat(e, interpreter.id, interpreter.name)}
+                    className="text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-medium px-2 py-1 h-auto"
+                    icon={MessageSquare}
+                  >Message</Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/admin/interpreters/${interpreter.id}`); }}
+                    className="rounded-lg text-xs font-medium px-3 py-1 h-auto"
+                    icon={UserCircle2}
+                  >Profile</Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Interpreter</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Languages</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Region</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-right"></th>
+                </tr >
+              </thead >
+              <tbody className="divide-y divide-slate-100">
+                {filteredInterpreters.map(interpreter => (
+                  <tr
+                    key={interpreter.id}
+                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                    onClick={() => handleOpenPreview(interpreter)}
+                  >
+                    <td className="px-4 py-3 text-sm text-slate-900">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm border border-slate-200">
+                          {interpreter.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="font-bold">{interpreter.name}</div>
+                          <div className="text-xs text-slate-500">{interpreter.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {interpreter.languages.map(lang => (
-                          <span key={lang} className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-600 uppercase">
-                            {lang}
-                          </span>
+                        {interpreter.languages.map(l => (
+                          <span key={l} className="bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600 border border-slate-200">{l}</span>
                         ))}
                       </div>
-                   </div>
-                   <div className="flex items-center">
-                      <MapPin size={16} className="mr-2 text-gray-400" />
-                      {interpreter.regions.join(', ')}
-                   </div>
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex justify-end gap-2">
-                   <Button 
-                     variant="ghost" 
-                     size="sm" 
-                     icon={MessageSquare} 
-                     onClick={(e) => handleStartChat(e, interpreter)}
-                     className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                   >
-                     Message
-                   </Button>
-                   <Button variant="ghost" size="sm" icon={Edit} onClick={(e) => handleEdit(e, interpreter)}>
-                     Edit Profile
-                   </Button>
-                </div>
-             </div>
-           ))}
-        </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-600">{interpreter.regions[0]}{interpreter.regions.length > 1 && ` +${interpreter.regions.length - 1}`}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={interpreter.status === 'ACTIVE' ? 'success' : 'warning'}>{interpreter.status}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); handleOpenPreview(interpreter); }}
+                        className="p-1.5 h-auto text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                      ><ChevronRight size={16} /></Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table >
+          </div >
+        </div >
       )}
 
+
+      {/* Preview Modal */}
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Edit Interpreter Profile"
-        maxWidth="lg"
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        title="Interpreter Profile Overview"
+        maxWidth="2xl"
       >
-        <form onSubmit={handleSave} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <div>
-               <label className="block text-sm font-bold text-gray-700 mb-1">Full Name</label>
-               <input 
-                 type="text" 
-                 className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 value={formData.name || ''}
-                 onChange={e => setFormData({...formData, name: e.target.value})}
-               />
-             </div>
-             <div>
-               <label className="block text-sm font-bold text-gray-700 mb-1">Status</label>
-               <select 
-                 className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 value={formData.status}
-                 onChange={e => setFormData({...formData, status: e.target.value as any})}
-               >
-                 <option value="ACTIVE">Active</option>
-                 <option value="ONBOARDING">Onboarding</option>
-                 <option value="SUSPENDED">Suspended</option>
-               </select>
-             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Languages (Universal List)</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-3 border rounded-lg bg-gray-50">
-              {settings.masterData.priorityLanguages.map(lang => (
-                <label key={lang} className={`flex items-center p-2 rounded-md border cursor-pointer transition-colors ${
-                  formData.languages?.includes(lang) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}>
-                  <input 
-                    type="checkbox" 
-                    className="hidden"
-                    checked={formData.languages?.includes(lang)}
-                    onChange={() => toggleLanguage(lang)}
-                  />
-                  <div className={`w-4 h-4 rounded border mr-2 flex items-center justify-center ${
-                    formData.languages?.includes(lang) ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                  }`}>
-                    {formData.languages?.includes(lang) && <Check size={12} className="text-white" />}
+        {selectedInterpreter && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-slate-50 rounded-xl border border-slate-200 gap-4">
+              <div className="flex items-center gap-4 text-center sm:text-left">
+                <div className="w-16 h-16 bg-slate-700 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-sm border-2 border-slate-200">
+                  {selectedInterpreter.name.charAt(0)}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">{selectedInterpreter.name}</h2>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
+                    <Badge variant={selectedInterpreter.status === 'ACTIVE' ? 'success' : 'warning'}>
+                      {selectedInterpreter.status}
+                    </Badge>
+                    <span className="flex items-center gap-1.5 text-slate-500 text-xs font-medium bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">
+                      <Mail size={12} className="text-slate-400" />
+                      {selectedInterpreter.email}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium">{lang}</span>
-                </label>
-              ))}
+                </div>
+              </div>
+              <div className="flex sm:flex-col gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon={ExternalLink}
+                  onClick={() => navigate(`/admin/interpreters/${selectedInterpreter.id}`)}
+                  className="w-full rounded-md text-xs font-medium shadow-sm py-2 px-4 h-auto"
+                >View Full Profile</Button>
+              </div>
             </div>
-            <p className="text-[10px] text-gray-500 mt-2 italic">Select the languages this interpreter is qualified to provide. List managed in System Settings.</p>
-          </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t">
-             <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-             <Button type="submit" isLoading={saving}>Save Changes</Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <ShieldCheck size={14} className="text-slate-400" />
+                  Capabilities
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg"><Languages size={16} /></div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Languages</p>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedInterpreter.languages.map(l => (
+                          <span key={l} className="bg-slate-50 px-2 py-0.5 rounded text-[10px] font-medium text-slate-600 border border-slate-200">{l}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg"><MapPin size={16} /></div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Service Regions</p>
+                      <p className="text-sm font-medium text-slate-700">{selectedInterpreter.regions.join(', ')}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Calendar size={14} className="text-slate-400" />
+                  Recent Assignments
+                </h3>
+                {loadingJobs ? (
+                  <div className="flex-1 flex items-center justify-center"><Spinner /></div>
+                ) : interpreterJobs.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 rounded-lg border border-dashed border-slate-200 p-4">
+                    <AlertCircle className="text-slate-300 mb-2" size={24} />
+                    <p className="text-xs font-medium text-slate-500">No assigned jobs</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1 flex-1">
+                    {interpreterJobs.slice(0, 5).map(job => (
+                      <div key={job.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 group hover:border-slate-300 transition-colors cursor-pointer" onClick={() => navigate(`/admin/bookings/${job.id}`)}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-bold text-slate-900">{job.bookingRef || `#${job.id.slice(-4)}`}</span>
+                          <span className="text-[10px] text-slate-500">{job.date} • {job.startTime}</span>
+                        </div>
+                        <Badge variant={job.status === 'COMPLETED' ? 'success' : 'info'} className="text-[10px] py-0 px-1.5 h-5">
+                          {job.status}
+                        </Badge>
+                      </div>
+                    ))}
+                    {interpreterJobs.length > 5 && (
+                      <p className="text-[10px] text-center font-medium text-slate-500 py-2 bg-slate-50 border border-slate-200 rounded-md mt-2">+{interpreterJobs.length - 5} More historical records</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 flex gap-3 border-t border-slate-100">
+              <Button
+                onClick={(e) => handleStartChat(e, selectedInterpreter.id, selectedInterpreter.name)}
+                className="flex-1 rounded-md text-sm font-medium py-2 h-auto"
+                icon={MessageSquare}
+              >Start Direct Message</Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsPreviewOpen(false)}
+                className="flex-[0.4] rounded-md text-sm font-medium py-2 h-auto"
+              >Dismiss</Button>
+            </div>
           </div>
-        </form>
+        )}
       </Modal>
-    </div>
+
+    </div >
   );
 };

@@ -1,6 +1,7 @@
 // Define all core types and enums for the Lingland platform
 
 export enum UserRole {
+  SUPER_ADMIN = 'SUPER_ADMIN', // Can manage global settings, system views, and all admin functions
   ADMIN = 'ADMIN',
   CLIENT = 'CLIENT',
   INTERPRETER = 'INTERPRETER'
@@ -68,8 +69,9 @@ export interface Booking {
   caseType?: string;
   genderPreference?: 'Male' | 'Female' | 'None';
   guestContact?: GuestContact;
-  totalAmount?: number;
   currency?: string;
+  priority?: 'High' | 'Normal' | 'Low';
+  totalAmount?: number;
 }
 
 export interface BookingAssignment {
@@ -89,6 +91,7 @@ export interface Client {
   paymentTermsDays: number;
   contactPerson: string;
   email: string;
+  status?: 'ACTIVE' | 'GUEST' | 'SUSPENDED';
   defaultCostCodeType: 'PO' | 'Cost Code' | 'Client Name';
 }
 
@@ -100,13 +103,14 @@ export interface Interpreter {
   languages: string[];
   regions: string[];
   qualifications: string[];
-  status: 'ACTIVE' | 'ONBOARDING' | 'SUSPENDED';
+  status: 'ACTIVE' | 'ONBOARDING' | 'SUSPENDED' | 'BLOCKED';
   isAvailable: boolean;
   dbsExpiry: string;
   addressLine1?: string;
   postcode?: string;
   dbsDocumentUrl?: string;
   unavailableDates?: string[];
+  acceptsDirectAssignment: boolean;
 }
 
 export enum InvoiceStatus {

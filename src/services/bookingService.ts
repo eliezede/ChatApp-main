@@ -1,10 +1,11 @@
 
 import {
-  collection, getDocs, getDoc, doc, addDoc, updateDoc,
+  collection, getDocs, getDoc, doc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, serverTimestamp, writeBatch, limit
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { Booking, BookingStatus, BookingAssignment, AssignmentStatus, Interpreter, NotificationType } from '../types';
+import { Booking, BookingStatus, BookingAssignment, AssignmentStatus, Interpreter, NotificationType, Client } from '../types';
+import { ClientService } from './clientService';
 import { MOCK_INTERPRETERS, MOCK_ASSIGNMENTS, saveMockData, MOCK_BOOKINGS, MOCK_USERS } from './mockData';
 import { NotificationService } from './notificationService';
 import { EmailService } from './emailService';
@@ -48,6 +49,28 @@ export const BookingService = {
     }
   },
 
+  getByInterpreterId: async (interpreterId: string): Promise<Booking[]> => {
+    try {
+      const q = query(collection(db, COLLECTION_NAME), where('interpreterId', '==', interpreterId));
+      const snap = await getDocs(q);
+      const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
+      return results.length > 0 ? results : MOCK_BOOKINGS.filter(b => b.interpreterId === interpreterId);
+    } catch {
+      return MOCK_BOOKINGS.filter(b => b.interpreterId === interpreterId);
+    }
+  },
+
+  getByClientId: async (clientId: string): Promise<Booking[]> => {
+    try {
+      const q = query(collection(db, COLLECTION_NAME), where('clientId', '==', clientId));
+      const snap = await getDocs(q);
+      const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
+      return results.length > 0 ? results : MOCK_BOOKINGS.filter(b => b.clientId === clientId);
+    } catch {
+      return MOCK_BOOKINGS.filter(b => b.clientId === clientId);
+    }
+  },
+
   create: async (bookingData: Omit<Booking, 'id' | 'status'>): Promise<Booking> => {
     const newBooking = { ...bookingData, status: BookingStatus.INCOMING, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
     try {
@@ -77,7 +100,29 @@ export const BookingService = {
     const end = new Date(start.getTime() + input.durationMinutes * 60000);
     const expectedEndTime = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-    const newBooking = { ...input, bookingRef, status: BookingStatus.INCOMING, expectedEndTime, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    // 1. Handle Client Association
+    let clientId = '';
+    const email = input.guestContact?.email;
+    if (email) {
+      const existingClient = await ClientService.getByEmail(email);
+      if (existingClient) {
+        clientId = existingClient.id;
+      } else {
+        const newGuestClient = await ClientService.createClientFromGuest(input.guestContact);
+        clientId = newGuestClient.id;
+      }
+    }
+
+    const newBooking = {
+      ...input,
+      clientId, // Linked to the new or existing GUEST client
+      bookingRef,
+      status: BookingStatus.INCOMING,
+      expectedEndTime,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
     try {
       const docRef = await addDoc(collection(db, COLLECTION_NAME), newBooking);
 
@@ -108,8 +153,14 @@ export const BookingService = {
         await EmailService.sendStatusEmail(booking, status);
       }
     } catch (e) {
-      const b = MOCK_BOOKINGS.find(book => book.id === id);
-      if (b) { b.status = status; saveMockData(); }
+      console.warn('Firebase updateStatus failed', e);
+    }
+
+    // Always update Mock for consistency
+    const b = MOCK_BOOKINGS.find(book => book.id === id);
+    if (b) {
+      b.status = status;
+      saveMockData();
     }
   },
 
@@ -117,8 +168,14 @@ export const BookingService = {
     try {
       await updateDoc(doc(db, COLLECTION_NAME, id), { ...data, updatedAt: serverTimestamp() });
     } catch (error) {
-      const b = MOCK_BOOKINGS.find(book => book.id === id);
-      if (b) { Object.assign(b, data); saveMockData(); }
+      console.warn('Firebase update failed', error);
+    }
+
+    // Always update Mock for consistency
+    const b = MOCK_BOOKINGS.find(book => book.id === id);
+    if (b) {
+      Object.assign(b, data);
+      saveMockData();
     }
   },
 
@@ -194,10 +251,15 @@ export const BookingService = {
     try {
       const bookingRef = doc(db, COLLECTION_NAME, bookingId);
       const bookingSnap = await getDoc(bookingRef);
-      const bookingData = bookingSnap.data() as Booking;
+      if (!bookingSnap.exists()) throw new Error('Booking not found');
+
+      const bookingData = { id: bookingId, ...bookingSnap.data() } as Booking;
       const interpreterId = bookingData.interpreterId;
 
-      // Update booking: reset status and clear interpreter
+      // Update booking: reset status to OPENED (if it was BOOKED) or INCOMING
+      // The user requested it to stay as "opened" but usually unassigning means making it available again.
+      // If it goes to OPENED without an interpreter, it's inconsistent. 
+      // Reverting to INCOMING makes it available for new offers.
       await updateDoc(bookingRef, {
         status: BookingStatus.INCOMING,
         interpreterId: null,
@@ -209,8 +271,7 @@ export const BookingService = {
       if (interpreterId) {
         const assignmentsQuery = query(collection(db, ASSIGNMENTS_COLLECTION),
           where('bookingId', '==', bookingId),
-          where('interpreterId', '==', interpreterId),
-          where('status', '==', AssignmentStatus.ACCEPTED)
+          where('interpreterId', '==', interpreterId)
         );
         const assignmentsSnap = await getDocs(assignmentsQuery);
         const batch = writeBatch(db);
@@ -220,21 +281,31 @@ export const BookingService = {
         await batch.commit();
 
         // Notify Interpreter
-        const interpreterUser = MOCK_USERS.find(u => u.profileId === interpreterId);
+        const interpreterUser = await getInterpreterUser(interpreterId);
         if (interpreterUser) {
           NotificationService.notify(
             interpreterUser.id,
             'Assignment Removed',
             `You have been unassigned from the job on ${bookingData.date}. Please check your portal for updates.`,
             NotificationType.URGENT,
-            '/interpreter/offers'
+            '/interpreter/jobs'
           );
+
+          // Send Email
+          await EmailService.sendStatusEmail({ ...bookingData, status: BookingStatus.CANCELLED }, BookingStatus.CANCELLED, {
+            interpreterId: interpreterId,
+            interpreterName: bookingData.interpreterName || 'Interpreter',
+            interpreterEmail: interpreterUser.email
+          });
         }
       }
     } catch (e) {
       const b = MOCK_BOOKINGS.find(book => book.id === bookingId);
       if (b) {
         const oldId = b.interpreterId;
+        const oldName = b.interpreterName;
+        const oldDate = b.date;
+
         b.status = BookingStatus.INCOMING;
         b.interpreterId = undefined;
         b.interpreterName = undefined;
@@ -245,6 +316,20 @@ export const BookingService = {
               a.status = AssignmentStatus.DECLINED;
             }
           });
+
+          const interpreterUser = MOCK_USERS.find(u => u.profileId === oldId);
+          if (interpreterUser) {
+            NotificationService.notify(
+              interpreterUser.id,
+              'Assignment Removed',
+              `You have been unassigned from the job on ${oldDate}. Please check your portal for updates.`,
+              NotificationType.URGENT,
+              '/interpreter/jobs'
+            );
+
+            // Mock Email
+            console.log(`[MOCK EMAIL] To: ${interpreterUser.email} - Subject: Assignment Removed for job on ${oldDate}`);
+          }
         }
         saveMockData();
       }
@@ -363,9 +448,9 @@ export const BookingService = {
       const q = query(collection(db, COLLECTION_NAME), where('interpreterId', '==', interpreterId));
       const snap = await getDocs(q);
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
-      return all.filter(b => [BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).sort((a, b) => a.date.localeCompare(b.date));
+      return all.filter(b => [BookingStatus.OPENED, BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).sort((a, b) => a.date.localeCompare(b.date));
     } catch (error) {
-      return MOCK_BOOKINGS.filter(b => b.interpreterId === interpreterId && (b.status === BookingStatus.BOOKED || b.status === BookingStatus.INVOICING || b.status === BookingStatus.INVOICED || b.status === BookingStatus.PAID));
+      return MOCK_BOOKINGS.filter(b => b.interpreterId === interpreterId && (b.status === BookingStatus.OPENED || b.status === BookingStatus.BOOKED || b.status === BookingStatus.INVOICING || b.status === BookingStatus.INVOICED || b.status === BookingStatus.PAID));
     }
   },
 
@@ -480,6 +565,35 @@ export const BookingService = {
       });
       if (count > 0) saveMockData();
       return count;
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      // 1. Delete associated assignments first in Firebase
+      const assignmentsQuery = query(collection(db, ASSIGNMENTS_COLLECTION), where('bookingId', '==', id));
+      const assignmentsSnap = await getDocs(assignmentsQuery);
+      const batch = writeBatch(db);
+      assignmentsSnap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+
+      // 2. Delete the booking from Firebase
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (e) {
+      console.warn('Firebase deletion failed or not configured, relying on mock cleanup.', e);
+    }
+
+    // 3. Always check and remove from Mock data to avoid "stuck" example jobs
+    const index = MOCK_BOOKINGS.findIndex(b => b.id === id);
+    if (index > -1) {
+      MOCK_BOOKINGS.splice(index, 1);
+      // Also remove mock assignments
+      for (let i = MOCK_ASSIGNMENTS.length - 1; i >= 0; i--) {
+        if (MOCK_ASSIGNMENTS[i].bookingId === id) {
+          MOCK_ASSIGNMENTS.splice(i, 1);
+        }
+      }
+      saveMockData();
     }
   }
 };

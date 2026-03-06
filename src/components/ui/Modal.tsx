@@ -7,16 +7,16 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
 }
 
-export const Modal: React.FC<ModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children, 
+export const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
   footer,
-  maxWidth = 'md' 
+  maxWidth = 'md'
 }) => {
   if (!isOpen) return null;
 
@@ -26,15 +26,17 @@ export const Modal: React.FC<ModalProps> = ({
     lg: 'max-w-lg',
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        
+
         {/* Backdrop */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-slate-950/60 backdrop-blur-sm" 
+        <div
+          className="fixed inset-0 transition-opacity bg-slate-950/60 backdrop-blur-sm"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -42,7 +44,7 @@ export const Modal: React.FC<ModalProps> = ({
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         {/* Modal Panel */}
-        <div 
+        <div
           className={`inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle w-full border border-slate-200 dark:border-slate-800 ${maxWidthClasses[maxWidth]}`}
         >
           <div className="bg-white dark:bg-slate-900 px-6 pt-6 pb-6">
@@ -50,7 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
               <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 {title}
               </h3>
-              <button 
+              <button
                 onClick={onClose}
                 className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               >
@@ -61,7 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
               {children}
             </div>
           </div>
-          
+
           {footer && (
             <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-4 sm:flex sm:flex-row-reverse gap-3 border-t border-slate-100 dark:border-slate-800">
               {footer}

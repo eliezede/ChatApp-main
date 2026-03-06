@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { ClientService, BookingService } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
+import { ClientService } from '../../services/clientService';
+import { BookingService } from '../../services/bookingService';
+import { ChatService } from '../../services/chatService';
 import { Client, Booking, BookingStatus } from '../../types';
 import { Spinner } from '../../components/ui/Spinner';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { useChat } from '../../context/ChatContext';
 import {
-  Search, Plus, Building2, Mail, Edit2,
+  Search, Plus, Building2, Mail, Edit,
   Trash2, MapPin, Briefcase, Clock,
-  ChevronRight, ExternalLink, User
+  ChevronRight, ExternalLink, User, MessageSquare, AlertCircle, LayoutGrid, List, Calendar, Phone
 } from 'lucide-react';
+import { ViewToggle } from '../../components/ui/ViewToggle';
 
 interface ClientWithStats extends Client {
   totalBookings: number;
@@ -19,15 +24,19 @@ interface ClientWithStats extends Client {
 }
 
 export const AdminClients = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { openThread } = useChat();
   const [clients, setClients] = useState<ClientWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
-  const { showToast } = useToast();
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'GUEST' | 'SUSPENDED'>('ALL');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [formData, setFormData] = useState<Partial<Client>>({});
-  const [saving, setSaving] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ClientWithStats | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [clientJobs, setClientJobs] = useState<any[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -54,92 +63,106 @@ export const AdminClients = () => {
 
       setClients(clientsWithStats.sort((a, b) => a.companyName.localeCompare(b.companyName)));
     } catch (error) {
-      showToast('Failed to load clients data', 'error');
+      console.error('Failed to load clients data', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const safe = (val: any) => String(val ?? "").toLowerCase();
-
   const filteredClients = clients.filter(c => {
-    const q = safe(filter);
-    return (
-      safe(c.companyName).includes(q) ||
-      safe(c.contactPerson).includes(q) ||
-      safe(c.email).includes(q)
+    const q = filter.toLowerCase();
+    const matchesSearch = (
+      c.companyName.toLowerCase().includes(q) ||
+      (c.contactPerson?.toLowerCase().includes(q) ?? false) ||
+      c.email.toLowerCase().includes(q)
     );
+    const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter || (statusFilter === 'ACTIVE' && !c.status);
+    return matchesSearch && matchesStatus;
   });
 
-  const handleOpenModal = (client?: Client) => {
-    if (client) {
-      setEditingClient(client);
-      setFormData({ ...client });
-    } else {
-      setEditingClient(null);
-      setFormData({
-        companyName: '',
-        contactPerson: '',
-        email: '',
-        billingAddress: '',
-        paymentTermsDays: 30,
-        defaultCostCodeType: 'PO'
-      });
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
+  const handleOpenPreview = async (client: ClientWithStats) => {
+    setSelectedClient(client);
+    setIsPreviewOpen(true);
+    setLoadingJobs(true);
     try {
-      if (editingClient) {
-        await ClientService.update(editingClient.id, formData);
-        showToast('Client updated successfully', 'success');
-      } else {
-        await ClientService.create(formData as Client);
-        showToast('New client created', 'success');
-      }
-      await loadData();
-      setIsModalOpen(false);
+      const jobs = await BookingService.getByClientId(client.id);
+      setClientJobs(jobs);
     } catch (error) {
-      showToast('Error saving client details', 'error');
+      console.error("Failed to load client jobs", error);
     } finally {
-      setSaving(false);
+      setLoadingJobs(false);
     }
   };
 
-  const labelClasses = "block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2 ml-1";
-  const inputClasses = "w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-slate-900 font-medium placeholder:text-slate-300";
+  const handleStartChat = async (e: React.MouseEvent | undefined, clientId: string, clientName: string) => {
+    if (e) e.stopPropagation();
+    if (!user) return;
+
+    try {
+      const names = {
+        [user.id]: user.displayName || 'Admin',
+        [clientId]: clientName
+      };
+
+      const threadId = await ChatService.getOrCreateThread(
+        [user.id, clientId],
+        names
+      );
+
+      openThread(threadId);
+    } catch (error) {
+      console.error("Failed to start chat", error);
+    }
+  };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Clients Directory</h1>
-          <p className="text-slate-500 font-bold mt-1">Manage registered organizations and billing profiles</p>
+          <h1 className="text-2xl font-bold text-slate-900">Executive Database</h1>
+          <p className="text-slate-500 text-sm">Manage corporate accounts and organizational entities.</p>
         </div>
-        <Button
-          icon={Plus}
-          onClick={() => handleOpenModal()}
-          className="bg-blue-600 hover:bg-blue-700 h-14 px-8 rounded-2xl shadow-lg shadow-blue-200"
-        >
-          New Client
-        </Button>
+        <div className="flex gap-3">
+          <div className="hidden sm:flex bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm items-center gap-3">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Global Clients</span>
+            <span className="text-lg font-bold text-slate-900">{clients.length}</span>
+          </div>
+          <Button
+            icon={Plus}
+            onClick={() => navigate('/admin/bookings/new')}
+            className="bg-blue-600 hover:bg-blue-700 h-10 px-4 rounded-xl shadow-sm font-bold text-xs"
+          >
+            New Booking
+          </Button>
+        </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+      <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-2">
+        <div className="flex-1 relative w-full h-10">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
           <input
             type="text"
-            placeholder="Search by company, contact person or email..."
-            className="pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl w-full text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all placeholder:text-slate-300"
+            placeholder="Search company, contact or email..."
+            className="pl-10 pr-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900"
             value={filter}
             onChange={e => setFilter(e.target.value)}
           />
+        </div>
+        <div className="flex items-center gap-2 border-t lg:border-t-0 lg:border-l border-slate-100 pl-2 lg:pl-2 w-full lg:w-auto overflow-x-auto py-2 lg:py-0">
+          {(['ALL', 'ACTIVE', 'GUEST'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${statusFilter === s
+                  ? 'bg-slate-900 text-white shadow-md'
+                  : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                }`}
+            >
+              {s}
+            </button>
+          ))}
+          <div className="mx-2 h-4 w-px bg-slate-200 hidden lg:block"></div>
+          <ViewToggle view={viewMode} onChange={setViewMode} />
         </div>
       </div>
 
@@ -150,177 +173,245 @@ export const AdminClients = () => {
         </div>
       ) : filteredClients.length === 0 ? (
         <EmptyState
-          title="No clients matches"
-          description="We couldn't find any organization matching your current search criteria."
+          title="No organizations matches"
+          description="We couldn't find any client matching your current search criteria."
           onAction={() => setFilter('')}
-          actionLabel="View All Clients"
+          actionLabel="View All Entities"
+          icon={Building2}
         />
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredClients.map(client => (
             <div
               key={client.id}
-              className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-slate-200/60 transition-all group relative overflow-hidden flex flex-col h-full"
+              onClick={() => handleOpenPreview(client)}
+              className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group relative overflow-hidden flex flex-col h-full cursor-pointer"
             >
-              {/* Subtle decorative background */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-10 -mt-10 group-hover:bg-blue-50 transition-colors duration-500"></div>
-
               <div className="relative z-10 flex flex-col h-full">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-8">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 border border-indigo-100 group-hover:border-indigo-600">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-all duration-300 border shadow-sm ${client.status === 'GUEST'
+                        ? 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600'
+                        : 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600'
+                      }`}>
                       {client.companyName.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">{client.companyName}</h3>
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider mt-0.5">
-                        <User size={10} />
-                        {client.contactPerson}
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">{client.companyName}</h3>
+                        {client.status === 'GUEST' && (
+                          <span className="bg-amber-100 text-amber-700 text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Guest</span>
+                        )}
                       </div>
+                      <p className="text-xs text-slate-500 flex items-center gap-1">
+                        <User size={12} className="text-slate-400" />
+                        {client.contactPerson}
+                      </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleOpenModal(client)}
-                    className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-                  >
-                    <Edit2 size={16} />
-                  </button>
                 </div>
 
-                {/* Contact Info */}
-                <div className="space-y-4 mb-8 flex-1">
-                  <div className="flex items-center gap-3 text-slate-500 bg-slate-50/50 p-3 rounded-xl border border-slate-50">
-                    <Mail size={16} className="text-blue-500" />
-                    <span className="text-sm font-bold truncate">{client.email}</span>
+                <div className="space-y-2 mb-3 flex-1">
+                  <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <Mail size={14} className="text-blue-500" />
+                    <span className="text-xs truncate">{client.email}</span>
                   </div>
-                  <div className="flex items-start gap-3 text-slate-500 bg-slate-50/50 p-3 rounded-xl border border-slate-50 h-16 overflow-hidden">
-                    <MapPin size={16} className="text-emerald-500 mt-0.5" />
-                    <span className="text-xs font-bold leading-relaxed line-clamp-2">{client.billingAddress || 'No billing address set'}</span>
+                  <div className="flex items-start gap-2 text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 min-h-[40px]">
+                    <MapPin size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                    <span className="text-xs leading-tight line-clamp-2">{client.billingAddress || 'No billing address'}</span>
                   </div>
                 </div>
 
-                {/* Stats Section */}
-                <div className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-50">
-                  <div className="bg-slate-50 rounded-2xl p-4 transition-colors group-hover:bg-blue-50/50">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Jobs</p>
-                    <p className="text-xl font-black text-slate-900">{client.totalBookings}</p>
+                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
+                  <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 group-hover:bg-blue-50/50 transition-colors flex flex-col items-center">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Jobs</p>
+                    <p className="text-sm font-bold text-slate-900">{client.totalBookings}</p>
                   </div>
-                  <div className="bg-slate-50 rounded-2xl p-4 transition-colors group-hover:bg-emerald-50/50">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">In Progress</p>
-                    <p className="text-xl font-black text-slate-900">{client.activeBookings}</p>
+                  <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 group-hover:bg-emerald-50/50 transition-colors flex flex-col items-center">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Active</p>
+                    <p className="text-sm font-bold text-slate-900">{client.activeBookings}</p>
                   </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Organization</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Jobs</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Active</th>
+                  <th className="px-4 py-3 text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredClients.map(client => (
+                  <tr
+                    key={client.id}
+                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                    onClick={() => handleOpenPreview(client)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border transition-all shadow-sm ${client.status === 'GUEST'
+                            ? 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white'
+                            : 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white'
+                          }`}>
+                          {client.companyName.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-slate-900 leading-none">{client.companyName}</p>
+                            {client.status === 'GUEST' && (
+                              <Badge variant="warning" className="text-[8px] py-0 px-1.5">Guest</Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1 truncate">{client.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-sm text-slate-700">{client.contactPerson}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-medium text-slate-700">{client.totalBookings}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={client.activeBookings > 0 ? 'info' : 'neutral'} className="text-xs">
+                        {client.activeBookings} Active
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); handleOpenPreview(client); }}
+                        className="p-1.5 hover:bg-slate-200"
+                        icon={ChevronRight}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Preview Modal */}
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingClient ? 'Edit Client Profile' : 'Register New Client'}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        title="Account Profile"
         maxWidth="2xl"
       >
-        <form onSubmit={handleSave} className="space-y-8 py-4">
-          {/* Main Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <label className={labelClasses}>Company / Organization Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Lingland Global"
-                className={inputClasses}
-                value={formData.companyName || ''}
-                onChange={e => setFormData({ ...formData, companyName: e.target.value })}
-                required
-              />
+        {selectedClient && (
+          <div className="space-y-6 py-2">
+            <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-slate-50 rounded-xl border border-slate-200 gap-4">
+              <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+                <div className="w-16 h-16 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white">
+                  {selectedClient.companyName.charAt(0)}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">{selectedClient.companyName}</h2>
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2">
+                    <span className="flex items-center gap-1.5 text-slate-500 text-xs font-medium bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                      <Mail size={12} className="text-blue-500" />
+                      {selectedClient.email}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-slate-500 text-xs font-medium bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                      <User size={12} className="text-indigo-500" />
+                      {selectedClient.contactPerson}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="primary"
+                icon={ExternalLink}
+                onClick={() => navigate(`/admin/clients/${selectedClient.id}`)}
+                className="flex-1 rounded-lg h-10 px-6 font-bold text-xs shadow-sm"
+              >View Full Profile</Button>
             </div>
-            <div>
-              <label className={labelClasses}>Main Contact Person</label>
-              <input
-                type="text"
-                placeholder="Full Name"
-                className={inputClasses}
-                value={formData.contactPerson || ''}
-                onChange={e => setFormData({ ...formData, contactPerson: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label className={labelClasses}>Billing Email Address</label>
-              <input
-                type="email"
-                placeholder="finance@organization.com"
-                className={inputClasses}
-                value={formData.email || ''}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                required
-              />
-            </div>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Briefcase size={14} className="text-blue-500" />
+                  Contractual Data
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg shadow-sm"><Clock size={16} /></div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Standard Terms</p>
+                      <p className="font-bold text-slate-900 text-sm">{selectedClient.paymentTermsDays || 30} Days Net</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg shadow-sm"><MapPin size={16} /></div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Billing Base</p>
+                      <p className="text-xs font-medium text-slate-700 leading-relaxed italic">{selectedClient.billingAddress || 'No primary address recorded'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-          <div className="space-y-6">
-            <div>
-              <label className={labelClasses}>Full Billing Address</label>
-              <textarea
-                className={inputClasses + " h-24 resize-none"}
-                placeholder="Street, City, Postcode..."
-                value={formData.billingAddress || ''}
-                onChange={e => setFormData({ ...formData, billingAddress: e.target.value })}
-              />
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Calendar size={14} className="text-purple-500" />
+                  Order Analytics
+                </h3>
+                {loadingJobs ? (
+                  <div className="flex-1 flex items-center justify-center py-4"><Spinner /></div>
+                ) : clientJobs.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 rounded-lg border border-dashed border-slate-200 p-4 min-h-[100px]">
+                    <AlertCircle className="text-slate-300 mb-2" size={24} />
+                    <p className="text-xs font-bold text-slate-500">No service history found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                    {clientJobs.slice(0, 5).map(job => (
+                      <div key={job.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 group hover:border-blue-200 transition-all cursor-pointer" onClick={() => navigate(`/admin/bookings/${job.id}`)}>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-bold text-slate-900 uppercase tracking-tight">{job.bookingRef || `#${job.id.slice(-4)}`}</span>
+                          <span className="text-xs text-slate-500">{job.date}</span>
+                        </div>
+                        <Badge variant={job.status === 'COMPLETED' ? 'success' : 'info'} className="text-xs px-2">
+                          {job.status}
+                        </Badge>
+                      </div>
+                    ))}
+                    {clientJobs.length > 5 && (
+                      <p className="text-xs text-center font-bold text-slate-500 pt-2 border-t border-slate-100 mt-2">Historical Volume: {clientJobs.length} Orders</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-            <div>
-              <label className={labelClasses}>Payment Terms (Days)</label>
-              <select
-                className={inputClasses + " bg-white"}
-                value={formData.paymentTermsDays || 30}
-                onChange={e => setFormData({ ...formData, paymentTermsDays: parseInt(e.target.value) })}
-              >
-                <option value={7}>7 Days (Express)</option>
-                <option value={14}>14 Days (Standard)</option>
-                <option value={30}>30 Days (Corporate)</option>
-                <option value={60}>60 Days (Enterprise)</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelClasses}>Default Cost Code Type</label>
-              <select
-                className={inputClasses + " bg-white"}
-                value={formData.defaultCostCodeType || 'PO'}
-                onChange={e => setFormData({ ...formData, defaultCostCodeType: e.target.value as any })}
-              >
-                <option value="PO">Purchase Order (PO)</option>
-                <option value="Cost Code">Cost Code</option>
-                <option value="Client Name">Client Name Reference</option>
-              </select>
+            <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
+              <Button
+                variant="ghost"
+                onClick={() => setIsPreviewOpen(false)}
+                className="font-bold text-xs"
+              >Return</Button>
+              <Button
+                onClick={(e) => handleStartChat(e, selectedClient.id, selectedClient.companyName)}
+                className="bg-blue-600 hover:bg-blue-700 shadow-sm font-bold text-xs"
+                icon={MessageSquare}
+              >Direct Message</Button>
             </div>
           </div>
-
-          <div className="pt-4 flex gap-4">
-            <Button
-              type="button"
-              variant="ghost"
-              className="flex-1 h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Discard
-            </Button>
-            <Button
-              type="submit"
-              isLoading={saving}
-              className="flex-[2] h-16 bg-blue-600 hover:bg-blue-700 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100"
-            >
-              {editingClient ? 'Update Profile' : 'Complete Registration'}
-            </Button>
-          </div>
-        </form>
+        )}
       </Modal>
+
     </div>
   );
 };

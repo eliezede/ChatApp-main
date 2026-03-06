@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Building2, User, Globe2, Clock, MapPin, Video,
     Search, ChevronLeft, Save, Plus, X, Phone, Mail,
-    Calendar, Check, UserPlus, Info, CreditCard, ChevronRight
+    Calendar, Check, UserPlus, Info, CreditCard, ChevronRight, Zap
 } from 'lucide-react';
 import { ClientService, InterpreterService, BookingService } from '../../../services/api';
 import { Client, Interpreter, ServiceType, BookingStatus } from '../../../types';
@@ -532,7 +532,12 @@ export const AdminNewBooking = () => {
                                                     {i.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <div className="text-sm font-bold text-slate-900">{i.name}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="text-sm font-bold text-slate-900">{i.name}</div>
+                                                        {i.acceptsDirectAssignment && (
+                                                            <Zap size={12} className="text-amber-500 fill-amber-500 animate-pulse" />
+                                                        )}
+                                                    </div>
                                                     <div className="text-[10px] text-slate-400 font-bold uppercase">{i.languages.slice(0, 2).join(', ')}</div>
                                                 </div>
                                             </div>
@@ -554,7 +559,12 @@ export const AdminNewBooking = () => {
                                             {selectedInterpreter.name.charAt(0)}
                                         </div>
                                         <div>
-                                            <div className="text-sm font-black">{selectedInterpreter.name}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-sm font-black">{selectedInterpreter.name}</div>
+                                                {selectedInterpreter.acceptsDirectAssignment && (
+                                                    <Zap size={14} className="text-amber-400 fill-amber-400" />
+                                                )}
+                                            </div>
                                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Assigned Directly</div>
                                         </div>
                                     </div>

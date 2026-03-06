@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { BookingService, InterpreterService } from '../../../services/api';
 import { ChatService } from '../../../services/chatService';
 import { Booking, BookingAssignment, Interpreter, BookingStatus, AssignmentStatus, ServiceType } from '../../../types';
+import { LANGUAGES } from '../../../constants/languages';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
@@ -13,7 +14,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useChat } from '../../../context/ChatContext';
 import {
   Calendar, Clock, MapPin, Video, Globe2, ChevronLeft,
-  User, CheckCircle2, XCircle, Send, AlertCircle, Edit, Trash2, Search, UserPlus, Filter, Eye, List, MessageSquare, Building2, Mail, Phone, CreditCard
+  User, CheckCircle2, XCircle, Send, AlertCircle, Edit, Trash2, Search, UserPlus, Filter, Eye, List, MessageSquare, Building2, Mail, Phone, CreditCard, Zap
 } from 'lucide-react';
 
 const AdminBookingDetails = () => {
@@ -40,6 +41,9 @@ const AdminBookingDetails = () => {
   // Edit State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Booking>>({});
+  // Delete State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -102,6 +106,43 @@ const AdminBookingDetails = () => {
     }
   };
 
+  const handleUpdateStatus = async (status: BookingStatus) => {
+    if (!booking) return;
+    setProcessing(true);
+    try {
+      await BookingService.updateStatus(booking.id, status);
+      // Reactive Update: Update local state immediately
+      setBooking(prev => prev ? { ...prev, status } : null);
+      showToast(`Status updated to ${status}`, 'success');
+    } catch (error) {
+      showToast('Failed to update status', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDeleteJob = () => {
+    setDeleteConfirmText('');
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleFinalDelete = async () => {
+    if (!booking || deleteConfirmText.toLowerCase() !== 'delete') return;
+
+    setProcessing(true);
+    try {
+      await BookingService.delete(booking.id);
+      showToast('Booking deleted successfully', 'success');
+      setIsDeleteModalOpen(false);
+      navigate('/admin/bookings');
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      showToast('Failed to delete booking', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleUpdateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!booking) return;
@@ -117,7 +158,6 @@ const AdminBookingDetails = () => {
       setProcessing(false);
     }
   };
-
   const handleSendOffer = async (interpreterId: string) => {
     if (!booking) return;
     setProcessing(true);
@@ -210,7 +250,27 @@ const AdminBookingDetails = () => {
             <p className="text-gray-500 text-sm mt-1">Requested by {booking.clientName} on {new Date(booking.date).toLocaleDateString()}</p>
           </div>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => BookingService.updateStatus(booking.id, BookingStatus.CANCELLED)} className="text-red-600 border-red-200 hover:bg-red-50">Reject / Cancel</Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleUpdateStatus(BookingStatus.CANCELLED)}
+            className="text-amber-600 border-amber-200 hover:bg-amber-50"
+            disabled={processing || booking.status === BookingStatus.CANCELLED}
+          >
+            Reject / Cancel
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleDeleteJob()}
+            className="text-red-600 border-red-200 hover:bg-red-50"
+            disabled={processing}
+            icon={Trash2}
+          >
+            Delete Job
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -320,6 +380,26 @@ const AdminBookingDetails = () => {
                       >
                         Profile
                       </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Are you sure you want to unassign this interpreter? The interpreter will be notified.')) {
+                            setProcessing(true);
+                            try {
+                              await BookingService.unassignInterpreterFromBooking(booking.id);
+                              showToast('Interpreter unassigned successfully', 'success');
+                              await loadData(booking.id);
+                            } catch (error) {
+                              showToast('Failed to unassign interpreter', 'error');
+                            } finally {
+                              setProcessing(false);
+                            }
+                          }
+                        }}
+                        disabled={processing}
+                        className="text-xs text-red-600 hover:text-red-800 transition-colors font-bold ml-2"
+                      >
+                        Unassign
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -402,7 +482,12 @@ const AdminBookingDetails = () => {
                     <React.Fragment key={int.id}>
                       <tr className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-4">
-                          <div className="font-bold text-sm text-gray-900">{int.name}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-bold text-sm text-gray-900">{int.name}</div>
+                            {int.acceptsDirectAssignment && (
+                              <Zap size={14} className="text-amber-500 fill-amber-500" />
+                            )}
+                          </div>
                           <div className="text-[10px] text-gray-500 uppercase flex gap-1 mt-0.5">
                             {int.languages.slice(0, 3).map(l => <span key={l} className="bg-gray-100 px-1 rounded">{l}</span>)}
                           </div>
@@ -457,22 +542,40 @@ const AdminBookingDetails = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Booking Details">
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Booking Details" maxWidth="3xl">
         <form onSubmit={handleUpdateBooking} className="space-y-6 max-h-[80vh] overflow-y-auto px-1">
           {/* Section 1: Session */}
           <div className="space-y-4">
             <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider">Session Details</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Language From</label>
-                <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.languageFrom || ''} onChange={e => setEditFormData({ ...editFormData, languageFrom: e.target.value })} />
+                <select
+                  className="w-full p-2 border rounded-lg text-sm bg-white"
+                  value={editFormData.languageFrom || ''}
+                  onChange={e => setEditFormData({ ...editFormData, languageFrom: e.target.value })}
+                >
+                  <option value="">Select Language</option>
+                  {LANGUAGES.map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Language To</label>
-                <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.languageTo || ''} onChange={e => setEditFormData({ ...editFormData, languageTo: e.target.value })} />
+                <select
+                  className="w-full p-2 border rounded-lg text-sm bg-white"
+                  value={editFormData.languageTo || ''}
+                  onChange={e => setEditFormData({ ...editFormData, languageTo: e.target.value })}
+                >
+                  <option value="">Select Language</option>
+                  {LANGUAGES.map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
                 <input type="date" className="w-full p-2 border rounded-lg text-sm" value={editFormData.date || ''} onChange={e => setEditFormData({ ...editFormData, date: e.target.value })} />
@@ -486,16 +589,16 @@ const AdminBookingDetails = () => {
                 <input type="number" className="w-full p-2 border rounded-lg text-sm" value={editFormData.durationMinutes || ''} onChange={e => setEditFormData({ ...editFormData, durationMinutes: Number(e.target.value) })} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Service Type</label>
-                <select className="w-full p-2 border rounded-lg text-sm" value={editFormData.serviceType} onChange={e => setEditFormData({ ...editFormData, serviceType: e.target.value as ServiceType })}>
+                <select className="w-full p-2 border rounded-lg text-sm bg-white" value={editFormData.serviceType} onChange={e => setEditFormData({ ...editFormData, serviceType: e.target.value as ServiceType })}>
                   {Object.values(ServiceType).map(st => <option key={st} value={st}>{st}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gender Pref.</label>
-                <select className="w-full p-2 border rounded-lg text-sm" value={editFormData.genderPreference} onChange={e => setEditFormData({ ...editFormData, genderPreference: e.target.value as any })}>
+                <select className="w-full p-2 border rounded-lg text-sm bg-white" value={editFormData.genderPreference} onChange={e => setEditFormData({ ...editFormData, genderPreference: e.target.value as any })}>
                   <option value="None">None</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -504,27 +607,27 @@ const AdminBookingDetails = () => {
             </div>
           </div>
 
-          <hr />
+          <hr className="border-slate-100" />
 
           {/* Section 2: Location */}
           <div className="space-y-4">
             <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider">Location</h4>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" checked={editFormData.locationType === 'ONSITE'} onChange={() => setEditFormData({ ...editFormData, locationType: 'ONSITE' })} /> Onsite
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                <input type="radio" className="w-4 h-4 text-blue-600 focus:ring-blue-500" checked={editFormData.locationType === 'ONSITE'} onChange={() => setEditFormData({ ...editFormData, locationType: 'ONSITE' })} /> Onsite
               </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" checked={editFormData.locationType === 'ONLINE'} onChange={() => setEditFormData({ ...editFormData, locationType: 'ONLINE' })} /> Online
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                <input type="radio" className="w-4 h-4 text-blue-600 focus:ring-blue-500" checked={editFormData.locationType === 'ONLINE'} onChange={() => setEditFormData({ ...editFormData, locationType: 'ONLINE' })} /> Online
               </label>
             </div>
             {editFormData.locationType === 'ONLINE' ? (
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meeting Link</label>
-                <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.onlineLink || ''} onChange={e => setEditFormData({ ...editFormData, onlineLink: e.target.value })} />
+                <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.onlineLink || ''} onChange={e => setEditFormData({ ...editFormData, onlineLink: e.target.value })} placeholder="https://..." />
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Address</label>
                   <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.address || ''} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} />
                 </div>
@@ -536,12 +639,12 @@ const AdminBookingDetails = () => {
             )}
           </div>
 
-          <hr />
+          <hr className="border-slate-100" />
 
           {/* Section 3: Contact */}
           <div className="space-y-4">
             <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider">Contact & Billing</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Contact Name</label>
                 <input
@@ -567,7 +670,7 @@ const AdminBookingDetails = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
                 <input
@@ -599,7 +702,7 @@ const AdminBookingDetails = () => {
             </div>
           </div>
 
-          <hr />
+          <hr className="border-slate-100" />
 
           {/* Section 4: Notes */}
           <div>
@@ -612,6 +715,57 @@ const AdminBookingDetails = () => {
             <Button type="submit" isLoading={processing}>Save Changes</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Booking"
+      >
+        <div className="space-y-6">
+          <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-start gap-3">
+            <AlertCircle className="text-red-600 shrink-0" size={20} />
+            <div>
+              <p className="text-sm font-bold text-red-900">This action is irreversible!</p>
+              <p className="text-xs text-red-700 mt-1">This will permanently delete the booking and all related offers/assignments.</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">
+              Type <span className="text-red-600 font-black underline">DELETE</span> to confirm
+            </label>
+            <input
+              type="text"
+              className="w-full p-4 border-2 border-slate-100 rounded-xl outline-none focus:border-red-500 transition-colors font-bold text-center text-lg"
+              placeholder="Type Delete here..."
+              value={deleteConfirmText}
+              onChange={e => setDeleteConfirmText(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              className="flex-1"
+              onClick={() => setIsDeleteModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-1"
+              disabled={deleteConfirmText.toLowerCase() !== 'delete' || processing}
+              isLoading={processing}
+              onClick={handleFinalDelete}
+              icon={Trash2}
+            >
+              Delete Permanently
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

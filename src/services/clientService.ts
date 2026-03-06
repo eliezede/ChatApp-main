@@ -1,5 +1,5 @@
 
-import { collection, doc, getDoc, getDocs, updateDoc, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, addDoc, deleteDoc, setDoc, query, where, limit } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { Client, GuestContact } from '../types';
 import { MOCK_CLIENTS, saveMockData } from './mockData';
@@ -12,7 +12,7 @@ export const ClientService = {
       return snap.docs.map(d => convertDoc<Client>(d));
     }, MOCK_CLIENTS);
   },
-  
+
   getById: async (id: string) => {
     try {
       const snap = await getDoc(doc(db, 'clients', id));
@@ -21,7 +21,16 @@ export const ClientService = {
       return MOCK_CLIENTS.find(c => c.id === id);
     }
   },
-  
+
+  getByEmail: async (email: string): Promise<Client | undefined> => {
+    try {
+      const q = query(collection(db, 'clients'), where('email', '==', email), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) return convertDoc<Client>(snap.docs[0]);
+    } catch (e) { }
+    return MOCK_CLIENTS.find(c => c.email.toLowerCase() === email.toLowerCase());
+  },
+
   create: async (data: Omit<Client, 'id'>): Promise<Client> => {
     try {
       const ref = await addDoc(collection(db, 'clients'), data);
@@ -40,9 +49,9 @@ export const ClientService = {
       return { id, ...data } as Client;
     } catch {
       const idx = MOCK_CLIENTS.findIndex(c => c.id === id);
-      if(idx >= 0) {
-          MOCK_CLIENTS[idx] = { ...MOCK_CLIENTS[idx], ...data };
-          saveMockData();
+      if (idx >= 0) {
+        MOCK_CLIENTS[idx] = { ...MOCK_CLIENTS[idx], ...data };
+        saveMockData();
       }
       return { id, ...data } as Client;
     }
@@ -53,7 +62,7 @@ export const ClientService = {
       await deleteDoc(doc(db, 'clients', id));
     } catch (e) {
       const idx = MOCK_CLIENTS.findIndex(c => c.id === id);
-      if(idx >= 0) { MOCK_CLIENTS.splice(idx, 1); saveMockData(); }
+      if (idx >= 0) { MOCK_CLIENTS.splice(idx, 1); saveMockData(); }
     }
   },
 
@@ -63,16 +72,17 @@ export const ClientService = {
       companyName: guest.organisation || guest.name,
       contactPerson: guest.name,
       email: guest.email,
+      status: 'GUEST',
       billingAddress: 'Address Pending Update',
       paymentTermsDays: 30,
       defaultCostCodeType: 'PO'
     };
-    
+
     MOCK_CLIENTS.push(newClient);
     saveMockData();
     // Try to sync with Firestore
-    try { await setDoc(doc(db, 'clients', newClient.id), newClient); } catch(e) {}
-    
+    try { await setDoc(doc(db, 'clients', newClient.id), newClient); } catch (e) { }
+
     return newClient;
   }
 };

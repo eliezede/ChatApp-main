@@ -1,5 +1,5 @@
 
-import { collection, doc, getDoc, getDocs, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { Interpreter } from '../types';
 import { MOCK_INTERPRETERS, saveMockData } from './mockData';
@@ -12,7 +12,7 @@ export const InterpreterService = {
       return snap.docs.map(d => convertDoc<Interpreter>(d));
     }, MOCK_INTERPRETERS);
   },
-  
+
   getById: async (id: string) => {
     try {
       const snap = await getDoc(doc(db, 'interpreters', id));
@@ -21,14 +21,14 @@ export const InterpreterService = {
       return MOCK_INTERPRETERS.find(i => i.id === id);
     }
   },
-  
+
   updateProfile: async (id: string, data: Partial<Interpreter>) => {
     try {
       await updateDoc(doc(db, 'interpreters', id), data);
-    } catch (e) { 
-        const i = MOCK_INTERPRETERS.find(inter => inter.id === id);
-        if(i) Object.assign(i, data);
-        saveMockData();
+    } catch (e) {
+      const i = MOCK_INTERPRETERS.find(inter => inter.id === id);
+      if (i) Object.assign(i, data);
+      saveMockData();
     }
   },
 
@@ -41,6 +41,21 @@ export const InterpreterService = {
       MOCK_INTERPRETERS.push(newInt);
       saveMockData();
       return newInt;
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      await deleteDoc(doc(db, 'interpreters', id));
+    } catch (e) {
+      console.warn('Firebase interpreter deletion failed', e);
+    }
+
+    // Always cleanup mock
+    const idx = MOCK_INTERPRETERS.findIndex(i => i.id === id);
+    if (idx >= 0) {
+      MOCK_INTERPRETERS.splice(idx, 1);
+      saveMockData();
     }
   }
 };

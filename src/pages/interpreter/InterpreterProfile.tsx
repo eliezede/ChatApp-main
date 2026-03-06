@@ -258,6 +258,27 @@ export const InterpreterProfile = () => {
                     {profile.isAvailable ? <X size={16} /> : <Check size={16} />}
                     {profile.isAvailable ? 'Go Offline' : 'Set Active'}
                   </button>
+
+                  {/* Direct Assignment Toggle */}
+                  <div className="flex items-center justify-between px-2 mt-4 pt-4 border-t border-slate-50">
+                    <div className="flex flex-col items-start">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Direct Assignment</span>
+                      <p className="text-[9px] text-slate-400 font-medium">Auto-selection by admins</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const next = !profile.acceptsDirectAssignment;
+                        await InterpreterService.updateProfile(user!.profileId!, { acceptsDirectAssignment: next });
+                        setProfile({ ...profile, acceptsDirectAssignment: next });
+                        showToast(next ? "Direct assignments enabled" : "Direct assignments disabled", "info");
+                      }}
+                      className={`w-12 h-6 rounded-full relative transition-all duration-300 ${profile.acceptsDirectAssignment ? 'bg-blue-600' : 'bg-slate-200'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${profile.acceptsDirectAssignment ? 'left-7' : 'left-1'}`}>
+                        {profile.acceptsDirectAssignment && <div className="absolute inset-0 flex items-center justify-center"><div className="w-1.5 h-1.5 bg-blue-600 rounded-full scale-0 animate-in fade-in zoom-in duration-300"></div></div>}
+                      </div>
+                    </button>
+                  </div>
                 </div>
 
                 <p className="px-4 text-[10px] text-slate-400 font-bold leading-relaxed">

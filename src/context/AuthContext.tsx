@@ -11,6 +11,8 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isSuperAdmin: boolean;
+  isAdmin: boolean; // true for both ADMIN and SUPER_ADMIN
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           // Attempt to fetch user role data from Firestore
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          
+
           if (userDoc.exists()) {
             const userData = userDoc.data();
             /* Fixed: Added missing required status property to User object */
@@ -41,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // User authenticated but no profile doc exists
             // Check mock data as fallback before creating default
             const mockUser = MOCK_USERS.find(u => u.email === firebaseUser.email);
-            
+
             /* Fixed: Added missing required status property to User object */
             setUser({
               id: firebaseUser.uid,
@@ -54,25 +56,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (error) {
           console.warn("Auth: Firestore unreachable (Offline Mode). Using Mock Data fallback.");
-          
+
           // OFFLINE FALLBACK: Match email to Mock Data
           const mockUser = MOCK_USERS.find(u => u.email === firebaseUser.email);
-          
+
           if (mockUser) {
             setUser({
               ...mockUser,
               id: firebaseUser.uid // Keep the real auth UID
             });
           } else {
-             // Fallback for unknown users in offline mode
-             /* Fixed: Added missing required status property to User object */
-             setUser({
-               id: firebaseUser.uid,
-               email: firebaseUser.email || '',
-               displayName: firebaseUser.displayName || 'Offline User',
-               role: UserRole.CLIENT,
-               status: 'ACTIVE'
-             });
+            // Fallback for unknown users in offline mode
+            /* Fixed: Added missing required status property to User object */
+            setUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || 'Offline User',
+              role: UserRole.CLIENT,
+              status: 'ACTIVE'
+            });
           }
         }
       } else {
@@ -89,12 +91,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      logout, 
+    <AuthContext.Provider value={{
+      user,
+      logout,
       isLoading,
-      isAuthenticated: !!user 
+      isAuthenticated: !!user,
+      isSuperAdmin,
+      isAdmin,
     }}>
       {children}
     </AuthContext.Provider>

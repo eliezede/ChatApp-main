@@ -65,7 +65,8 @@ export const AdminApplications = () => {
         qualifications: app.qualifications,
         dbsExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'ONBOARDING',
-        isAvailable: false
+        isAvailable: false,
+        acceptsDirectAssignment: true
       });
 
       // 3. Create User Login
@@ -114,8 +115,8 @@ export const AdminApplications = () => {
     <button
       onClick={() => setActiveTab(type)}
       className={`flex items-center px-6 py-3 border-b-2 font-bold text-sm transition-all whitespace-nowrap ${activeTab === type
-          ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10'
-          : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+        ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10'
+        : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
         }`}
     >
       <Icon size={16} className="mr-2" />
