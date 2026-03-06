@@ -2,20 +2,19 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
-import { 
-  LayoutDashboard, CalendarDays, Users, Briefcase, 
+import {
+  LayoutDashboard, CalendarDays, Users, Briefcase,
   LogOut, Menu, Globe2, FileText, PoundSterling, CheckCircle2, PlusCircle
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const NavItem = ({ to, icon: Icon, label, active }: any) => (
-  <Link 
-    to={to} 
-    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-      active 
-        ? 'bg-blue-600 text-white shadow-md' 
-        : 'text-gray-600 hover:bg-gray-100 hover:text-blue-600'
-    }`}
+  <Link
+    to={to}
+    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${active
+      ? 'bg-blue-600 text-white shadow-md'
+      : 'text-gray-600 hover:bg-gray-100 hover:text-blue-600'
+      }`}
   >
     <Icon size={20} />
     <span className="font-medium">{label}</span>
@@ -39,6 +38,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const renderNavItems = () => {
     switch (user?.role) {
+      case UserRole.SUPER_ADMIN:
       case UserRole.ADMIN:
         return (
           <>

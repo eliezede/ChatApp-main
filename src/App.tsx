@@ -68,6 +68,7 @@ const RootRoute = () => {
   if (isLoading) return <div className="min-h-screen bg-slate-50 dark:bg-slate-950" />;
   if (user) {
     switch (user.role) {
+      case UserRole.SUPER_ADMIN:
       case UserRole.ADMIN: return <Navigate to="/admin/dashboard" replace />;
       case UserRole.CLIENT: return <Navigate to="/client/dashboard" replace />;
       case UserRole.INTERPRETER: return <Navigate to="/interpreter/dashboard" replace />;
@@ -134,7 +135,7 @@ const App = () => {
 
                     {/* Admin Section */}
                     <Route path="/admin/*" element={
-                      <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+                      <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
                         <AdminLayout>
                           <Routes>
                             <Route path="dashboard" element={<Dashboard />} />

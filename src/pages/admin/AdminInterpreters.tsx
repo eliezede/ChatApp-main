@@ -18,6 +18,7 @@ import {
   LayoutGrid, List, AlertCircle, Trash2, Calendar, Mail, Phone, ChevronRight, ExternalLink
 } from 'lucide-react';
 import { ViewToggle } from '../../components/ui/ViewToggle';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 export const AdminInterpreters = () => {
   const navigate = useNavigate();
@@ -98,16 +99,11 @@ export const AdminInterpreters = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Interpreters Matrix</h1>
-          <p className="text-slate-500 text-sm">Directory of certified freelancers and agencies.</p>
-        </div>
-        <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Pool</span>
-          <span className="text-lg font-bold text-slate-900">{interpreters.length}</span>
-        </div>
-      </div>
+      <PageHeader
+        title="Interpreters Matrix"
+        subtitle="Directory of certified freelancers and agencies."
+        stats={{ label: "Active Pool", value: interpreters.length }}
+      />
 
       <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-2">
         <div className="flex-1 relative w-full h-10">

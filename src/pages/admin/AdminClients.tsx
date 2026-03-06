@@ -17,6 +17,7 @@ import {
   ChevronRight, ExternalLink, User, MessageSquare, AlertCircle, LayoutGrid, List, Calendar, Phone
 } from 'lucide-react';
 import { ViewToggle } from '../../components/ui/ViewToggle';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 interface ClientWithStats extends Client {
   totalBookings: number;
@@ -117,25 +118,19 @@ export const AdminClients = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Executive Database</h1>
-          <p className="text-slate-500 text-sm">Manage corporate accounts and organizational entities.</p>
-        </div>
-        <div className="flex gap-3">
-          <div className="hidden sm:flex bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm items-center gap-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Global Clients</span>
-            <span className="text-lg font-bold text-slate-900">{clients.length}</span>
-          </div>
-          <Button
-            icon={Plus}
-            onClick={() => navigate('/admin/bookings/new')}
-            className="bg-blue-600 hover:bg-blue-700 h-10 px-4 rounded-xl shadow-sm font-bold text-xs"
-          >
-            New Booking
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Executive Database"
+        subtitle="Manage corporate accounts and organizational entities."
+        stats={{ label: "Global Clients", value: clients.length }}
+      >
+        <Button
+          icon={Plus}
+          onClick={() => navigate('/admin/bookings/new')}
+          size="sm"
+        >
+          New Booking
+        </Button>
+      </PageHeader>
 
       <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-2">
         <div className="flex-1 relative w-full h-10">
@@ -154,8 +149,8 @@ export const AdminClients = () => {
               key={s}
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${statusFilter === s
-                  ? 'bg-slate-900 text-white shadow-md'
-                  : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                 }`}
             >
               {s}
@@ -191,8 +186,8 @@ export const AdminClients = () => {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-all duration-300 border shadow-sm ${client.status === 'GUEST'
-                        ? 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600'
-                        : 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600'
+                      ? 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600'
+                      : 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600'
                       }`}>
                       {client.companyName.charAt(0)}
                     </div>
@@ -259,8 +254,8 @@ export const AdminClients = () => {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border transition-all shadow-sm ${client.status === 'GUEST'
-                            ? 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white'
-                            : 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white'
+                          ? 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white'
+                          : 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white'
                           }`}>
                           {client.companyName.charAt(0)}
                         </div>

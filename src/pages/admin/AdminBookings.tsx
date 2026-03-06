@@ -13,6 +13,7 @@ import { Card } from '../../components/ui/Card';
 import { ClientService, InterpreterService, BookingService as RawBookingService } from '../../services/api';
 import { Modal } from '../../components/ui/Modal';
 import { Interpreter, Booking, BookingStatus, BookingColumnField, ALL_BOOKING_COLUMNS, ViewFilterRule, ViewSortRule, GroupableField, FilterableField, SortableField } from '../../types';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 export const AdminBookings = () => {
   const { user, isSuperAdmin } = useAuth();
@@ -433,16 +434,17 @@ export const AdminBookings = () => {
 
       {/* Main Content */}
       <div className="flex-1 space-y-6 min-w-0 w-full">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              {activeView.name}
-              {!activeView.isSystem && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full uppercase font-bold tracking-wider">Custom</span>}
-            </h1>
-            <p className="text-gray-500 text-sm">System-wide requests</p>
-          </div>
-          <Button onClick={() => navigate('/admin/bookings/new')} icon={Plus}>Create Booking</Button>
-        </div>
+        <PageHeader
+          title={activeView.name}
+          subtitle="System-wide requests"
+        >
+          {!activeView.isSystem && (
+            <div className="flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] rounded-full uppercase font-bold tracking-wider mr-2">
+              Custom
+            </div>
+          )}
+          <Button onClick={() => navigate('/admin/bookings/new')} icon={Plus} size="sm">Create Booking</Button>
+        </PageHeader>
 
         <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-2">
           <div className="flex-1 relative w-full h-10">

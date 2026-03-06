@@ -14,6 +14,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { useTheme } from '../context/ThemeContext';
+import { Button } from '../components/ui/Button';
+import { PageHeader } from '../components/layout/PageHeader';
 
 // --- Components ---
 
@@ -89,7 +91,7 @@ export const Dashboard = () => {
     const loadData = async () => {
       try {
         let currentStats;
-        if (user?.role === UserRole.ADMIN) {
+        if (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) {
           currentStats = await StatsService.getAdminStats();
         } else if (user?.role === UserRole.CLIENT) {
           currentStats = await StatsService.getClientStats(user.profileId || user.id);
@@ -153,30 +155,37 @@ export const Dashboard = () => {
 
     return (
       <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)] bg-slate-50">
-        {/* Header Bar */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-          <div className="flex items-center gap-4 flex-1">
-            <h2 className="text-sm font-bold text-slate-800">Admin Console</h2>
-            <div className="h-4 w-px bg-slate-200"></div>
-            <div className="flex space-x-2">
-              <button onClick={() => navigate('/admin/bookings/new')} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center transition-colors gap-1.5">
-                <UserPlus size={13} /> New Request
-              </button>
-              <button onClick={() => navigate('/admin/bookings')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg flex items-center transition-colors gap-1.5">
-                <Briefcase size={13} /> All Bookings
-              </button>
-              <button onClick={() => navigate('/admin/interpreters')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg flex items-center transition-colors gap-1.5">
-                <Users size={13} /> Interpreters
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-            <span className="flex items-center gap-1"><Activity size={12} className="text-emerald-500" /> System Live</span>
-          </div>
-        </header>
+        <PageHeader
+          title="Admin Console"
+          subtitle="System-wide management & oversight"
+        >
+          <Button
+            onClick={() => navigate('/admin/bookings/new')}
+            icon={UserPlus}
+            size="sm"
+          >
+            New Request
+          </Button>
+          <Button
+            onClick={() => navigate('/admin/bookings')}
+            variant="secondary"
+            icon={Briefcase}
+            size="sm"
+          >
+            All Bookings
+          </Button>
+          <Button
+            onClick={() => navigate('/admin/interpreters')}
+            variant="secondary"
+            icon={Users}
+            size="sm"
+          >
+            Interpreters
+          </Button>
+        </PageHeader>
 
         {/* KPI Ribbon */}
-        <div className="bg-white border-b border-slate-200 px-6 py-2 flex flex-wrap items-center gap-x-8 gap-y-2 shrink-0">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-3 flex flex-wrap items-center gap-x-8 gap-y-4 mb-6 shadow-sm mx-4 sm:mx-0">
           {[
             { label: 'Total Bookings', value: stats.totalBookings || 0, badge: '+12%', badgeColor: 'text-emerald-600 bg-emerald-50' },
             { label: 'Active Interpreters', value: stats.activeInterpreters || 0, badge: '+5%', badgeColor: 'text-emerald-600 bg-emerald-50' },
@@ -547,8 +556,8 @@ export const Dashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
-      {user?.role === UserRole.ADMIN && renderAdminDashboard()}
+    <div className="min-h-screen bg-slate-50/50">
+      {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && renderAdminDashboard()}
       {user?.role === UserRole.CLIENT && renderClientDashboard()}
       {user?.role === UserRole.INTERPRETER && renderInterpreterDashboard()}
     </div>
