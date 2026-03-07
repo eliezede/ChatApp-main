@@ -7,6 +7,7 @@ import { SettingsProvider } from './context/SettingsContext';
 import { ChatProvider } from './context/ChatContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
+import { CommandPalette } from './components/ui/CommandPalette';
 import { UserRole } from './types.ts';
 
 // Layouts
@@ -26,9 +27,15 @@ import WhyUsPage from './pages/public/WhyUsPage';
 import InterpretersPage from './pages/public/InterpretersPage';
 
 // Admin Pages
-import { AdminBookings } from './pages/admin/AdminBookings';
+import { JobsBoard } from './pages/admin/operations/JobsBoard';
+import { AssignmentCenter } from './pages/admin/operations/AssignmentCenter';
+import { TimesheetQueue } from './pages/admin/operations/TimesheetQueue';
 import AdminBookingDetails from './pages/admin/bookings/AdminBookingDetails';
-import { AdminTimesheets } from './pages/admin/billing/TimesheetsPage';
+import { DocumentCenter } from './pages/admin/finance/DocumentCenter';
+import { Statements } from './pages/admin/finance/Statements';
+import { Payroll } from './pages/admin/finance/Payroll';
+import { ReportsCenter } from './pages/admin/finance/ReportsCenter';
+import { DataCenter } from './pages/admin/administration/DataCenter';
 import { AdminBillingDashboard } from './pages/admin/billing/AdminBillingDashboard';
 import { AdminClientInvoicesPage } from './pages/admin/billing/AdminClientInvoicesPage';
 import { AdminClientInvoiceDetailsPage } from './pages/admin/billing/AdminClientInvoiceDetailsPage';
@@ -87,6 +94,7 @@ const App = () => {
             <SettingsProvider>
               <ChatProvider>
                 <HashRouter>
+                  <CommandPalette />
                   <Routes>
                     <Route path="/" element={<RootRoute />} />
                     <Route path="/login" element={<LoginPage />} />
@@ -140,7 +148,9 @@ const App = () => {
                           <Routes>
                             <Route path="dashboard" element={<Dashboard />} />
                             <Route path="messages" element={<AdminMessages />} />
-                            <Route path="bookings" element={<AdminBookings />} />
+                            <Route path="bookings" element={<JobsBoard />} />
+                            <Route path="operations/assignments" element={<AssignmentCenter />} />
+                            <Route path="timesheets" element={<TimesheetQueue />} />
                             <Route path="bookings/new" element={<AdminNewBooking />} />
                             <Route path="bookings/:id" element={<AdminBookingDetails />} />
                             <Route path="applications" element={<AdminApplications />} />
@@ -151,12 +161,16 @@ const App = () => {
                             <Route path="users" element={<AdminUsers />} />
                             <Route path="settings" element={<AdminSettings />} />
                             <Route path="settings/email-templates" element={<AdminEmailTemplates />} />
+                            <Route path="finance/documents" element={<DocumentCenter />} />
+                            <Route path="finance/statements" element={<Statements />} />
+                            <Route path="finance/payroll" element={<Payroll />} />
+                            <Route path="finance/reports" element={<ReportsCenter />} />
+                            <Route path="administration/data" element={<DataCenter />} />
                             <Route path="billing" element={<AdminBillingDashboard />} />
                             <Route path="billing/client-invoices" element={<AdminClientInvoicesPage />} />
                             <Route path="billing/client-invoices/:id" element={<AdminClientInvoiceDetailsPage />} />
                             <Route path="billing/interpreter-invoices" element={<AdminInterpreterInvoicesPage />} />
                             <Route path="billing/interpreter-invoices/:id" element={<AdminInterpreterInvoiceDetailsPage />} />
-                            <Route path="timesheets" element={<AdminTimesheets />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </AdminLayout>

@@ -106,27 +106,33 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
 
         <nav className="flex-1 overflow-y-auto p-3 scrollbar-hide space-y-0.5">
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-1">Core</div>}
-          <NavItem isCollapsed={isCollapsed} to="/admin/dashboard" icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/admin/dashboard'} onClick={closeSidebar} />
-          <NavItem isCollapsed={isCollapsed} to="/admin/messages" icon={MessageSquare} label="Messages" badge={totalUnread} active={isActive('/admin/messages')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/dashboard" icon={LayoutDashboard} label="Workstation" active={location.pathname === '/admin/dashboard'} onClick={closeSidebar} />
 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Operations</div>}
-          <NavItem isCollapsed={isCollapsed} to="/admin/bookings" icon={CalendarDays} label="Bookings" active={isActive('/admin/bookings')} onClick={closeSidebar} />
-          <NavItem isCollapsed={isCollapsed} to="/admin/clients" icon={Briefcase} label="Clients" active={isActive('/admin/clients')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/bookings" icon={CalendarDays} label="Jobs Board" active={isActive('/admin/bookings')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/operations/assignments" icon={Users} label="Assignments" active={isActive('/admin/operations/assignments')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/timesheets" icon={FileText} label="Timesheet Review" active={isActive('/admin/timesheets')} onClick={closeSidebar} />
+
+          {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Network</div>}
           <NavItem isCollapsed={isCollapsed} to="/admin/interpreters" icon={Users} label="Interpreters" active={isActive('/admin/interpreters')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/clients" icon={Briefcase} label="Clients & Depts" active={isActive('/admin/clients')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/applications" icon={UserPlus} label="Applications" active={isActive('/admin/applications')} onClick={closeSidebar} />
 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Finance</div>}
-          <NavItem isCollapsed={isCollapsed} to="/admin/billing" icon={LayoutDashboard} label="Overview" active={location.pathname === '/admin/billing'} onClick={closeSidebar} />
-          <NavItem isCollapsed={isCollapsed} to="/admin/timesheets" icon={FileText} label="Timesheets" active={isActive('/admin/timesheets')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/billing/client-invoices" icon={CreditCard} label="Client Invoices" active={isActive('/admin/billing/client-invoices')} onClick={closeSidebar} />
-          <NavItem isCollapsed={isCollapsed} to="/admin/billing/interpreter-invoices" icon={PoundSterling} label="Payable Claims" active={isActive('/admin/billing/interpreter-invoices')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/billing/interpreter-invoices" icon={PoundSterling} label="Interpreter Payments" active={isActive('/admin/billing/interpreter-invoices')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/finance/reports" icon={LayoutDashboard} label="Financial Reports" active={isActive('/admin/finance/reports')} onClick={closeSidebar} />
 
-          {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">System</div>}
-          <NavItem isCollapsed={isCollapsed} to="/admin/users" icon={UserCog} label="User Roles" active={isActive('/admin/users')} onClick={closeSidebar} />
+          {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Communications</div>}
+          <NavItem isCollapsed={isCollapsed} to="/admin/messages" icon={MessageSquare} label="Direct Messages" badge={totalUnread} active={isActive('/admin/messages')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/settings/email-templates" icon={Mail} label="Email Templates" active={isActive('/admin/settings/email-templates')} onClick={closeSidebar} />
+
+          {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Administration</div>}
+          <NavItem isCollapsed={isCollapsed} to="/admin/users" icon={UserCog} label="Users & Roles" active={isActive('/admin/users')} onClick={closeSidebar} />
           {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && (
             <React.Fragment>
-              <NavItem isCollapsed={isCollapsed} to="/admin/settings" icon={Settings} label="Global Settings" active={location.pathname === '/admin/settings'} onClick={closeSidebar} />
-              <NavItem isCollapsed={isCollapsed} to="/admin/settings/email-templates" icon={Mail} label="Email Config" active={isActive('/admin/settings/email-templates')} onClick={closeSidebar} />
+              <NavItem isCollapsed={isCollapsed} to="/admin/settings" icon={Settings} label="System Config" active={location.pathname === '/admin/settings'} onClick={closeSidebar} />
+              <NavItem isCollapsed={isCollapsed} to="/admin/system/audit-log" icon={FileText} label="Audit Logs" active={isActive('/admin/system/audit-log')} onClick={closeSidebar} />
             </React.Fragment>
           )}
         </nav>

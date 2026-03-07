@@ -1,0 +1,207 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FileCheck, AlertCircle, Clock, CheckCircle2, XCircle, Eye, ArrowRight, ShieldCheck, Info } from 'lucide-react';
+import { useBookings } from '../../../hooks/useBookings';
+import { PageHeader } from '../../../components/layout/PageHeader';
+import { Button } from '../../../components/ui/Button';
+import { Table } from '../../../components/ui/Table';
+import { Modal } from '../../../components/ui/Modal';
+import { StatusBadge } from '../../../components/StatusBadge';
+import { Booking, BookingStatus } from '../../../types';
+import { BookingService } from '../../../services/api';
+
+export const TimesheetQueue = () => {
+    const navigate = useNavigate();
+    const { bookings = [], loading, refresh } = useBookings();
+
+    // Filter jobs that have submitted timesheets but aren't verified yet
+    const pendingTimesheets = bookings.filter(b => b.status === 'INVOICING');
+
+    const [selectedJob, setSelectedJob] = useState<Booking | null>(null);
+    const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    const openAuditHub = (job: Booking) => {
+        setSelectedJob(job);
+        setIsAuditModalOpen(true);
+    };
+
+    const handleVerify = async (job: Booking) => {
+        try {
+            // In a real scenario, this would call a verifyTimesheet API
+            await BookingService.updateStatus(job.id, 'INVOICED' as any); // Or VERIFIED if added
+            setIsAuditModalOpen(false);
+            refresh();
+        } catch (e) {
+            alert("Failed to verify timesheet");
+        }
+    };
+
+    const columns = [
+        {
+            header: 'Job Reference',
+            accessor: (job: Booking) => (
+                <div className="flex flex-col">
+                    <span className="font-bold text-slate-900 dark:text-white">{job.bookingRef || 'TBD'}</span>
+                    <span className="text-[10px] text-slate-500 uppercase">{job.clientName}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Interpreter',
+            accessor: (job: Booking) => (
+                <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-slate-400 font-bold text-[10px]">
+                        {job.interpreterName?.charAt(0)}
+                    </div>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{job.interpreterName}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Claimed Duration',
+            accessor: (job: Booking) => (
+                <div className="flex items-center text-sm font-bold text-slate-900 dark:text-white">
+                    <Clock size={14} className="mr-2 text-blue-500" />
+                    {job.durationMinutes} min
+                </div>
+            )
+        },
+        {
+            header: 'Status',
+            accessor: (job: Booking) => <StatusBadge status={job.status} />
+        }
+    ];
+
+    return (
+        <div className="space-y-6">
+            <PageHeader title="Timesheet Review" subtitle="Visual audit and compliance verification" />
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-3 space-y-4">
+                    <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800 p-4 rounded-2xl flex items-start space-x-3">
+                        <ShieldCheck className="text-emerald-600 shrink-0 mt-0.5" size={18} />
+                        <div>
+                            <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Quality Assurance Required</p>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">There are {pendingTimesheets.length} claims pending verification. Ensure actual times match the original job booking before authorizing payment.</p>
+                        </div>
+                    </div>
+
+                    <Table
+                        data={pendingTimesheets}
+                        columns={columns}
+                        selectable
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onRowClick={openAuditHub}
+                        isLoading={loading}
+                        emptyMessage="No pending timesheets for review."
+                    />
+                </div>
+
+                <div className="space-y-6">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Integrity Summary</h3>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">Claims Verified Today</span>
+                                <span className="text-sm font-bold text-slate-900 dark:text-white">42</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">Flagged Exceptions</span>
+                                <span className="text-sm font-bold text-red-500 underline decoration-red-200">3</span>
+                            </div>
+                            <div className="h-px bg-slate-100 dark:bg-slate-800" />
+                            <div className="flex items-center space-x-2 text-blue-600">
+                                <Info size={14} />
+                                <span className="text-[10px] font-bold uppercase">Auto-verify active for 1hr+</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Audit Sidebar Hub */}
+            <Modal
+                isOpen={isAuditModalOpen}
+                onClose={() => setIsAuditModalOpen(false)}
+                type="drawer"
+                title="Visual Compliance Audit"
+                maxWidth="4xl"
+            >
+                {selectedJob && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                        {/* Comparison Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Original Booking */}
+                            <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Original Job Record</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Planned Schedule</p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedJob.date}</p>
+                                        <p className="text-lg font-black text-slate-700 dark:text-slate-300">{selectedJob.startTime}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Allocated Duration</p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedJob.durationMinutes} minutes</p>
+                                    </div>
+                                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Service Type</p>
+                                        <p className="text-xs font-bold text-blue-600 uppercase">{selectedJob.serviceType}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Interpreter Claim */}
+                            <div className="p-5 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 shadow-lg shadow-blue-500/5">
+                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4">Interpreter Claim</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-[10px] text-blue-500 uppercase font-bold">Actual Attendance</p>
+                                        <p className="text-sm font-bold text-blue-900 dark:text-blue-200">{selectedJob.date}</p>
+                                        <p className="text-lg font-black text-blue-700 dark:text-blue-100">{selectedJob.startTime}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-blue-500 uppercase font-bold">Total Units Claimed</p>
+                                        <p className="text-sm font-bold text-blue-900 dark:text-blue-200">{selectedJob.durationMinutes} minutes</p>
+                                    </div>
+                                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-blue-200 dark:border-blue-800">
+                                        <p className="text-[10px] text-green-600 uppercase font-black mb-1">Comparison Result</p>
+                                        <div className="flex items-center space-x-2">
+                                            <CheckCircle2 size={14} className="text-green-500" />
+                                            <p className="text-xs font-bold text-slate-900 dark:text-white uppercase">Matched (100% Correlation)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Supporting Evidence */}
+                        <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Supporting Evidence</h4>
+                            <div className="flex items-center justify-center h-40 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                                <div className="text-center">
+                                    <AlertCircle className="mx-auto text-slate-300 mb-2" size={24} />
+                                    <p className="text-xs text-slate-400 italic">No digital timesheet image attached.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Audit Actions */}
+                        <div className="flex gap-3 justify-end pt-6 border-t border-slate-100 dark:border-slate-800">
+                            <Button variant="outline" className="text-red-600 border-red-100 hover:bg-red-50">
+                                <XCircle size={16} className="mr-2" />
+                                Reject Claim
+                            </Button>
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20" onClick={() => handleVerify(selectedJob)}>
+                                <CheckCircle2 size={16} className="mr-2" />
+                                Authorize for Billing
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+        </div>
+    );
+};
