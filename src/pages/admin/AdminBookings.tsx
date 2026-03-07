@@ -10,28 +10,37 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Alert } from '../../components/ui/Alert';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Card } from '../../components/ui/Card';
-import { ClientService, InterpreterService, BookingService as RawBookingService } from '../../services/api';
+import { ClientService } from '../../services/api';
 import { Modal } from '../../components/ui/Modal';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { Interpreter, Booking, BookingStatus, JobStatus, BookingColumnField, ALL_BOOKING_COLUMNS, ViewFilterRule, ViewSortRule, GroupableField, FilterableField, SortableField } from '../../types';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { useToast } from '../../context/ToastContext';
+import {
+  unassignInterpreterAction,
+  updateJobStatusAction,
+  createDependencies
+} from '../../ui/actions';
+import { AssignmentModal } from '../../components/operations/AssignmentModal';
+import { BulkActionBar } from '../../components/ui/BulkActionBar';
 
 export const AdminBookings = () => {
   const { user, isSuperAdmin } = useAuth();
+  const { showToast } = useToast();
   const { bookings = [], loading, error, refresh } = useBookings();
+
+  // Scoped dependencies for UI actions
+  const actionsDeps = createDependencies((user as any)?.organizationId || 'lingland-main');
   const { views, activeView, activeViewId, setActiveViewId, saveCustomView, deleteCustomView, updateCustomView } = useBookingViews(user?.id || '');
 
   const [filter, setFilter] = useState('');
-  const [allInterpreters, setAllInterpreters] = useState<Interpreter[]>([]);
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedInterpreter, setSelectedInterpreter] = useState<Interpreter | null>(null);
   const [isInterpreterModalOpen, setIsInterpreterModalOpen] = useState(false);
   const [isCreateViewModalOpen, setIsCreateViewModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [editingViewId, setEditingViewId] = useState<string | null>(null);
-  const [assignSearch, setAssignSearch] = useState('');
-  const [assignLoading, setAssignLoading] = useState(false);
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   // Quick-view modal
@@ -44,10 +53,14 @@ export const AdminBookings = () => {
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
+  // Phase 5: Bulk selection
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+
   useEffect(() => {
     ClientService.getAll();
-    loadInterpreters();
   }, []);
+
 
   // Close context menu on outside click
   useEffect(() => {
@@ -73,10 +86,13 @@ export const AdminBookings = () => {
   const handleQuickStatusChange = async (booking: Booking, status: BookingStatus) => {
     setStatusChanging(true);
     try {
-      await RawBookingService.updateStatus(booking.id, status);
+      await updateJobStatusAction(booking.id, status, actionsDeps);
+      showToast(`Status updated to ${status}`, 'success');
       refresh();
       if (modalBooking?.id === booking.id) setModalBooking((prev: Booking | null) => prev ? { ...prev, status } : null);
-    } catch (e) { alert('Failed to update status'); }
+    } catch (e) {
+      showToast('Failed to update status', 'error');
+    }
     finally { setStatusChanging(false); setContextMenu(null); }
   };
 
@@ -85,34 +101,10 @@ export const AdminBookings = () => {
     setContextMenu(null);
   };
 
-  const loadInterpreters = async () => {
-    try {
-      const ints = await InterpreterService.getAll();
-      setAllInterpreters(ints.filter(i => i.status === 'ACTIVE'));
-    } catch (e) {
-      console.error("Failed to load interpreters");
-    }
-  };
-
   const handleAssignClick = (e: React.MouseEvent, booking: Booking) => {
     e.stopPropagation();
     setSelectedBooking(booking);
-    setAssignSearch(booking.languageTo); // Pre-fill with language
     setIsAssignModalOpen(true);
-  };
-
-  const confirmAssign = async (interpreter: Interpreter) => {
-    if (!selectedBooking) return;
-    setAssignLoading(true);
-    try {
-      await RawBookingService.assignInterpreterToBooking(selectedBooking.id, interpreter.id);
-      setIsAssignModalOpen(false);
-      refresh();
-    } catch (e) {
-      alert("Failed to assign interpreter");
-    } finally {
-      setAssignLoading(false);
-    }
   };
 
   const handleUnassign = async (e: React.MouseEvent, bookingId: string) => {
@@ -120,21 +112,64 @@ export const AdminBookings = () => {
     if (!confirm("Are you sure you want to unassign this interpreter?")) return;
     setUnassigningId(bookingId);
     try {
-      await RawBookingService.unassignInterpreterFromBooking(bookingId);
+      await unassignInterpreterAction(bookingId, actionsDeps);
+      showToast("Interpreter unassigned successfully", 'success');
       refresh();
     } catch (e) {
-      alert("Failed to unassign interpreter");
+      showToast("Failed to unassign interpreter", 'error');
     } finally {
       setUnassigningId(null);
     }
   };
 
-  const handleInterpreterClick = (e: React.MouseEvent, interpreterId: string) => {
+  // Phase 5: Bulk Actions
+  const handleBulkStatusChange = async (ids: string[], status: BookingStatus) => {
+    setIsBulkLoading(true);
+    let successCount = 0;
+    let failCount = 0;
+    await Promise.allSettled(ids.map(async (id) => {
+      try {
+        await updateJobStatusAction(id, status, actionsDeps);
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }));
+    if (successCount > 0) showToast(`${successCount} booking${successCount > 1 ? 's' : ''} updated to ${status}`, 'success');
+    if (failCount > 0) showToast(`${failCount} booking${failCount > 1 ? 's' : ''} failed to update`, 'error');
+    setSelectedIds([]);
+    setIsBulkLoading(false);
+    refresh();
+  };
+
+  const handleBulkDelete = async (ids: string[]) => {
+    if (!confirm(`Delete ${ids.length} booking${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setIsBulkLoading(true);
+    const { BookingService } = await import('../../services/api');
+    let successCount = 0;
+    await Promise.allSettled(ids.map(async (id) => {
+      try {
+        await BookingService.delete(id);
+        successCount++;
+      } catch { /* silent */ }
+    }));
+    if (successCount > 0) showToast(`${successCount} booking${successCount > 1 ? 's' : ''} deleted`, 'success');
+    setSelectedIds([]);
+    setIsBulkLoading(false);
+    refresh();
+  };
+
+  const handleInterpreterClick = async (e: React.MouseEvent, interpreterId: string) => {
     e.stopPropagation();
-    const interp = allInterpreters.find(i => i.id === interpreterId);
-    if (interp) {
-      setSelectedInterpreter(interp);
-      setIsInterpreterModalOpen(true);
+    try {
+      const { InterpreterService } = await import('../../services/api');
+      const interp = await InterpreterService.getById(interpreterId);
+      if (interp) {
+        setSelectedInterpreter(interp as any);
+        setIsInterpreterModalOpen(true);
+      }
+    } catch {
+      // graceful fail
     }
   };
 
@@ -922,58 +957,14 @@ export const AdminBookings = () => {
           </div>
         </Modal>
 
-        {/* Assignment Modal */}
-        <Modal
+
+        {/* Unified Assignment Modal */}
+        <AssignmentModal
           isOpen={isAssignModalOpen}
           onClose={() => setIsAssignModalOpen(false)}
-          title={`Assign Interpreter for ${selectedBooking?.bookingRef}`}
-        >
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={14} />
-              <input
-                type="text"
-                placeholder="Search by name or language..."
-                className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none text-sm shadow-sm transition-all"
-                value={assignSearch}
-                onChange={e => setAssignSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-2 max-h-[350px] overflow-y-auto pr-1">
-              {allInterpreters
-                .filter(i =>
-                  i.name.toLowerCase().includes(assignSearch.toLowerCase()) ||
-                  i.languages.some(l => l.toLowerCase().includes(assignSearch.toLowerCase()))
-                )
-                .map(interpreter => (
-                  <div
-                    key={interpreter.id}
-                    className="flex items-center justify-between p-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm bg-white"
-                  >
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mr-3 font-bold text-sm shadow-sm border border-blue-100">
-                        {interpreter.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900 text-sm leading-tight">{interpreter.name}</p>
-                        <p className="text-[10px] font-medium text-slate-500 mt-0.5">{interpreter.languages.slice(0, 3).join(', ')}</p>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => confirmAssign(interpreter)}
-                      isLoading={assignLoading}
-                      className="text-xs px-3 py-1 h-7"
-                    >
-                      Assign
-                    </Button>
-                  </div>
-                ))}
-              {allInterpreters.length === 0 && <p className="text-center text-slate-400 py-4 text-sm font-medium">No interpreters found.</p>}
-            </div>
-          </div>
-        </Modal>
+          booking={selectedBooking}
+          onSuccess={refresh}
+        />
 
         {/* Interpreter Info Modal */}
         <Modal
@@ -1052,6 +1043,7 @@ export const AdminBookings = () => {
           isOpen={isBookingModalOpen}
           onClose={() => setIsBookingModalOpen(false)}
           title="Booking Details"
+          type="drawer"
           maxWidth="4xl"
         >
           {modalBooking && (

@@ -12,12 +12,15 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
 import {
-  Search, Plus, Building2, Mail, Edit,
-  Trash2, MapPin, Briefcase, Clock,
-  ChevronRight, ExternalLink, User, MessageSquare, AlertCircle, LayoutGrid, List, Calendar, Phone
+  Search, Plus, Mail, Trash2, MapPin, Briefcase, Clock,
+  ChevronRight, ExternalLink, User, MessageSquare, AlertCircle, LayoutGrid, List, Calendar, Phone,
+  Building, Check, AlertTriangle
 } from 'lucide-react';
 import { ViewToggle } from '../../components/ui/ViewToggle';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { Table } from '../../components/ui/Table';
+import { BulkActionBar } from '../../components/ui/BulkActionBar';
+import { useToast } from '../../context/ToastContext';
 
 interface ClientWithStats extends Client {
   totalBookings: number;
@@ -28,12 +31,14 @@ export const AdminClients = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { openThread } = useChat();
+  const { showToast } = useToast();
   const [clients, setClients] = useState<ClientWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'GUEST' | 'SUSPENDED'>('ALL');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedClient, setSelectedClient] = useState<ClientWithStats | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [clientJobs, setClientJobs] = useState<any[]>([]);
@@ -113,8 +118,80 @@ export const AdminClients = () => {
       openThread(threadId);
     } catch (error) {
       console.error("Failed to start chat", error);
+      showToast('failed to start chat', 'error');
     }
   };
+
+  const handleBulkStatusChange = async (status: string) => {
+    let done = 0;
+    for (const id of selectedIds) {
+      try {
+        await ClientService.update(id, { status: status as any });
+        done++;
+      } catch (err) { /* silent */ }
+    }
+    showToast(`Updated ${done} clients to ${status}`, 'success');
+    setSelectedIds([]);
+    loadData();
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} clients?`)) return;
+    let done = 0;
+    for (const id of selectedIds) {
+      try {
+        await ClientService.delete(id);
+        done++;
+      } catch (err) { /* silent */ }
+    }
+    showToast(`Deleted ${done} clients`, 'success');
+    setSelectedIds([]);
+    loadData();
+  };
+
+  const clientColumns = [
+    {
+      header: 'Organization',
+      accessor: (c: ClientWithStats) => (
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border shadow-sm ${c.status === 'GUEST' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+            {c.companyName.charAt(0)}
+          </div>
+          <div>
+            <p className="font-bold text-slate-900">{c.companyName}</p>
+            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{c.status || 'Active'}</p>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Primary Contact',
+      accessor: (c: ClientWithStats) => (
+        <div>
+          <p className="font-medium text-slate-700">{c.contactPerson}</p>
+          <p className="text-xs text-slate-400">{c.email}</p>
+        </div>
+      )
+    },
+    {
+      header: 'Activity',
+      accessor: (c: ClientWithStats) => (
+        <div className="flex items-center gap-3">
+          <Badge variant="info" className="text-[10px] py-0 px-1.5">{c.activeBookings} Active</Badge>
+          <span className="text-xs text-slate-400">{c.totalBookings} Total</span>
+        </div>
+      )
+    },
+    {
+      header: 'Location',
+      accessor: (c: ClientWithStats) => (
+        <div className="flex items-center gap-2 text-slate-500">
+          <MapPin size={12} />
+          <span className="text-xs truncate max-w-[150px]">{c.billingAddress || 'N/A'}</span>
+        </div>
+      )
+    }
+  ];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -172,129 +249,30 @@ export const AdminClients = () => {
           description="We couldn't find any client matching your current search criteria."
           onAction={() => setFilter('')}
           actionLabel="View All Entities"
-          icon={Building2}
+          icon={Building}
         />
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredClients.map(client => (
-            <div
-              key={client.id}
-              onClick={() => handleOpenPreview(client)}
-              className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group relative overflow-hidden flex flex-col h-full cursor-pointer"
-            >
-              <div className="relative z-10 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-all duration-300 border shadow-sm ${client.status === 'GUEST'
-                      ? 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600'
-                      : 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600'
-                      }`}>
-                      {client.companyName.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">{client.companyName}</h3>
-                        {client.status === 'GUEST' && (
-                          <span className="bg-amber-100 text-amber-700 text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Guest</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-500 flex items-center gap-1">
-                        <User size={12} className="text-slate-400" />
-                        {client.contactPerson}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2 mb-3 flex-1">
-                  <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    <Mail size={14} className="text-blue-500" />
-                    <span className="text-xs truncate">{client.email}</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 min-h-[40px]">
-                    <MapPin size={14} className="text-emerald-500 mt-0.5 shrink-0" />
-                    <span className="text-xs leading-tight line-clamp-2">{client.billingAddress || 'No billing address'}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
-                  <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 group-hover:bg-blue-50/50 transition-colors flex flex-col items-center">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Jobs</p>
-                    <p className="text-sm font-bold text-slate-900">{client.totalBookings}</p>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 group-hover:bg-emerald-50/50 transition-colors flex flex-col items-center">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Active</p>
-                    <p className="text-sm font-bold text-slate-900">{client.activeBookings}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Organization</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Jobs</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Active</th>
-                  <th className="px-4 py-3 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredClients.map(client => (
-                  <tr
-                    key={client.id}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
-                    onClick={() => handleOpenPreview(client)}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border transition-all shadow-sm ${client.status === 'GUEST'
-                          ? 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white'
-                          : 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white'
-                          }`}>
-                          {client.companyName.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-slate-900 leading-none">{client.companyName}</p>
-                            {client.status === 'GUEST' && (
-                              <Badge variant="warning" className="text-[8px] py-0 px-1.5">Guest</Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-500 mt-1 truncate">{client.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm text-slate-700">{client.contactPerson}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-slate-700">{client.totalBookings}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={client.activeBookings > 0 ? 'info' : 'neutral'} className="text-xs">
-                        {client.activeBookings} Active
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); handleOpenPreview(client); }}
-                        className="p-1.5 hover:bg-slate-200"
-                        icon={ChevronRight}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="relative">
+          <Table
+            data={filteredClients}
+            columns={clientColumns}
+            selectable
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+            onRowClick={handleOpenPreview}
+          />
+
+          <BulkActionBar
+            selectedCount={selectedIds.length}
+            totalCount={filteredClients.length}
+            onClearSelection={() => setSelectedIds([])}
+            entityLabel="client"
+            actions={[
+              { label: 'Activate', icon: Check, onClick: () => handleBulkStatusChange('ACTIVE'), variant: 'success' },
+              { label: 'Suspend', icon: AlertCircle, onClick: () => handleBulkStatusChange('SUSPENDED'), variant: 'warning' },
+              { label: 'Delete', icon: Trash2, onClick: () => handleBulkDelete(), variant: 'danger' }
+            ]}
+          />
         </div>
       )}
 
@@ -302,14 +280,14 @@ export const AdminClients = () => {
       <Modal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        title="Account Profile"
-        maxWidth="2xl"
+        title="Account Preview"
+        type="drawer"
       >
         {selectedClient && (
           <div className="space-y-6 py-2">
             <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-slate-50 rounded-xl border border-slate-200 gap-4">
               <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
-                <div className="w-16 h-16 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white">
+                <div className="w-16 h-16 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white">
                   {selectedClient.companyName.charAt(0)}
                 </div>
                 <div>
@@ -376,7 +354,7 @@ export const AdminClients = () => {
                       <div key={job.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 group hover:border-blue-200 transition-all cursor-pointer" onClick={() => navigate(`/admin/bookings/${job.id}`)}>
                         <div className="flex flex-col gap-1">
                           <span className="text-xs font-bold text-slate-900 uppercase tracking-tight">{job.bookingRef || `#${job.id.slice(-4)}`}</span>
-                          <span className="text-xs text-slate-500">{job.date}</span>
+                          <span className="text-xs text-xs text-slate-500">{job.date}</span>
                         </div>
                         <Badge variant={job.status === 'COMPLETED' ? 'success' : 'info'} className="text-xs px-2">
                           {job.status}
@@ -406,7 +384,6 @@ export const AdminClients = () => {
           </div>
         )}
       </Modal>
-
     </div>
   );
 };

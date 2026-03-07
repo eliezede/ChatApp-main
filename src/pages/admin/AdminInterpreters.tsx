@@ -12,19 +12,22 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
-import {
-  Search, UserCircle2, MapPin,
-  Languages, ShieldCheck, Edit, Check, MessageSquare,
-  LayoutGrid, List, AlertCircle, Trash2, Calendar, Mail, Phone, ChevronRight, ExternalLink
-} from 'lucide-react';
 import { ViewToggle } from '../../components/ui/ViewToggle';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { Table } from '../../components/ui/Table';
+import { BulkActionBar } from '../../components/ui/BulkActionBar';
+import { useToast } from '../../context/ToastContext';
+import {
+  Search, MapPin, Languages, ShieldCheck, Check, MessageSquare,
+  AlertCircle, Trash2, Calendar, Mail, ExternalLink, UserCircle2, ChevronRight, Users, User
+} from 'lucide-react';
 
 export const AdminInterpreters = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { openThread } = useChat();
   const { settings } = useSettings();
+  const { showToast } = useToast();
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +35,8 @@ export const AdminInterpreters = () => {
   const [langFilter, setLangFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'ONBOARDING' | 'SUSPENDED'>('ALL');
 
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState<Interpreter | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [interpreterJobs, setInterpreterJobs] = useState<any[]>([]);
@@ -97,6 +101,78 @@ export const AdminInterpreters = () => {
     }
   };
 
+  const handleBulkStatusChange = async (status: string) => {
+    let done = 0;
+    for (const id of selectedIds) {
+      try {
+        await InterpreterService.updateProfile(id, { status: status as any });
+        done++;
+      } catch (err) { /* silent */ }
+    }
+    showToast(`Updated ${done} interpreters to ${status}`, 'success');
+    setSelectedIds([]);
+    loadInterpreters();
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} interpreters?`)) return;
+    let done = 0;
+    for (const id of selectedIds) {
+      try {
+        await InterpreterService.delete(id);
+        done++;
+      } catch (err) { /* silent */ }
+    }
+    showToast(`Deleted ${done} interpreters`, 'success');
+    setSelectedIds([]);
+    loadInterpreters();
+  };
+
+  const interpreterColumns = [
+    {
+      header: 'Interpreter',
+      accessor: (i: Interpreter) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm border border-slate-200">
+            {i.name.charAt(0)}
+          </div>
+          <div>
+            <p className="font-bold text-slate-900">{i.name}</p>
+            <p className="text-xs text-slate-500">{i.email}</p>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Languages',
+      accessor: (i: Interpreter) => (
+        <div className="flex flex-wrap gap-1 max-w-[200px]">
+          {i.languages.slice(0, 3).map(l => (
+            <span key={l} className="bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600 border border-slate-200">{l}</span>
+          ))}
+          {i.languages.length > 3 && <span className="text-[10px] text-slate-400 font-bold">+{i.languages.length - 3}</span>}
+        </div>
+      )
+    },
+    {
+      header: 'Region',
+      accessor: (i: Interpreter) => (
+        <div className="flex items-center gap-2 text-slate-500">
+          <MapPin size={12} />
+          <span className="text-xs truncate max-w-[120px]">{i.regions[0]}{i.regions.length > 1 ? ` +${i.regions.length - 1}` : ''}</span>
+        </div>
+      )
+    },
+    {
+      header: 'Status',
+      accessor: (i: Interpreter) => (
+        <Badge variant={i.status === 'ACTIVE' ? 'success' : i.status === 'SUSPENDED' ? 'danger' : 'warning'}>
+          {i.status}
+        </Badge>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <PageHeader
@@ -156,132 +232,37 @@ export const AdminInterpreters = () => {
           actionLabel="View All Interpreters"
           icon={UserCircle2}
         />
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-          {filteredInterpreters.map(interpreter => (
-            <div
-              key={interpreter.id}
-              onClick={() => handleOpenPreview(interpreter)}
-              className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex flex-col h-full cursor-pointer"
-            >
-              <div className="relative z-10 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center font-bold text-lg group-hover:bg-slate-100 transition-colors border border-slate-200">
-                      {interpreter.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors line-clamp-1">{interpreter.name}</h3>
-                      <p className="text-xs text-slate-500 line-clamp-1">{interpreter.email}</p>
-                    </div>
-                  </div>
-                  <Badge variant={interpreter.status === 'ACTIVE' ? 'success' : 'warning'}>
-                    {interpreter.status}
-                  </Badge>
-                </div>
-
-                <div className="space-y-2 mb-4 flex-1">
-                  <div className="flex items-start gap-2">
-                    <Languages size={14} className="text-slate-400 mt-0.5" />
-                    <div className="flex gap-1 flex-wrap">
-                      {interpreter.languages.map(lang => (
-                        <span key={lang} className="bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600 border border-slate-200">
-                          {lang}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin size={14} className="text-slate-400" />
-                    <span className="text-xs text-slate-600 truncate">{interpreter.regions.join(', ')}</span>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleStartChat(e, interpreter.id, interpreter.name)}
-                    className="text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-medium px-2 py-1 h-auto"
-                    icon={MessageSquare}
-                  >Message</Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={(e) => { e.stopPropagation(); navigate(`/admin/interpreters/${interpreter.id}`); }}
-                    className="rounded-lg text-xs font-medium px-3 py-1 h-auto"
-                    icon={UserCircle2}
-                  >Profile</Button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Interpreter</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Languages</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Region</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-right"></th>
-                </tr >
-              </thead >
-              <tbody className="divide-y divide-slate-100">
-                {filteredInterpreters.map(interpreter => (
-                  <tr
-                    key={interpreter.id}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
-                    onClick={() => handleOpenPreview(interpreter)}
-                  >
-                    <td className="px-4 py-3 text-sm text-slate-900">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm border border-slate-200">
-                          {interpreter.name.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-bold">{interpreter.name}</div>
-                          <div className="text-xs text-slate-500">{interpreter.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {interpreter.languages.map(l => (
-                          <span key={l} className="bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600 border border-slate-200">{l}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-600">{interpreter.regions[0]}{interpreter.regions.length > 1 && ` +${interpreter.regions.length - 1}`}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={interpreter.status === 'ACTIVE' ? 'success' : 'warning'}>{interpreter.status}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); handleOpenPreview(interpreter); }}
-                        className="p-1.5 h-auto text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                      ><ChevronRight size={16} /></Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table >
-          </div >
-        </div >
-      )}
+        <div className="relative">
+          <Table
+            data={filteredInterpreters}
+            columns={interpreterColumns}
+            selectable
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+            onRowClick={handleOpenPreview}
+          />
 
+          <BulkActionBar
+            selectedCount={selectedIds.length}
+            totalCount={filteredInterpreters.length}
+            onClearSelection={() => setSelectedIds([])}
+            entityLabel="interpreter"
+            actions={[
+              { label: 'Activate', icon: Check, onClick: () => handleBulkStatusChange('ACTIVE'), variant: 'success' },
+              { label: 'Suspend', icon: AlertCircle, onClick: () => handleBulkStatusChange('SUSPENDED'), variant: 'warning' },
+              { label: 'Delete', icon: Trash2, onClick: () => handleBulkDelete(), variant: 'danger' }
+            ]}
+          />
+        </div>
+      )}
 
       {/* Preview Modal */}
       <Modal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         title="Interpreter Profile Overview"
-        maxWidth="2xl"
+        type="drawer"
       >
         {selectedInterpreter && (
           <div className="space-y-6">

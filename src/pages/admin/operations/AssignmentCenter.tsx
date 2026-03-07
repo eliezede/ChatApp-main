@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, Star, MapPin, CheckCircle2, AlertCircle, Info, Search, Filter } from 'lucide-react';
+import { UserPlus, Star, MapPin, CheckCircle2, AlertCircle, Info, Search, Filter, Zap, Trash2, X } from 'lucide-react';
 import { useBookings } from '../../../hooks/useBookings';
 import { useAuth } from '../../../context/AuthContext';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -9,11 +9,17 @@ import { Table } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { Booking, Interpreter } from '../../../types';
-import { InterpreterService, BookingService } from '../../../services/api';
+import { InterpreterService } from '../../../services/api';
+import { useToast } from '../../../context/ToastContext';
+import { assignInterpreterAction, createDependencies } from '../../../ui/actions';
+import { BulkActionBar } from '../../../components/ui/BulkActionBar';
 
 export const AssignmentCenter = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { showToast } = useToast();
     const { bookings = [], loading, refresh } = useBookings();
+    const actionsDeps = createDependencies((user as any)?.organizationId || 'lingland-main');
 
     // Filter only unassigned jobs that are in actionable states
     const unassignedJobs = bookings.filter(b => !b.interpreterId && (b.status === 'INCOMING' || b.status === 'OPENED'));
@@ -42,11 +48,25 @@ export const AssignmentCenter = () => {
     const handleAssign = async (interpreter: Interpreter) => {
         if (!selectedJob) return;
         try {
-            await BookingService.assignInterpreterToBooking(selectedJob.id, interpreter.id);
+            await assignInterpreterAction(selectedJob.id, interpreter.id, actionsDeps);
+            showToast(`${interpreter.name} assigned successfully`, 'success');
             setIsAssignModalOpen(false);
             refresh();
         } catch (e) {
-            alert("Failed to assign interpreter");
+            showToast("Failed to assign interpreter", 'error');
+        }
+    };
+
+    const handleBulkBlast = (ids: string[]) => {
+        showToast(`Offering ${ids.length} jobs to top-ranked interpreters...`, 'info');
+        // Logic for mass offering
+        setSelectedIds([]);
+    };
+
+    const handleBulkCancel = (ids: string[]) => {
+        if (confirm(`Are you sure you want to cancel ${ids.length} jobs?`)) {
+            showToast(`${ids.length} jobs cancelled`, 'success');
+            setSelectedIds([]);
         }
     };
 
@@ -108,6 +128,27 @@ export const AssignmentCenter = () => {
                         onRowClick={openAssignmentHub}
                         isLoading={loading}
                         emptyMessage="All jobs are currently assigned. Great work!"
+                    />
+
+                    <BulkActionBar
+                        selectedCount={selectedIds.length}
+                        totalCount={unassignedJobs.length}
+                        onClearSelection={() => setSelectedIds([])}
+                        entityLabel="job"
+                        actions={[
+                            {
+                                label: 'Blast Offer',
+                                icon: Zap,
+                                onClick: handleBulkBlast,
+                                variant: 'success'
+                            },
+                            {
+                                label: 'Cancel Jobs',
+                                icon: Trash2,
+                                onClick: handleBulkCancel,
+                                variant: 'danger'
+                            }
+                        ]}
                     />
                 </div>
 

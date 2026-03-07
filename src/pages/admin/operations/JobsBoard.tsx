@@ -9,18 +9,23 @@ import { Button } from '../../../components/ui/Button';
 import { Table } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/StatusBadge';
+import { BulkActionBar } from '../../../components/ui/BulkActionBar';
 import { Booking, BookingStatus } from '../../../types';
-import { BookingService } from '../../../services/api';
+import { useToast } from '../../../context/ToastContext';
+import { updateJobStatusAction, createDependencies } from '../../../ui/actions';
 
 export const JobsBoard = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { showToast } = useToast();
     const { bookings = [], loading, refresh } = useBookings();
     const { views, activeView, setActiveViewId } = useBookingViews(user?.id || '');
+    const actionsDeps = createDependencies((user as any)?.organizationId || 'lingland-main');
 
     const [selectedJob, setSelectedJob] = useState<Booking | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [isBulkLoading, setIsBulkLoading] = useState(false);
 
     const handleRowClick = (job: Booking) => {
         setSelectedJob(job);
@@ -29,12 +34,24 @@ export const JobsBoard = () => {
 
     const handleQuickStatusChange = async (job: Booking, status: BookingStatus) => {
         try {
-            await BookingService.updateStatus(job.id, status);
+            await updateJobStatusAction(job.id, status, actionsDeps);
             refresh();
             if (selectedJob?.id === job.id) setSelectedJob({ ...job, status });
-        } catch (e) {
-            console.error("Failed to update status");
+        } catch {
+            showToast('Failed to update job status', 'error');
         }
+    };
+
+    const handleBulkStatus = async (ids: string[], status: BookingStatus) => {
+        setIsBulkLoading(true);
+        let done = 0;
+        await Promise.allSettled(ids.map(async id => {
+            try { await updateJobStatusAction(id, status, actionsDeps); done++; } catch { /* silent */ }
+        }));
+        showToast(`${done} job${done !== 1 ? 's' : ''} updated to ${status}`, 'success');
+        setSelectedIds([]);
+        setIsBulkLoading(false);
+        refresh();
     };
 
     const renderContextMenu = (job: Booking) => [
@@ -104,8 +121,8 @@ export const JobsBoard = () => {
                             key={view.id}
                             onClick={() => setActiveViewId(view.id)}
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${activeView.id === view.id
-                                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                                 }`}
                         >
                             {view.name}
@@ -126,7 +143,28 @@ export const JobsBoard = () => {
                 isLoading={loading}
             />
 
-            {/* Job Preview Drawer */}
+            {/* Phase 5: Floating Bulk Action Bar */}
+            <BulkActionBar
+                selectedCount={selectedIds.length}
+                totalCount={bookings.length}
+                entityLabel="job"
+                isLoading={isBulkLoading}
+                onClearSelection={() => setSelectedIds([])}
+                onSelectAll={() => setSelectedIds(bookings.map(b => b.id))}
+                actions={[
+                    {
+                        label: 'Confirm',
+                        onClick: () => handleBulkStatus(selectedIds, BookingStatus.BOOKED),
+                        variant: 'success',
+                    },
+                    {
+                        label: 'Cancel',
+                        onClick: () => handleBulkStatus(selectedIds, BookingStatus.CANCELLED),
+                        variant: 'danger',
+                    },
+                ]}
+            />
+
             <Modal
                 isOpen={isDrawerOpen}
                 onClose={() => setIsDrawerOpen(false)}

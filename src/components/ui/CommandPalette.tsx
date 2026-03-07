@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Command, Globe, Users, Briefcase, FileText, Settings, ArrowRight, Zap, Shield } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+    Search, Command, Zap, Users, Briefcase, FileText, Settings, ArrowRight,
+    CalendarDays, UserCheck, Clock, UserPlus, PoundSterling, BarChart3, Shield, Globe
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CommandItem {
@@ -8,133 +11,202 @@ interface CommandItem {
     subtitle: string;
     icon: React.ElementType;
     shortcut?: string;
-    category: 'Navigation' | 'Actions' | 'Recent';
+    category: 'Actions' | 'Navigation' | 'Finance' | 'Admin';
+    keywords?: string[];
     onSelect: () => void;
 }
 
 export const CommandPalette = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
+    const [activeIndex, setActiveIndex] = useState(0);
     const navigate = useNavigate();
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const close = useCallback(() => { setIsOpen(false); setQuery(''); setActiveIndex(0); }, []);
 
     const commands: CommandItem[] = [
-        { id: '1', title: 'Jobs Board', subtitle: 'View operational workforce', icon: Briefcase, category: 'Navigation', onSelect: () => navigate('/admin/bookings') },
-        { id: '2', title: 'Assignment Center', subtitle: 'Allocate interpreters', icon: Users, category: 'Navigation', onSelect: () => navigate('/admin/operations/assignments') },
-        { id: '3', title: 'Document Center', subtitle: 'Finance and Invoicing', icon: FileText, category: 'Navigation', onSelect: () => navigate('/admin/finance/documents') },
-        { id: '4', title: 'Create New Booking', subtitle: 'Launch booking wizard', icon: Zap, shortcut: 'N', category: 'Actions', onSelect: () => navigate('/admin/bookings/new') },
-        { id: '5', title: 'System Data Hub', subtitle: 'Administration tasks', icon: Shield, category: 'Navigation', onSelect: () => navigate('/admin/administration/data') },
-        { id: '6', title: 'User Settings', subtitle: 'Preferences & Profiles', icon: Settings, category: 'Navigation', onSelect: () => navigate('/admin/settings') },
+        // Actions (first — most frequently used)
+        { id: 'new-booking', title: 'Create New Booking', subtitle: 'Launch booking wizard', icon: Zap, shortcut: 'N', category: 'Actions', keywords: ['new', 'create', 'request'], onSelect: () => navigate('/admin/bookings/new') },
+        // Navigation
+        { id: 'jobs-board', title: 'Jobs Board', subtitle: 'View all bookings and statuses', icon: CalendarDays, category: 'Navigation', keywords: ['bookings', 'jobs', 'board'], onSelect: () => navigate('/admin/bookings') },
+        { id: 'assignments', title: 'Assignment Center', subtitle: 'Allocate interpreters to jobs', icon: UserCheck, category: 'Navigation', keywords: ['assign', 'allocate', 'interpreters', 'operations'], onSelect: () => navigate('/admin/operations/assignments') },
+        { id: 'timesheets', title: 'Timesheet Review', subtitle: 'Review and approve timesheets', icon: Clock, category: 'Navigation', keywords: ['timesheets', 'hours', 'review'], onSelect: () => navigate('/admin/timesheets') },
+        { id: 'interpreters', title: 'Interpreters', subtitle: 'Browse interpreter profiles', icon: Users, category: 'Navigation', keywords: ['interpreters', 'linguists', 'freelancers'], onSelect: () => navigate('/admin/interpreters') },
+        { id: 'clients', title: 'Clients & Departments', subtitle: 'Manage client accounts', icon: Briefcase, category: 'Navigation', keywords: ['clients', 'departments', 'organisations'], onSelect: () => navigate('/admin/clients') },
+        { id: 'applications', title: 'Applications', subtitle: 'Review interpreter applications', icon: UserPlus, category: 'Navigation', keywords: ['applications', 'onboard', 'new interpreter'], onSelect: () => navigate('/admin/applications') },
+        { id: 'messages', title: 'Direct Messages', subtitle: 'Team communications', icon: Globe, category: 'Navigation', keywords: ['messages', 'chat', 'communications'], onSelect: () => navigate('/admin/messages') },
+        // Finance
+        { id: 'client-invoices', title: 'Client Invoices', subtitle: 'Manage client billing', icon: PoundSterling, category: 'Finance', keywords: ['invoices', 'billing', 'clients'], onSelect: () => navigate('/admin/billing/client-invoices') },
+        { id: 'interpreter-payments', title: 'Interpreter Payments', subtitle: 'Manage remittances and payroll', icon: PoundSterling, category: 'Finance', keywords: ['payments', 'remittance', 'payroll', 'interpreters'], onSelect: () => navigate('/admin/billing/interpreter-invoices') },
+        { id: 'financial-reports', title: 'Financial Reports', subtitle: 'Revenue analytics and reports', icon: BarChart3, category: 'Finance', keywords: ['reports', 'analytics', 'revenue', 'finance'], onSelect: () => navigate('/admin/finance/reports') },
+        // Admin
+        { id: 'settings', title: 'System Config', subtitle: 'Platform settings and configuration', icon: Settings, category: 'Admin', keywords: ['settings', 'config', 'system'], onSelect: () => navigate('/admin/settings') },
+        { id: 'users', title: 'Users & Roles', subtitle: 'Manage user accounts and permissions', icon: Shield, category: 'Admin', keywords: ['users', 'roles', 'permissions', 'accounts'], onSelect: () => navigate('/admin/users') },
+        { id: 'audit-log', title: 'Audit Logs', subtitle: 'System audit trail and history', icon: FileText, category: 'Admin', keywords: ['audit', 'logs', 'history', 'trail'], onSelect: () => navigate('/admin/system/audit-log') },
     ];
 
-    const filteredCommands = commands.filter(cmd =>
-        cmd.title.toLowerCase().includes(query.toLowerCase()) ||
-        cmd.category.toLowerCase().includes(query.toLowerCase())
-    );
+    const filtered = query.trim() === ''
+        ? commands
+        : commands.filter(cmd => {
+            const q = query.toLowerCase();
+            return (
+                cmd.title.toLowerCase().includes(q) ||
+                cmd.subtitle.toLowerCase().includes(q) ||
+                (cmd.keywords || []).some(k => k.includes(q)) ||
+                cmd.category.toLowerCase().includes(q)
+            );
+        });
+
+    const categoryOrder = ['Actions', 'Navigation', 'Finance', 'Admin'] as const;
+    const categorized = categoryOrder
+        .map(cat => ({
+            cat,
+            items: filtered.filter(c => c.category === cat)
+        }))
+        .filter(g => g.items.length > 0);
+
+    // Flattened for keyboard nav
+    const flat = categorized.flatMap(g => g.items);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
             e.preventDefault();
             setIsOpen(prev => !prev);
         }
-        if (e.key === 'Escape') setIsOpen(false);
+        if (e.key === 'Escape') close();
         if (e.key === '/' && !isOpen) {
-            const activeElement = document.activeElement;
-            if (activeElement?.tagName !== 'INPUT' && activeElement?.tagName !== 'TEXTAREA') {
+            const active = document.activeElement;
+            if (active?.tagName !== 'INPUT' && active?.tagName !== 'TEXTAREA') {
                 e.preventDefault();
                 setIsOpen(true);
             }
         }
-    }, [isOpen]);
+    }, [isOpen, close]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
 
+    useEffect(() => {
+        if (isOpen) setTimeout(() => inputRef.current?.focus(), 50);
+    }, [isOpen]);
+
+    useEffect(() => { setActiveIndex(0); }, [query]);
+
+    const execute = (item: CommandItem) => {
+        item.onSelect();
+        close();
+    };
+
+    const handlePanelKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Escape') { close(); return; }
+        if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, flat.length - 1)); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
+        if (e.key === 'Enter') { e.preventDefault(); if (flat[activeIndex]) execute(flat[activeIndex]); }
+    };
+
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl shadow-slate-950/40 border border-slate-200 dark:border-white/5 overflow-hidden animate-in zoom-in-95 duration-200">
-                {/* Search Input Area */}
-                <div className="flex items-center px-6 py-5 border-b border-slate-100 dark:border-white/5">
-                    <Search className="text-slate-400 mr-4" size={20} />
+        <div
+            className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] px-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={close}
+        >
+            <div
+                className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl shadow-slate-950/40 border border-slate-200 dark:border-white/5 overflow-hidden animate-in zoom-in-95 duration-150"
+                onClick={e => e.stopPropagation()}
+                onKeyDown={handlePanelKeyDown}
+            >
+                {/* Input */}
+                <div className="flex items-center px-6 py-5 border-b border-slate-100 dark:border-white/5 gap-4">
+                    <Search className="text-slate-400 shrink-0" size={20} />
                     <input
+                        ref={inputRef}
                         autoFocus
                         type="text"
-                        placeholder="Search for pages, actions, or records (Jobs, Clients...)"
+                        placeholder="Search for pages, actions, or records..."
                         className="flex-1 bg-transparent border-none outline-none text-slate-900 dark:text-white text-base font-medium placeholder:text-slate-400"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={e => setQuery(e.target.value)}
                     />
                     <div className="flex items-center space-x-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
                         <span className="text-[10px] font-black text-slate-500 uppercase">Esc</span>
                     </div>
                 </div>
 
-                {/* Results Section */}
-                <div className="max-h-[60vh] overflow-y-auto p-4 scrollbar-hide">
-                    {filteredCommands.length > 0 ? (
-                        <div className="space-y-6">
-                            {['Actions', 'Navigation'].map(cat => {
-                                const catItems = filteredCommands.filter(i => i.category === cat);
-                                if (catItems.length === 0) return null;
-                                return (
-                                    <div key={cat} className="space-y-2">
-                                        <h3 className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{cat}</h3>
-                                        <div className="grid grid-cols-1 gap-1">
-                                            {catItems.map(item => (
-                                                <button
-                                                    key={item.id}
-                                                    onClick={() => { item.onSelect(); setIsOpen(false); }}
-                                                    className="group flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all text-left"
-                                                >
-                                                    <div className="flex items-center space-x-4">
-                                                        <div className="w-10 h-10 bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center text-slate-500 group-hover:text-blue-500 transition-colors">
-                                                            <item.icon size={20} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{item.title}</p>
-                                                            <p className="text-[11px] text-slate-500 mt-0.5">{item.subtitle}</p>
-                                                        </div>
-                                                    </div>
-                                                    {item.shortcut && (
-                                                        <div className="flex items-center space-x-1 px-2 py-1 bg-slate-100 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 opacity-40 group-hover:opacity-100 transition-opacity">
-                                                            <span className="text-[9px] font-black text-slate-500 uppercase">{item.shortcut}</span>
-                                                        </div>
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
+                {/* Results */}
+                <div className="max-h-[60vh] overflow-y-auto p-4 scrollbar-hide space-y-5">
+                    {flat.length === 0 ? (
                         <div className="py-20 text-center">
                             <div className="w-12 h-12 bg-slate-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
                                 <Search size={24} />
                             </div>
                             <p className="text-sm text-slate-400 font-medium italic">No results found for "{query}"</p>
                         </div>
+                    ) : (
+                        categorized.map(({ cat, items }) => (
+                            <div key={cat} className="space-y-1">
+                                <h3 className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{cat}</h3>
+                                {items.map(item => {
+                                    const globalIdx = flat.findIndex(c => c.id === item.id);
+                                    const isActive = activeIndex === globalIdx;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => execute(item)}
+                                            onMouseEnter={() => setActiveIndex(globalIdx)}
+                                            className={`group w-full flex items-center justify-between p-4 rounded-2xl transition-all text-left ${isActive
+                                                    ? 'bg-blue-50 dark:bg-blue-900/20'
+                                                    : 'hover:bg-slate-50 dark:hover:bg-white/5'
+                                                }`}
+                                        >
+                                            <div className="flex items-center space-x-4">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isActive
+                                                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                                                        : 'bg-slate-100 dark:bg-white/5 text-slate-500 group-hover:text-blue-500'
+                                                    }`}>
+                                                    <item.icon size={18} />
+                                                </div>
+                                                <div>
+                                                    <p className={`text-sm font-bold leading-tight ${isActive ? 'text-blue-800 dark:text-blue-200' : 'text-slate-900 dark:text-white'}`}>
+                                                        {item.title}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-500 mt-0.5">{item.subtitle}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {item.shortcut && (
+                                                    <div className="flex items-center justify-center w-5 h-5 border border-slate-300 dark:border-white/10 rounded text-[10px] font-black text-slate-400 bg-white dark:bg-transparent opacity-40 group-hover:opacity-100 transition-opacity">
+                                                        {item.shortcut}
+                                                    </div>
+                                                )}
+                                                {isActive && <ArrowRight size={14} className="text-blue-500" />}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ))
                     )}
                 </div>
 
-                {/* Footer Guide */}
+                {/* Footer */}
                 <div className="px-6 py-4 bg-slate-50/50 dark:bg-white/5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
-                    <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-5 text-[10px] font-bold text-slate-500 uppercase">
                         <div className="flex items-center space-x-2">
                             <div className="flex items-center justify-center w-5 h-5 border border-slate-300 dark:border-white/10 rounded text-[10px] font-black text-slate-400 bg-white dark:bg-transparent">↵</div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase">Select</span>
+                            <span>Select</span>
                         </div>
                         <div className="flex items-center space-x-2">
                             <div className="flex items-center justify-center w-5 h-5 border border-slate-300 dark:border-white/10 rounded text-[10px] font-black text-slate-400 bg-white dark:bg-transparent">↑↓</div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase">Navigate</span>
+                            <span>Navigate</span>
                         </div>
                     </div>
-                    <div className="flex items-center text-blue-600 space-x-1.5 cursor-pointer hover:underline decoration-blue-200">
+                    <div className="flex items-center text-blue-600 space-x-1.5">
                         <Zap size={12} fill="currentColor" />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Lingland Intelligence v1.0</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider">CMD+K · Lingland</span>
                     </div>
                 </div>
             </div>

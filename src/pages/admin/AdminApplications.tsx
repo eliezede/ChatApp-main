@@ -3,14 +3,16 @@ import { ApplicationService } from '../../services/applicationService';
 import { InterpreterService, UserService } from '../../services/api';
 import { InterpreterApplication, ApplicationStatus, UserRole } from '../../types';
 import { Spinner } from '../../components/ui/Spinner';
-import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
+import { BulkActionBar } from '../../components/ui/BulkActionBar';
+import { PageHeader } from '../../components/layout/PageHeader';
 import { useToast } from '../../context/ToastContext';
 import {
   Mail, Phone, MapPin, Award, UserPlus, Info,
-  Filter, CheckCircle2, XCircle, Clock, Trash2, Search
+  Filter, CheckCircle2, XCircle, Clock, Trash2, Search, Zap, Eye
 } from 'lucide-react';
 
 type TabType = ApplicationStatus | 'ALL';
@@ -20,6 +22,8 @@ export const AdminApplications = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>(ApplicationStatus.PENDING);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
   const { showToast } = useToast();
 
   const [selectedApp, setSelectedApp] = useState<InterpreterApplication | null>(null);
@@ -46,7 +50,6 @@ export const AdminApplications = () => {
 
     setProcessingId(app.id);
     try {
-      // 1. Check if user already exists
       const allUsers = await UserService.getAll();
       const existingUser = allUsers.find(u => u.email.toLowerCase() === app.email.toLowerCase());
 
@@ -55,7 +58,6 @@ export const AdminApplications = () => {
         return;
       }
 
-      // 2. Create Interpreter Profile
       const newInt = await InterpreterService.create({
         name: app.name,
         email: app.email,
@@ -66,10 +68,12 @@ export const AdminApplications = () => {
         dbsExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'ONBOARDING',
         isAvailable: false,
-        acceptsDirectAssignment: true
-      });
+        acceptsDirectAssignment: true,
+        organizationId: 'lingland-main',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as any);
 
-      // 3. Create User Login
       await UserService.create({
         displayName: app.name,
         email: app.email,
@@ -78,7 +82,6 @@ export const AdminApplications = () => {
         status: 'ACTIVE'
       });
 
-      // 4. Update Application Status
       await ApplicationService.updateStatus(app.id, ApplicationStatus.APPROVED);
 
       showToast(`${app.name} has been approved and provisioned!`, 'success');
@@ -104,6 +107,22 @@ export const AdminApplications = () => {
     }
   };
 
+  const handleBulkStatus = async (ids: string[], status: ApplicationStatus) => {
+    if (!window.confirm(`Change status to ${status} for ${ids.length} applications?`)) return;
+    setIsBulkLoading(true);
+    let done = 0;
+    for (const id of ids) {
+      try {
+        await ApplicationService.updateStatus(id, status);
+        done++;
+      } catch { /* silent */ }
+    }
+    showToast(`${done} applications updated to ${status}`, 'success');
+    setSelectedIds([]);
+    setIsBulkLoading(false);
+    await loadData();
+  };
+
   const filteredApps = applications.filter(app => {
     const matchesStatus = activeTab === 'ALL' ? true : app.status === activeTab;
     const matchesSearch = app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -111,119 +130,131 @@ export const AdminApplications = () => {
     return matchesStatus && matchesSearch;
   });
 
-  const TabBtn = ({ type, label, icon: Icon }: { type: TabType, label: string, icon: any }) => (
-    <button
-      onClick={() => setActiveTab(type)}
-      className={`flex items-center px-6 py-3 border-b-2 font-bold text-sm transition-all whitespace-nowrap ${activeTab === type
-        ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10'
-        : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-        }`}
-    >
-      <Icon size={16} className="mr-2" />
-      {label}
-      <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500">
-        {applications.filter(a => type === 'ALL' ? true : a.status === type).length}
-      </span>
-    </button>
-  );
+  const columns = [
+    {
+      header: 'Candidate',
+      accessor: (app: InterpreterApplication) => (
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+            {app.name.charAt(0)}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-slate-900 leading-none">{app.name}</span>
+            <span className="text-[10px] text-slate-400 mt-1 uppercase tracking-tighter">{app.email}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Pathways',
+      accessor: (app: InterpreterApplication) => (
+        <div className="flex flex-wrap gap-1">
+          {app.languages.slice(0, 2).map(l => (
+            <span key={l} className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-600 uppercase">
+              {l}
+            </span>
+          ))}
+          {app.languages.length > 2 && <span className="text-[9px] text-slate-400 font-bold">+{app.languages.length - 2}</span>}
+        </div>
+      )
+    },
+    {
+      header: 'Submitted',
+      accessor: (app: InterpreterApplication) => (
+        <div className="text-xs text-slate-500 font-medium">
+          {new Date(app.submittedAt).toLocaleDateString([], { day: '2-digit', month: 'short' })}
+        </div>
+      )
+    },
+    {
+      header: 'Status',
+      accessor: (app: InterpreterApplication) => (
+        <Badge variant={
+          app.status === ApplicationStatus.PENDING ? 'warning' :
+            app.status === ApplicationStatus.APPROVED ? 'success' : 'danger'
+        }>
+          {app.status}
+        </Badge>
+      )
+    }
+  ];
+
+  const handleRowClick = (app: InterpreterApplication) => {
+    setSelectedApp(app);
+  };
+
+  const renderContextMenu = (app: InterpreterApplication) => [
+    { label: 'Review Details', icon: Eye, onClick: () => setSelectedApp(app) },
+    { divider: true },
+    { label: 'Reject', icon: XCircle, variant: 'danger' as const, onClick: () => handleReject(app), disabled: app.status !== ApplicationStatus.PENDING },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Onboarding Desk</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Review credentials and expand the Lingland talent pool.</p>
-        </div>
-        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
+      <PageHeader title="Onboarding Desk" subtitle="Review and provision new interpreter accounts">
+        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mr-4">
+          <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
-              placeholder="Search candidates..."
-              className="w-full pl-10 pr-4 py-2 bg-transparent text-sm outline-none text-slate-900 dark:text-white"
+              placeholder="Query candidates..."
+              className="w-full pl-10 pr-4 py-1.5 bg-transparent text-xs outline-none text-slate-900"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="flex border-b border-slate-100 dark:border-slate-800 overflow-x-auto scrollbar-hide">
-          <TabBtn type={ApplicationStatus.PENDING} label="Pending" icon={Clock} />
-          <TabBtn type={ApplicationStatus.APPROVED} label="Approved" icon={CheckCircle2} />
-          <TabBtn type={ApplicationStatus.REJECTED} label="Rejected" icon={XCircle} />
-          <TabBtn type="ALL" label="All History" icon={Filter} />
+        <div className="flex items-center space-x-1 mr-4 bg-slate-100 p-1 rounded-lg">
+          {['PENDING', 'APPROVED', 'ALL'].map(t => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t as TabType)}
+              className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${activeTab === t ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {t}
+            </button>
+          ))}
         </div>
+      </PageHeader>
 
-        <div className="p-6">
-          {loading ? (
-            <div className="py-20 flex justify-center"><Spinner size="lg" /></div>
-          ) : filteredApps.length === 0 ? (
-            <div className="py-20 text-center space-y-4">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400">
-                <Filter size={32} />
-              </div>
-              <div>
-                <p className="text-slate-900 dark:text-white font-bold">No applications found</p>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">There are no records matching your current filter.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredApps.map(app => (
-                <Card
-                  key={app.id}
-                  className={`group relative overflow-hidden flex flex-col h-full border-2 transition-all ${app.status === ApplicationStatus.PENDING ? 'hover:border-blue-500' : 'opacity-80'
-                    }`}
-                  onClick={() => setSelectedApp(app)}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner group-hover:scale-110 transition-transform">
-                      {app.name.charAt(0)}
-                    </div>
-                    <Badge variant={
-                      app.status === ApplicationStatus.PENDING ? 'warning' :
-                        app.status === ApplicationStatus.APPROVED ? 'success' : 'danger'
-                    }>
-                      {app.status}
-                    </Badge>
-                  </div>
+      <Table
+        data={filteredApps}
+        columns={columns}
+        selectable
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        onRowClick={handleRowClick}
+        renderContextMenu={renderContextMenu}
+        isLoading={loading}
+        emptyMessage="No applications waiting in this queue."
+      />
 
-                  <h3 className="font-bold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 transition-colors">{app.name}</h3>
-                  <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 mb-4">
-                    <Mail size={12} className="mr-1.5" /> {app.email}
-                  </div>
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={filteredApps.length}
+        entityLabel="candidate"
+        isLoading={isBulkLoading}
+        onClearSelection={() => setSelectedIds([])}
+        actions={[
+          {
+            label: 'Reject Selected',
+            icon: XCircle,
+            onClick: () => handleBulkStatus(selectedIds, ApplicationStatus.REJECTED),
+            variant: 'danger',
+          },
+        ]}
+      />
 
-                  <div className="flex flex-wrap gap-1.5 mb-6 flex-1">
-                    {app.languages.slice(0, 3).map(l => (
-                      <span key={l} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">
-                        {l}
-                      </span>
-                    ))}
-                    {app.languages.length > 3 && <span className="text-[10px] text-slate-400 font-bold">+{app.languages.length - 3}</span>}
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-auto flex justify-between items-center">
-                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">
-                      {new Date(app.submittedAt).toLocaleDateString()}
-                    </span>
-                    <button className="text-blue-600 dark:text-blue-400 text-xs font-black uppercase tracking-widest flex items-center group-hover:translate-x-1 transition-transform">
-                      Review <Info size={14} className="ml-1.5" />
-                    </button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Review Modal */}
-      <Modal isOpen={!!selectedApp} onClose={() => setSelectedApp(null)} title="Application Review" maxWidth="lg">
+      {/* Review Modal converted to Drawer */}
+      <Modal
+        isOpen={!!selectedApp}
+        onClose={() => setSelectedApp(null)}
+        title="Application Review"
+        maxWidth="lg"
+        type="drawer"
+      >
         {selectedApp && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
               <div className="flex items-center">
                 <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-blue-600/20 mr-4">
@@ -231,7 +262,7 @@ export const AdminApplications = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white">{selectedApp.name}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Candidate Submission ID: {selectedApp.id.substring(0, 8)}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Submission Date: {new Date(selectedApp.submittedAt).toLocaleDateString()}</p>
                 </div>
               </div>
               <Badge variant={selectedApp.status === ApplicationStatus.PENDING ? 'warning' : selectedApp.status === ApplicationStatus.APPROVED ? 'success' : 'danger'}>
@@ -239,87 +270,77 @@ export const AdminApplications = () => {
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-3">Identity & Location</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <Mail size={16} className="mr-3 text-blue-500" />
-                      {selectedApp.email}
-                    </div>
-                    <div className="flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <Phone size={16} className="mr-3 text-blue-500" />
-                      {selectedApp.phone}
-                    </div>
-                    <div className="flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <MapPin size={16} className="mr-3 text-blue-500" />
-                      {selectedApp.postcode}
-                    </div>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Contact & Context</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm font-semibold text-slate-700 bg-white p-3 rounded-xl border border-slate-100">
+                    <Mail size={16} className="mr-3 text-blue-500" />
+                    {selectedApp.email}
+                  </div>
+                  <div className="flex items-center text-sm font-semibold text-slate-700 bg-white p-3 rounded-xl border border-slate-100">
+                    <Phone size={16} className="mr-3 text-blue-500" />
+                    {selectedApp.phone}
+                  </div>
+                  <div className="flex items-center text-sm font-semibold text-slate-700 bg-white p-3 rounded-xl border border-slate-100">
+                    <MapPin size={16} className="mr-3 text-blue-500" />
+                    {selectedApp.postcode}
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-3">Professional Arsenal</h4>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {selectedApp.languages.map(l => <Badge key={l} variant="info">{l}</Badge>)}
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Validated Credentials</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedApp.qualifications.length > 0 ? selectedApp.qualifications.map(q => (
-                        <span key={q} className="text-xs font-bold bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-lg border border-purple-100 dark:border-purple-800 flex items-center">
-                          <Award size={12} className="mr-1.5" /> {q}
-                        </span>
-                      )) : <span className="text-xs text-slate-400 italic">No certificates listed</span>}
-                    </div>
-                  </div>
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Professional Stash</h4>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {selectedApp.languages.map(l => <Badge key={l} variant="info">{l}</Badge>)}
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {selectedApp.qualifications.map(q => (
+                    <span key={q} className="text-xs font-bold bg-purple-50 text-purple-700 px-3 py-2 rounded-xl border border-purple-100 flex items-center">
+                      <Award size={14} className="mr-2" /> {q}
+                    </span>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-3">
-              <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Candidate Narrative</h4>
-              <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 italic leading-relaxed shadow-inner">
-                "{selectedApp.experienceSummary || 'No summary provided.'}"
-              </p>
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Experience Statement</h4>
+                <p className="text-sm text-slate-700 bg-slate-50 p-5 rounded-2xl border border-slate-100 italic leading-relaxed">
+                  "{selectedApp.experienceSummary || 'No summary provided.'}"
+                </p>
+              </div>
             </div>
 
             {selectedApp.status === ApplicationStatus.PENDING && (
-              <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30 flex items-start">
-                <div className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-xl mr-4 mt-0.5">
-                  <Info size={18} className="text-blue-600 dark:text-blue-400" />
-                </div>
-                <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed font-medium">
-                  Approving this candidate will automatically generate their <strong>professional profile</strong> and <strong>secure login credentials</strong>. They will receive an automated invitation email.
+              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-start">
+                <Info size={18} className="text-blue-600 shrink-0 mt-0.5 mr-3" />
+                <p className="text-xs text-blue-800 leading-relaxed font-medium">
+                  Approving this candidate will instantly create their <strong>professional profile</strong> and <strong>secure login</strong>.
                 </p>
               </div>
             )}
 
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-end gap-3 items-center">
+            <div className="pt-6 border-t border-slate-100 flex flex-col gap-3">
               {selectedApp.status === ApplicationStatus.PENDING ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => handleReject(selectedApp)}
-                    className="w-full sm:w-auto px-6 py-3 text-red-600 dark:text-red-400 text-sm font-black uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors"
-                  >
-                    Reject Application
-                  </button>
                   <Button
                     variant="primary"
                     icon={UserPlus}
                     isLoading={processingId === selectedApp.id}
                     onClick={() => handleApprove(selectedApp)}
-                    className="w-full sm:w-auto h-12 px-8"
+                    className="w-full h-12"
                   >
-                    Onboard Professional
+                    Provision Interpreter
                   </Button>
+                  <button
+                    onClick={() => handleReject(selectedApp)}
+                    className="w-full py-3 text-red-600 text-xs font-black uppercase tracking-widest hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    Reject Application
+                  </button>
                 </>
               ) : (
-                <Button variant="secondary" onClick={() => setSelectedApp(null)} className="w-full sm:w-auto">
+                <Button variant="outline" onClick={() => setSelectedApp(null)} className="w-full">
                   Close Review
                 </Button>
               )}

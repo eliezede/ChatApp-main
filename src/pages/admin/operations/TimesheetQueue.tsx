@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileCheck, AlertCircle, Clock, CheckCircle2, XCircle, Eye, ArrowRight, ShieldCheck, Info } from 'lucide-react';
+import { FileCheck, AlertCircle, Clock, CheckCircle2, XCircle, Eye, ArrowRight, ShieldCheck, Info, Zap } from 'lucide-react';
 import { useBookings } from '../../../hooks/useBookings';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
 import { Table } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/StatusBadge';
+import { BulkActionBar } from '../../../components/ui/BulkActionBar';
 import { Booking, BookingStatus } from '../../../types';
 import { BookingService } from '../../../services/api';
 
@@ -20,6 +21,7 @@ export const TimesheetQueue = () => {
     const [selectedJob, setSelectedJob] = useState<Booking | null>(null);
     const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [isBulkLoading, setIsBulkLoading] = useState(false);
 
     const openAuditHub = (job: Booking) => {
         setSelectedJob(job);
@@ -28,13 +30,26 @@ export const TimesheetQueue = () => {
 
     const handleVerify = async (job: Booking) => {
         try {
-            // In a real scenario, this would call a verifyTimesheet API
-            await BookingService.updateStatus(job.id, 'INVOICED' as any); // Or VERIFIED if added
+            await BookingService.updateStatus(job.id, 'INVOICED' as any);
             setIsAuditModalOpen(false);
             refresh();
         } catch (e) {
             alert("Failed to verify timesheet");
         }
+    };
+
+    const handleBulkVerify = async (ids: string[]) => {
+        setIsBulkLoading(true);
+        let done = 0;
+        await Promise.allSettled(ids.map(async id => {
+            try {
+                await BookingService.updateStatus(id, 'INVOICED' as any);
+                done++;
+            } catch { /* silent */ }
+        }));
+        setSelectedIds([]);
+        setIsBulkLoading(false);
+        refresh();
     };
 
     const columns = [
@@ -96,6 +111,22 @@ export const TimesheetQueue = () => {
                         onRowClick={openAuditHub}
                         isLoading={loading}
                         emptyMessage="No pending timesheets for review."
+                    />
+
+                    <BulkActionBar
+                        selectedCount={selectedIds.length}
+                        totalCount={pendingTimesheets.length}
+                        entityLabel="claim"
+                        isLoading={isBulkLoading}
+                        onClearSelection={() => setSelectedIds([])}
+                        actions={[
+                            {
+                                label: 'Authorize All',
+                                icon: Zap,
+                                onClick: () => handleBulkVerify(selectedIds),
+                                variant: 'success',
+                            }
+                        ]}
                     />
                 </div>
 

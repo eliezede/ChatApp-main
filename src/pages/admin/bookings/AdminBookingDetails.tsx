@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { BookingService, InterpreterService, BillingService } from '../../../services/api';
+import { BookingService, InterpreterService, BillingService, PdfService } from '../../../services/api';
 import { ChatService } from '../../../services/chatService';
 import { Booking, BookingAssignment, Interpreter, BookingStatus, AssignmentStatus, ServiceType, Timesheet } from '../../../types';
 import { LANGUAGES } from '../../../constants/languages';
@@ -14,8 +14,9 @@ import { useAuth } from '../../../context/AuthContext';
 import { useChat } from '../../../context/ChatContext';
 import {
   Calendar, Clock, MapPin, Video, Globe2, ChevronLeft,
-  User, CheckCircle2, XCircle, Send, AlertCircle, Edit, Trash2, Search, UserPlus, Filter, Eye, List, MessageSquare, Building2, Mail, Phone, CreditCard, Zap, TrendingUp, Plus
+  User, CheckCircle2, XCircle, Send, AlertCircle, Edit, Trash2, Search, UserPlus, Filter, Eye, List, MessageSquare, Building2, Mail, Phone, CreditCard, Zap, TrendingUp, Plus, History, FileText, Receipt
 } from 'lucide-react';
+import { ActivityTimeline } from '../../../components/operations/ActivityTimeline';
 
 const AdminBookingDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -270,11 +271,20 @@ const AdminBookingDetails = () => {
             variant="secondary"
             size="sm"
             onClick={() => handleDeleteJob()}
-            className="text-red-600 border-red-200 hover:bg-red-50"
+            className="text-red-600 border-red-200 hover:bg-red-50 pr-4"
             disabled={processing}
             icon={Trash2}
           >
-            Delete Job
+            Delete
+          </Button>
+          <div className="h-8 w-px bg-gray-200 mx-1" />
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => PdfService.generateJobSheet(booking)}
+            icon={FileText}
+          >
+            Download Job Sheet
           </Button>
         </div>
       </div>
@@ -534,12 +544,47 @@ const AdminBookingDetails = () => {
                       £{((timesheet.clientAmountCalculated || 0) - (timesheet.interpreterAmountCalculated || 0)).toFixed(2)}
                     </p>
                   </div>
-                  <div className="bg-white px-3 py-1.5 rounded-lg border border-emerald-200">
-                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-tight">Margin</p>
-                    <p className="text-sm font-black text-emerald-700 leading-none">
-                      {timesheet.clientAmountCalculated ?
-                        Math.round(((timesheet.clientAmountCalculated - timesheet.interpreterAmountCalculated) / timesheet.clientAmountCalculated) * 100) : 0}%
-                    </p>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      onClick={() => PdfService.generateClientInvoice({
+                        id: `INV-${booking.id.substring(0, 6)}`,
+                        clientName: booking.clientName,
+                        reference: booking.bookingRef || booking.id,
+                        issueDate: new Date().toISOString(),
+                        totalAmount: timesheet.clientAmountCalculated,
+                        items: [{
+                          description: `Interpreting Services: ${booking.languageFrom} to ${booking.languageTo} (${new Date(booking.date).toLocaleDateString()})`,
+                          rate: timesheet.clientAmountCalculated,
+                          units: 1,
+                          total: timesheet.clientAmountCalculated
+                        }]
+                      } as any)}
+                      icon={CreditCard}
+                    >
+                      Download Invoice
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 border-emerald-100 border"
+                      onClick={() => PdfService.generateRemittance({
+                        id: `REM-${booking.id.substring(0, 6)}`,
+                        interpreterName: booking.interpreterName || 'Interpreter',
+                        totalAmount: timesheet.interpreterAmountCalculated,
+                        items: [{
+                          jobRef: booking.bookingRef || booking.id.substring(0, 6),
+                          date: booking.date,
+                          description: `Payment for ${booking.languageTo} service`,
+                          total: timesheet.interpreterAmountCalculated
+                        }]
+                      })}
+                      icon={Receipt}
+                    >
+                      Remittance Advice
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -548,23 +593,8 @@ const AdminBookingDetails = () => {
 
           {/* Job Timeline */}
           <Card>
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center"><List size={16} className="mr-2 text-slate-400" /> Event Timeline</h3>
-            <div className="space-y-4">
-              {events.length === 0 ? (
-                <p className="text-xs text-slate-500 italic text-center py-2">No events recorded yet.</p>
-              ) : (
-                <div className="relative border-l border-slate-200 ml-2 pl-4 space-y-4">
-                  {events.map((evt, idx) => (
-                    <div key={evt.id || idx} className="relative">
-                      <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white"></div>
-                      <p className="text-xs font-bold text-slate-900 capitalize">{String(evt.type).replace(/_/g, ' ').toLowerCase()}</p>
-                      <p className="text-[10px] text-slate-500">{new Date(evt.createdAt).toLocaleString()}</p>
-                      {evt.actorUserId && <p className="text-[10px] text-slate-400 mt-0.5">By UUID: {evt.actorUserId.substring(0, 6)}</p>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <h3 className="font-bold text-gray-900 mb-6 flex items-center"><History size={16} className="mr-2 text-slate-400" /> Operation Audit Trail</h3>
+            <ActivityTimeline events={events} isLoading={loading} />
           </Card>
         </div>
       </div>
