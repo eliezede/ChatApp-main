@@ -60,6 +60,16 @@ export const BookingService = {
     }
   },
 
+  getJobEvents: async (jobId: string): Promise<any[]> => {
+    try {
+      const q = query(collection(db, 'jobEvents'), where('jobId', '==', jobId), orderBy('createdAt', 'asc'));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+    } catch {
+      return [];
+    }
+  },
+
   getByClientId: async (clientId: string): Promise<Booking[]> => {
     try {
       const q = query(collection(db, COLLECTION_NAME), where('clientId', '==', clientId));

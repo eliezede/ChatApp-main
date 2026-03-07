@@ -8,7 +8,9 @@ import {
   getDoc,
   updateDoc,
   orderBy,
-  addDoc
+  addDoc,
+  writeBatch,
+  serverTimestamp
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "./firebaseConfig";
@@ -107,18 +109,28 @@ export const BillingService = {
       console.error("Function call failed, falling back to mock generation", e);
       // Mock logic for offline dev
       const ref = `INV-${Math.floor(Math.random() * 10000)}`;
-      const newInvoice = {
-        id: `mock-inv-${Date.now()}`,
+      // Mock data for client and total/dueDate are not available in this scope,
+      // so we'll use placeholders that match the original mock logic where possible.
+      // The instruction implies these variables exist in the context of the full function.
+      // For now, we'll use the original mock values for clientName, total, and dueDate.
+      const client = { companyName: 'Mock Client' }; // Placeholder for client object
+      const total = 150.00; // Placeholder for total amount
+      const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Placeholder for dueDate
+      const newInvoice: ClientInvoice = {
+        id: `inv-c-${Date.now()}`,
+        organizationId: 'org-123',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         clientId,
-        clientName: 'Mock Client',
-        reference: ref,
-        invoiceNumber: ref, // Ensure legacy support
+        clientName: client?.companyName || 'Client',
+        reference: `INV-${Date.now()}`,
+        invoiceNumber: `INV-${Date.now()}`,
         status: InvoiceStatus.DRAFT,
         issueDate: new Date().toISOString(),
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        dueDate: dueDate.toISOString(),
         periodStart: periodStart || new Date().toISOString(),
         periodEnd: periodEnd || new Date().toISOString(),
-        totalAmount: 150.00,
+        totalAmount: total,
         currency: 'GBP',
         items: []
       } as ClientInvoice;
@@ -172,6 +184,9 @@ export const BillingService = {
     // Mock Implementation
     const newInvoice: InterpreterInvoice = {
       id: `inv-i-${Date.now()}`,
+      organizationId: 'org-123',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       interpreterId,
       interpreterName: 'Interpreter', // Mock
       model: 'UPLOAD',
@@ -203,6 +218,19 @@ export const BillingService = {
     }, MOCK_TIMESHEETS);
   },
 
+  getTimesheetByBookingId: async (bookingId: string): Promise<Timesheet | null> => {
+    try {
+      const q = query(collection(db, "timesheets"), where("bookingId", "==", bookingId));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        return MOCK_TIMESHEETS.find(t => t.bookingId === bookingId) || null;
+      }
+      return { id: snap.docs[0].id, ...snap.docs[0].data() } as Timesheet;
+    } catch (e) {
+      return MOCK_TIMESHEETS.find(t => t.bookingId === bookingId) || null;
+    }
+  },
+
   getPendingTimesheets: async () => {
     try {
       const q = query(collection(db, "timesheets"), where("adminApproved", "==", false), where("status", "==", "SUBMITTED"));
@@ -215,11 +243,25 @@ export const BillingService = {
 
   approveTimesheet: async (id: string) => {
     try {
-      await updateDoc(doc(db, "timesheets", id), {
+      const tsDoc = await getDoc(doc(db, "timesheets", id));
+      if (!tsDoc.exists()) throw new Error("Timesheet not found");
+      const ts = tsDoc.data() as Timesheet;
+
+      const batch = writeBatch(db);
+      batch.update(tsDoc.ref, {
         adminApproved: true,
         adminApprovedAt: new Date().toISOString(),
         status: 'APPROVED'
       });
+
+      if (ts.bookingId) {
+        batch.update(doc(db, 'bookings', ts.bookingId), {
+          status: 'VERIFIED',
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      await batch.commit();
     } catch (e) {
       const ts = MOCK_TIMESHEETS.find(t => t.id === id);
       if (ts) {
@@ -295,8 +337,19 @@ export const BillingService = {
       interpreterAmountCalculated: 0
     };
     try {
-      const ref = await addDoc(collection(db, 'timesheets'), newTs);
-      return { id: ref.id, ...newTs } as Timesheet;
+      const batch = writeBatch(db);
+      const tsRef = doc(collection(db, 'timesheets'));
+      batch.set(tsRef, newTs);
+
+      if (data.bookingId) {
+        batch.update(doc(db, 'bookings', data.bookingId), {
+          status: 'TIMESHEET_SUBMITTED',
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      await batch.commit();
+      return { id: tsRef.id, ...newTs } as Timesheet;
     } catch {
       const mockTs = { id: `ts-${Date.now()}`, ...newTs } as Timesheet;
       MOCK_TIMESHEETS.push(mockTs);

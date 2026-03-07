@@ -12,7 +12,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Card } from '../../components/ui/Card';
 import { ClientService, InterpreterService, BookingService as RawBookingService } from '../../services/api';
 import { Modal } from '../../components/ui/Modal';
-import { Interpreter, Booking, BookingStatus, BookingColumnField, ALL_BOOKING_COLUMNS, ViewFilterRule, ViewSortRule, GroupableField, FilterableField, SortableField } from '../../types';
+import { TableSkeleton } from '../../components/ui/Skeleton';
+import { Interpreter, Booking, BookingStatus, JobStatus, BookingColumnField, ALL_BOOKING_COLUMNS, ViewFilterRule, ViewSortRule, GroupableField, FilterableField, SortableField } from '../../types';
 import { PageHeader } from '../../components/layout/PageHeader';
 
 export const AdminBookings = () => {
@@ -492,9 +493,8 @@ export const AdminBookings = () => {
         {error && <Alert type="error" message={error} />}
 
         {loading ? (
-          <div className="py-12 text-center">
-            <Spinner size="lg" className="mx-auto mb-4" />
-            <p className="text-gray-500">Loading bookings...</p>
+          <div className="bg-white p-6 rounded-xl border border-slate-200">
+            <TableSkeleton rows={10} />
           </div>
         ) : filteredBookings.length === 0 ? (
           <EmptyState
@@ -785,17 +785,16 @@ export const AdminBookings = () => {
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Status Filter</label>
                   <div className="flex flex-wrap gap-2">
-                    {[BookingStatus.INCOMING, BookingStatus.OPENED, BookingStatus.BOOKED, BookingStatus.ADMIN,
-                    BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID, BookingStatus.CANCELLED].map(status => (
+                    {['INCOMING', 'PENDING_ASSIGNMENT', 'BOOKED', 'TIMESHEET_SUBMITTED', 'VERIFIED', 'INVOICED', 'PAID', 'CANCELLED'].map(status => (
                       <button
                         key={status}
-                        onClick={() => setNewViewStatuses(prev => prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status])}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newViewStatuses.includes(status)
+                        onClick={() => setNewViewStatuses(prev => prev.includes(status as any) ? prev.filter(s => s !== status) : [...prev, status as any])}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newViewStatuses.includes(status as any)
                           ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-sm'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                           }`}
                       >
-                        {status}
+                        {status.replace(/_/g, ' ')}
                       </button>
                     ))}
                   </div>

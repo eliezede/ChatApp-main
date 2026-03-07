@@ -57,7 +57,7 @@ export const AdminClients = () => {
           ...client,
           totalBookings: clientBookings.length,
           activeBookings: clientBookings.filter(b =>
-            [BookingStatus.INCOMING, BookingStatus.OPENED, BookingStatus.BOOKED].includes(b.status)
+            ['INCOMING', 'PENDING_ASSIGNMENT', 'BOOKED'].includes(String(b.status))
           ).length
         };
       });

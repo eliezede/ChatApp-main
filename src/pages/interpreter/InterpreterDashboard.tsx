@@ -136,6 +136,7 @@ export const InterpreterDashboard = () => {
 
   // Data State
   const [upcomingJobs, setUpcomingJobs] = useState<Booking[]>([]);
+  const [pendingTimesheets, setPendingTimesheets] = useState<Booking[]>([]);
   const [offers, setOffers] = useState<Booking[]>([]);
   const [stats, setStats] = useState({
     completedBookings: 0,
@@ -173,7 +174,12 @@ export const InterpreterDashboard = () => {
         .filter((b: Booking) => new Date(b.date + 'T' + (b.startTime || '00:00')) > new Date())
         .sort((a: Booking, b: Booking) => new Date(a.date + 'T' + (a.startTime || '00:00')).getTime() - new Date(b.date + 'T' + (b.startTime || '00:00')).getTime());
 
+      const pastPendingTs = confirmed
+        .filter((b: Booking) => String(b.status) === 'BOOKED' && new Date(b.date + 'T' + (b.startTime || '23:59')) <= new Date())
+        .sort((a: Booking, b: Booking) => new Date(b.date + 'T' + (b.startTime || '00:00')).getTime() - new Date(a.date + 'T' + (a.startTime || '00:00')).getTime());
+
       setUpcomingJobs(upcoming);
+      setPendingTimesheets(pastPendingTs);
 
       // For each broadcast assignment, fetch the full booking document so we
       // have all display fields (date, startTime, serviceType, address, etc.)
@@ -338,6 +344,35 @@ export const InterpreterDashboard = () => {
 
         {/* Right Column: Offers & Health */}
         <div className="space-y-10">
+
+          {/* Pending Timesheets Sidebar */}
+          {pendingTimesheets.length > 0 && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-black text-slate-900 tracking-tight text-amber-600 flex items-center gap-2"><AlertCircle size={18} /> Pending Timesheets</h3>
+                <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full uppercase">{pendingTimesheets.length} Action{pendingTimesheets.length !== 1 && 's'} needed</span>
+              </div>
+              <div className="space-y-4">
+                {pendingTimesheets.slice(0, 3).map((tsJob) => (
+                  <div key={tsJob.id} onClick={() => navigate('/interpreter/timesheets')} className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm hover:shadow-md hover:border-amber-400 transition-all group cursor-pointer relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-amber-50 rounded-full -mr-8 -mt-8" />
+                    <div className="flex justify-between items-start mb-2 relative z-10">
+                      <h4 className="font-bold text-slate-900 line-clamp-1">{tsJob.serviceType}</h4>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-4 font-medium relative z-10">Completed: {tsJob.date ? new Date(tsJob.date.includes('T') ? tsJob.date : tsJob.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown'}</p>
+                    <button className="w-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-black py-2.5 rounded-xl hover:bg-amber-100 transition-all uppercase tracking-wider relative z-10">
+                      Submit Timesheet
+                    </button>
+                  </div>
+                ))}
+                {pendingTimesheets.length > 3 && (
+                  <button onClick={() => navigate('/interpreter/timesheets')} className="w-full py-2 text-center text-xs font-black text-amber-600 hover:underline uppercase tracking-widest">
+                    View All ({pendingTimesheets.length})
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Job Offers Sidebar */}
           <div>

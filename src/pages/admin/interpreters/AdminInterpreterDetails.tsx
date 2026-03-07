@@ -71,7 +71,7 @@ export const AdminInterpreterDetails = () => {
         .map(o => ({
           ...o.bookingSnapshot,
           id: o.bookingId,
-          status: BookingStatus.OPENED
+          status: 'PENDING_ASSIGNMENT' as any
         } as Booking));
 
       const mergedJobs = [...schedule];
@@ -136,9 +136,9 @@ export const AdminInterpreterDetails = () => {
   if (loading) return <div className="p-12 flex justify-center"><Spinner size="lg" /></div>;
   if (!interpreter) return <div className="p-12 text-center text-red-500 font-bold">Interpreter not found.</div>;
 
-  const earningsTotal = invoices.reduce((acc, inv) => acc + inv.totalAmount, 0);
-  const upcomingJobs = jobs.filter(j => new Date(j.date) >= new Date() && [BookingStatus.BOOKED, BookingStatus.OPENED].includes(j.status)).length;
-
+  const earningsTotal = invoices.reduce((acc, inv) => acc + inv.totalAmount, 0); // Basic Stats Calculation
+  const upcomingJobs = jobs.filter(j => new Date(j.date) >= new Date() && ['BOOKED', 'PENDING_ASSIGNMENT'].includes(String(j.status))).length;
+  const completedJobs = jobs.filter(j => ['TIMESHEET_SUBMITTED', 'VERIFIED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(j.status))).length;
   return (
     <div className="space-y-4 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">

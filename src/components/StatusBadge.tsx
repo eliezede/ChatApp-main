@@ -1,28 +1,37 @@
 
 import React from 'react';
-import { BookingStatus } from '../types';
+import { BookingStatus, JobStatus } from '../types';
 
-export const StatusBadge: React.FC<{ status: BookingStatus | string | null | undefined }> = ({ status }) => {
+export const StatusBadge: React.FC<{ status: BookingStatus | JobStatus | string | null | undefined; size?: 'sm' | 'md' | 'lg' }> = ({ status, size = 'md' }) => {
   const normalizedStatus = String(status ?? 'UNKNOWN');
 
   const getStyles = () => {
     switch (normalizedStatus) {
       case BookingStatus.INVOICED:
+      case 'INVOICED':
       case BookingStatus.PAID:
+      case 'PAID':
+      case 'VERIFIED':
       case 'ACTIVE':
         return 'bg-green-100 text-green-800 border-green-200';
       case BookingStatus.BOOKED:
+      case 'BOOKED':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case BookingStatus.INCOMING:
+      case 'INCOMING':
       case 'ONBOARDING':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case BookingStatus.OPENED:
+      case 'PENDING_ASSIGNMENT':
         return 'bg-orange-100 text-orange-800 border-orange-200';
       case BookingStatus.ADMIN:
+      case 'ADMIN':
         return 'bg-purple-100 text-purple-800 border-purple-200';
       case BookingStatus.INVOICING:
+      case 'TIMESHEET_SUBMITTED':
         return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       case BookingStatus.CANCELLED:
+      case 'CANCELLED':
       case 'SUSPENDED':
         return 'bg-red-100 text-red-800 border-red-200';
       default:
@@ -31,8 +40,8 @@ export const StatusBadge: React.FC<{ status: BookingStatus | string | null | und
   };
 
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStyles()} uppercase tracking-wide`}>
-      {normalizedStatus.replace('_', ' ')}
+    <span className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border ${getStyles()} uppercase tracking-wider`}>
+      {normalizedStatus.replace(/_/g, ' ')}
     </span>
   );
 };

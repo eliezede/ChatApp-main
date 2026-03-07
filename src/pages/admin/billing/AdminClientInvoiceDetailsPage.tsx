@@ -42,23 +42,23 @@ export const AdminClientInvoiceDetailsPage = () => {
           <ChevronLeft size={20} className="mr-1" /> Back
         </button>
         <div className="space-x-3 flex">
-           <button 
-             onClick={handleDownloadPdf}
-             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center mr-2"
-           >
-             <Download size={16} className="mr-2" /> PDF
-           </button>
+          <button
+            onClick={handleDownloadPdf}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center mr-2"
+          >
+            <Download size={16} className="mr-2" /> PDF
+          </button>
 
-           {invoice.status === InvoiceStatus.DRAFT && (
-             <button onClick={() => handleStatusUpdate(InvoiceStatus.SENT)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center">
-               <Send size={16} className="mr-2" /> Mark Sent
-             </button>
-           )}
-           {invoice.status === InvoiceStatus.SENT && (
-             <button onClick={() => handleStatusUpdate(InvoiceStatus.PAID)} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 flex items-center">
-               <CheckCircle size={16} className="mr-2" /> Mark Paid
-             </button>
-           )}
+          {invoice.status === InvoiceStatus.DRAFT && (
+            <button onClick={() => handleStatusUpdate(InvoiceStatus.SENT)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center">
+              <Send size={16} className="mr-2" /> Mark Sent
+            </button>
+          )}
+          {invoice.status === InvoiceStatus.SENT && (
+            <button onClick={() => handleStatusUpdate(InvoiceStatus.PAID)} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 flex items-center">
+              <CheckCircle size={16} className="mr-2" /> Mark Paid
+            </button>
+          )}
         </div>
       </div>
 
@@ -66,14 +66,14 @@ export const AdminClientInvoiceDetailsPage = () => {
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
         <div className="p-8 border-b border-gray-200">
           <div className="flex justify-between items-start">
-             <div>
-               <h1 className="text-3xl font-bold text-gray-900">{invoice.reference || invoice.id}</h1>
-               <p className="text-gray-500 mt-1">Issued: {new Date(invoice.issueDate).toLocaleDateString()}</p>
-             </div>
-             <div className="text-right">
-               <InvoiceStatusBadge status={invoice.status} />
-               <p className="mt-2 font-bold text-xl">£{invoice.totalAmount.toFixed(2)}</p>
-             </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">{invoice.reference || invoice.id}</h1>
+              <p className="text-gray-500 mt-1">Issued: {new Date(invoice.issueDate).toLocaleDateString()}</p>
+            </div>
+            <div className="text-right">
+              <InvoiceStatusBadge status={invoice.status} />
+              <p className="mt-2 font-bold text-xl">£{invoice.totalAmount.toFixed(2)}</p>
+            </div>
           </div>
           <div className="mt-8 grid grid-cols-2 gap-8">
             <div>
@@ -81,8 +81,8 @@ export const AdminClientInvoiceDetailsPage = () => {
               <p className="font-medium text-gray-900 text-lg">{invoice.clientName}</p>
             </div>
             <div className="text-right">
-               <p className="text-xs font-bold text-gray-400 uppercase">Due Date</p>
-               <p className="font-medium text-gray-900">{new Date(invoice.dueDate).toLocaleDateString()}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase">Due Date</p>
+              <p className="font-medium text-gray-900">{new Date(invoice.dueDate).toLocaleDateString()}</p>
             </div>
           </div>
         </div>
@@ -91,27 +91,40 @@ export const AdminClientInvoiceDetailsPage = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-8 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-8 py-3 text-right text-xs font-medium text-gray-500 uppercase">Units</th>
-                <th className="px-8 py-3 text-right text-xs font-medium text-gray-500 uppercase">Rate</th>
-                <th className="px-8 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                <th className="px-8 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">Category</th>
+                <th className="px-8 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">Description</th>
+                <th className="px-8 py-3 text-right text-[10px] font-black tracking-widest text-slate-400 uppercase">Units</th>
+                <th className="px-8 py-3 text-right text-[10px] font-black tracking-widest text-slate-400 uppercase">Rate</th>
+                <th className="px-8 py-3 text-right text-[10px] font-black tracking-widest text-slate-400 uppercase">Amount</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100">
               {invoice.items?.map((item: any, idx: number) => (
-                <tr key={idx}>
-                  <td className="px-8 py-4 text-sm text-gray-900">{item.description}</td>
+                <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-8 py-4 whitespace-nowrap">
+                    <span className="px-2 py-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wider rounded border border-blue-100">
+                      {item.category?.replace(/_/g, ' ') || 'SERVICE'}
+                    </span>
+                  </td>
+                  <td className="px-8 py-4 text-sm text-gray-900 font-medium">{item.description}</td>
                   <td className="px-8 py-4 text-sm text-gray-500 text-right">{item.units}</td>
                   <td className="px-8 py-4 text-sm text-gray-500 text-right">£{item.rate.toFixed(2)}</td>
-                  <td className="px-8 py-4 text-sm font-medium text-gray-900 text-right">£{item.total.toFixed(2)}</td>
+                  <td className="px-8 py-4 text-sm font-black text-gray-900 text-right">£{item.total.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        
-        <div className="p-8 bg-gray-50 border-t border-gray-200 text-right">
-           <p className="text-lg font-bold text-gray-900">Total: £{invoice.totalAmount.toFixed(2)}</p>
+
+        <div className="p-8 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+          <div className="bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-lg">
+            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Est. Profit Margin (35%)</p>
+            <p className="text-sm font-black text-emerald-700">£{(invoice.totalAmount * 0.35).toFixed(2)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Due</p>
+            <p className="text-3xl font-black text-slate-900 leading-none">£{invoice.totalAmount.toFixed(2)}</p>
+          </div>
         </div>
       </div>
     </div>

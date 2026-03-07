@@ -4,6 +4,12 @@ import { BillingService } from '../../../services/billingService';
 import { InterpreterInvoice } from '../../../types';
 import { InvoiceTable } from '../../../components/billing/InvoiceTable';
 
+import { TableSkeleton } from '../../../components/ui/Skeleton';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { FileText } from 'lucide-react';
+
+import { PageHeader } from '../../../components/layout/PageHeader';
+
 export const AdminInterpreterInvoicesPage = () => {
   const [invoices, setInvoices] = useState<InterpreterInvoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,11 +23,20 @@ export const AdminInterpreterInvoicesPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Interpreter Invoices</h1>
-      </div>
-      
-      {loading ? <div className="text-center py-8">Loading...</div> : (
+      <PageHeader
+        title="Agent Settlements"
+        subtitle="Manage interpreter payment cycles and self-billed invoices."
+      />
+
+      {loading ? (
+        <TableSkeleton rows={8} />
+      ) : invoices.length === 0 ? (
+        <EmptyState
+          title="No Interpreter Invoices"
+          description="There are no interpreter invoices submitted yet. Interpreters can submit invoices through their dashboard."
+          icon={FileText}
+        />
+      ) : (
         <InvoiceTable invoices={invoices} type="INTERPRETER" />
       )}
     </div>

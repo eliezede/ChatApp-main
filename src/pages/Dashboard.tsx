@@ -16,58 +16,79 @@ import { Card } from '../components/ui/Card';
 import { useTheme } from '../context/ThemeContext';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Skeleton } from '../components/ui/Skeleton';
 
 // --- Components ---
 
-const HighDensityActivityTable = ({ title, data }: { title: string, data: any[] }) => (
-  <div className="flex-1 flex flex-col min-w-0 bg-white border border-slate-200 rounded-lg overflow-hidden shrink-0 min-h-[400px]">
-    <div className="px-6 py-3 border-b border-slate-200 flex items-center justify-between bg-white overflow-hidden">
-      <h3 className="font-bold text-slate-800 text-xs uppercase tracking-widest shrink-0">{title}</h3>
+const MetricSkeleton = () => (
+  <div className="flex items-center gap-3 md:border-l border-slate-100 md:pl-8">
+    <div className="space-y-1">
+      <Skeleton className="h-2 w-16" />
+      <Skeleton className="h-4 w-12" />
+    </div>
+    <Skeleton className="h-3 w-8 rounded-full" />
+  </div>
+);
+
+const HighDensityActivityTable = ({ title, data, loading }: { title: string, data: any[], loading?: boolean }) => (
+  <div className="flex-1 flex flex-col min-w-0 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden shrink-0 min-h-[400px]">
+    <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white overflow-hidden">
+      <h3 className="font-black text-slate-800 text-[10px] uppercase tracking-[0.2em] shrink-0">{title}</h3>
       <div className="flex gap-2">
-        <button className="p-1.5 text-slate-400 hover:bg-slate-100 rounded">
+        <button className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-lg transition-colors">
           <Filter size={16} />
         </button>
       </div>
     </div>
     <div className="overflow-x-auto custom-scrollbar flex-1">
       <table className="w-full text-left border-collapse min-w-[600px]">
-        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+        <thead className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
           <tr>
-            <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Client</th>
-            <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Service</th>
-            <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-            <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date & Time</th>
-            <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Service</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date & Time</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
-          {data.length === 0 ? (
-            <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-slate-500">No activity found.</td></tr>
+        <tbody className="divide-y divide-slate-50">
+          {loading ? (
+            Array(5).fill(0).map((_, i) => (
+              <tr key={i}>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-16 rounded" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3 text-right"><Skeleton className="h-4 w-12 ml-auto" /></td>
+              </tr>
+            ))
+          ) : data.length === 0 ? (
+            <tr><td colSpan={5} className="px-4 py-12 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No activity found.</td></tr>
           ) : data.map((item, i) => (
-            <tr key={i} className="hover:bg-slate-50 group transition-colors">
+            <tr key={i} className="hover:bg-slate-50/80 group transition-colors">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold uppercase border border-slate-200">
+                  <div className="w-6 h-6 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-black uppercase border border-slate-200">
                     {item.avatar}
                   </div>
-                  <span className="text-xs font-semibold text-slate-800 whitespace-nowrap">{item.name}</span>
+                  <span className="text-xs font-bold text-slate-900 whitespace-nowrap">{item.name}</span>
                 </div>
               </td>
-              <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{item.service}</td>
+              <td className="px-4 py-3 text-xs font-medium text-slate-600 whitespace-nowrap">{item.service}</td>
               <td className="px-4 py-3 whitespace-nowrap">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold
-                  ${item.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                    item.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                      'bg-blue-100 text-blue-700'}`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
+                  ${item.status === 'completed' || item.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                    item.status === 'pending' || item.status === 'incoming' ? 'bg-red-50 text-red-700 border border-red-100' :
+                      'bg-blue-50 text-blue-700 border border-blue-100'}`}>
                   {item.status.toUpperCase()}
                 </span>
               </td>
               <td className="px-4 py-3 whitespace-nowrap">
-                <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-                  {item.date} <span className="text-[10px] text-slate-400 mx-1">•</span> {item.time}
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
+                  {item.date} <span className="text-[10px] text-slate-300 font-normal">|</span> {item.time}
                 </div>
               </td>
-              <td className="px-4 py-3 text-right text-xs font-bold text-slate-800 whitespace-nowrap">
+              <td className="px-4 py-3 text-right text-xs font-black text-slate-900 whitespace-nowrap">
                 {item.amount}
               </td>
             </tr>
@@ -86,10 +107,12 @@ export const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [recentByRole, setRecentByRole] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
+        setLoading(true);
         let currentStats;
         if (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) {
           currentStats = await StatsService.getAdminStats();
@@ -115,17 +138,12 @@ export const Dashboard = () => {
         })));
       } catch (e) {
         console.error("Dashboard data load failed", e);
+      } finally {
+        setLoading(false);
       }
     };
     loadData();
   }, [user]);
-
-  if (!stats) return (
-    <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center">
-      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p className="text-slate-400 font-bold text-sm uppercase tracking-widest animate-pulse">Loading Dashboard...</p>
-    </div>
-  );
 
   // Mock Data for Charts (Keep for now as true historical data requires time to build)
   const engagementData = [
@@ -156,8 +174,8 @@ export const Dashboard = () => {
     return (
       <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)] bg-slate-50">
         <PageHeader
-          title="Admin Console"
-          subtitle="System-wide management & oversight"
+          title="Terminal One"
+          subtitle="Enterprise operational intelligence dashboard."
         >
           <Button
             onClick={() => navigate('/admin/bookings/new')}
@@ -185,18 +203,22 @@ export const Dashboard = () => {
         </PageHeader>
 
         {/* KPI Ribbon */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-3 flex flex-wrap items-center gap-x-8 gap-y-4 mb-6 shadow-sm mx-4 sm:mx-0">
-          {[
-            { label: 'Total Bookings', value: stats.totalBookings || 0, badge: '+12%', badgeColor: 'text-emerald-600 bg-emerald-50' },
-            { label: 'Active Interpreters', value: stats.activeInterpreters || 0, badge: '+5%', badgeColor: 'text-emerald-600 bg-emerald-50' },
-            { label: 'Pending Requests', value: stats.pendingRequests || 0, badge: byStatus.incoming > 0 ? `${byStatus.incoming} new` : 'All clear', badgeColor: byStatus.incoming > 0 ? 'text-red-600 bg-red-50' : 'text-slate-400 bg-slate-100' },
-            { label: 'MTD Revenue', value: `£${(stats.revenueMonth || 0).toLocaleString()}`, badge: '+8%', badgeColor: 'text-emerald-600 bg-emerald-50' },
-            { label: 'Unpaid Invoices', value: stats.unpaidInvoices || 0, badge: stats.unpaidInvoices > 0 ? 'Action needed' : 'Clear', badgeColor: stats.unpaidInvoices > 0 ? 'text-amber-600 bg-amber-50' : 'text-slate-400 bg-slate-100' },
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl px-8 py-5 flex flex-wrap items-center gap-x-12 gap-y-4 mb-8 shadow-sm mx-4 sm:mx-0">
+          {loading ? (
+            Array(5).fill(0).map((_, i) => <MetricSkeleton key={i} />)
+          ) : [
+            { label: 'Total Volume', value: stats?.totalBookings || 0, badge: '+12%', badgeColor: 'text-emerald-600 bg-emerald-50' },
+            { label: 'Network Size', value: stats?.activeInterpreters || 0, badge: '+5%', badgeColor: 'text-emerald-600 bg-emerald-50' },
+            { label: 'Incoming', value: stats?.pendingRequests || 0, badge: byStatus.incoming > 0 ? `${byStatus.incoming} urgent` : 'Clear', badgeColor: byStatus.incoming > 0 ? 'text-red-600 bg-red-50' : 'text-slate-400 bg-slate-50' },
+            { label: 'Gross Revenue', value: `£${(stats?.revenueMonth || 0).toLocaleString()}`, badge: 'MTD', badgeColor: 'text-slate-500 bg-slate-100' },
+            { label: 'Outstanding', value: stats?.unpaidInvoices || 0, badge: stats?.unpaidInvoices > 0 ? 'Review' : 'Nominal', badgeColor: stats?.unpaidInvoices > 0 ? 'text-amber-600 bg-amber-50' : 'text-slate-400 bg-slate-100' },
           ].map((m, i) => (
             <div key={i} className={`flex items-center gap-3 ${i > 0 ? 'md:border-l border-slate-100 md:pl-8' : ''}`}>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{m.label}</div>
-              <div className="text-sm font-bold text-slate-800">{m.value}</div>
-              <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${m.badgeColor}`}>{m.badge}</div>
+              <div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">{m.label}</div>
+                <div className="text-lg font-black text-slate-900 mt-1 leading-none">{m.value}</div>
+              </div>
+              <div className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${m.badgeColor}`}>{m.badge}</div>
             </div>
           ))}
         </div>
@@ -239,15 +261,15 @@ export const Dashboard = () => {
                       </div>
                     </button>
                   )}
-                  {stats.unpaidInvoices > 0 && (
+                  {stats?.unpaidInvoices > 0 && (
                     <button
                       onClick={() => navigate('/admin/client-invoices')}
-                      className="flex items-center gap-2 px-3 py-2 bg-white border border-violet-200 hover:border-violet-400 rounded-lg text-left transition-all group shadow-sm"
+                      className="flex items-center gap-2 px-3 py-2 bg-white border border-violet-200 hover:border-blue-700/30 hover:shadow-lg hover:shadow-blue-900/5 rounded-xl text-left transition-all group shadow-sm"
                     >
-                      <div className="w-7 h-7 bg-violet-100 rounded-lg flex items-center justify-center text-violet-600 font-bold text-sm">{stats.unpaidInvoices}</div>
+                      <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm shadow-blue-900/20">{stats.unpaidInvoices}</div>
                       <div>
-                        <p className="text-xs font-bold text-slate-800">Outstanding Invoices</p>
-                        <p className="text-[10px] text-slate-500">Client invoices unpaid →</p>
+                        <p className="text-[10px] font-black text-slate-900 uppercase tracking-wider">Settlements Pending</p>
+                        <p className="text-[9px] text-slate-400 font-bold">Unpaid client receivables →</p>
                       </div>
                     </button>
                   )}
@@ -365,8 +387,8 @@ export const Dashboard = () => {
               </h3>
               <div className="space-y-2">
                 {[
-                  { label: 'Revenue MTD', value: `£${(stats.revenueMonth || 0).toLocaleString()}`, path: '/admin/client-invoices', color: 'text-emerald-700' },
-                  { label: 'Invoices Unpaid', value: `${stats.unpaidInvoices || 0} pending`, path: '/admin/client-invoices', color: stats.unpaidInvoices > 0 ? 'text-amber-700' : 'text-slate-600' },
+                  { label: 'Revenue MTD', value: stats ? `£${(stats.revenueMonth || 0).toLocaleString()}` : '£---', path: '/admin/client-invoices', color: 'text-emerald-700' },
+                  { label: 'Invoices Unpaid', value: stats ? `${stats.unpaidInvoices || 0} pending` : '---', path: '/admin/client-invoices', color: (stats?.unpaidInvoices || 0) > 0 ? 'text-amber-700' : 'text-slate-600' },
                   { label: 'Active Timesheets', value: `${byStatus.invoicing} awaiting`, path: '/admin/timesheets', color: byStatus.invoicing > 0 ? 'text-violet-700' : 'text-slate-600' },
                 ].map((row, i) => (
                   <button key={i} onClick={() => navigate(row.path)} className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-slate-50 rounded-lg transition-colors text-left">
@@ -442,46 +464,43 @@ export const Dashboard = () => {
 
   /* --- Client View --- */
   const renderClientDashboard = () => (
-    <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)]">
-      {/* Header */}
-      <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-        <div className="flex items-center gap-4 flex-1">
-          <h2 className="text-sm font-bold text-slate-800">Client Hub</h2>
-          <div className="h-4 w-px bg-slate-200"></div>
-          <span className="text-xs text-slate-500 font-medium">Welcome back, {user?.displayName}</span>
-        </div>
-      </header>
+    <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)] bg-slate-50">
+      <PageHeader
+        title="Client Terminal"
+        subtitle={`Welcome back, ${user?.displayName || 'User'}`}
+      >
+        <Button onClick={() => navigate('/client/new-booking')} icon={UserPlus} size="sm">New Booking</Button>
+      </PageHeader>
 
       {/* Metrics Ribbon */}
-      <div className="bg-white border-b border-slate-200 px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-        <div className="flex flex-wrap gap-x-10 gap-y-4">
-          <div className="flex items-center gap-3">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Upcoming Bookings</div>
-            <div className="text-sm font-bold text-slate-800">{recentByRole.length}</div>
+      <div className="bg-white border border-slate-200 rounded-3xl px-8 py-5 flex flex-wrap items-center gap-x-12 gap-y-4 mb-8 shadow-sm mx-4 sm:mx-0">
+        {loading ? (
+          Array(3).fill(0).map((_, i) => <MetricSkeleton key={i} />)
+        ) : [
+          { label: 'Pipeline Volume', value: recentByRole.length, badge: 'Live', badgeColor: 'text-blue-600 bg-blue-50' },
+          { label: 'Outstanding Balance', value: stats?.unpaidInvoices || 0, badge: 'Due', badgeColor: (stats?.unpaidInvoices || 0) > 0 ? 'text-amber-600 bg-amber-50' : 'text-slate-400 bg-slate-50' },
+          { label: 'Historical Jobs', value: stats?.completedBookings || 0, badge: 'Total', badgeColor: 'text-emerald-600 bg-emerald-50' },
+        ].map((m, i) => (
+          <div key={i} className={`flex items-center gap-3 ${i > 0 ? 'md:border-l border-slate-100 md:pl-8' : ''}`}>
+            <div>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">{m.label}</div>
+              <div className="text-lg font-black text-slate-900 mt-1 leading-none">{m.value}</div>
+            </div>
+            <div className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${m.badgeColor}`}>{m.badge}</div>
           </div>
-          <div className="flex items-center gap-3 md:border-l border-slate-100 md:pl-10">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Invoices Due</div>
-            <div className="text-sm font-bold text-slate-800">{stats.unpaidInvoices || 0}</div>
-          </div>
-          <div className="flex items-center gap-3 md:border-l border-slate-100 md:pl-10">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Completed Jobs</div>
-            <div className="text-sm font-bold text-slate-800">{stats.completedBookings || 0}</div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-50/50">
-        <div className="flex-1 flex flex-col p-6 overflow-hidden">
-          <HighDensityActivityTable title="My Booking History" data={recentByRole} />
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col p-4 overflow-hidden">
+          <HighDensityActivityTable title="Booking History" data={recentByRole} loading={loading} />
         </div>
         <aside className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col shrink-0">
-          <div className="p-4 border-b border-slate-200 bg-indigo-50/50">
-            <h3 className="text-xs font-bold text-indigo-900 uppercase tracking-widest mb-2">Need an Interpreter?</h3>
-            <p className="text-[11px] text-indigo-700/70 mb-4">Book a certified professional in less than 2 minutes.</p>
-            <button onClick={() => navigate('/client/new-booking')} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded flex items-center justify-center transition-colors">
-              <UserPlus size={14} className="mr-2" /> BOOK NOW
-            </button>
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-3">Enterprise Suite</h3>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">Book certified linguistic professionals with sub-2 minute latency.</p>
+            <Button onClick={() => navigate('/client/new-booking')} className="w-full justify-center shadow-lg shadow-blue-100" icon={UserPlus}>Request Service</Button>
           </div>
         </aside>
       </div>
@@ -490,60 +509,57 @@ export const Dashboard = () => {
 
   /* --- Interpreter View --- */
   const renderInterpreterDashboard = () => (
-    <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)]">
-      {/* Header */}
-      <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-        <div className="flex items-center gap-4 flex-1">
-          <h2 className="text-sm font-bold text-slate-800">Interpreter Portal</h2>
-          <div className="h-4 w-px bg-slate-200"></div>
-          <span className="text-xs text-slate-500 font-medium">Hello, {user?.displayName?.split(' ')[0]}</span>
-        </div>
-      </header>
+    <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)] bg-slate-50">
+      <PageHeader
+        title="Agent Interface"
+        subtitle={`Session active for ${user?.displayName?.split(' ')[0] || 'Agent'}`}
+      >
+        <Button onClick={() => navigate('/interpreter/jobs')} variant="secondary" icon={Briefcase} size="sm">Browse Jobs</Button>
+      </PageHeader>
 
       {/* Metrics Ribbon */}
-      <div className="bg-white border-b border-slate-200 px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-        <div className="flex flex-wrap gap-x-10 gap-y-4">
-          <div className="flex items-center gap-3">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Job Offers</div>
-            <div className="text-sm font-bold text-slate-800">{recentByRole.filter((b: any) => b.status === 'offered').length}</div>
-            <div className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1 rounded">New</div>
+      <div className="bg-white border border-slate-200 rounded-3xl px-8 py-5 flex flex-wrap items-center gap-x-12 gap-y-4 mb-8 shadow-sm mx-4 sm:mx-0">
+        {loading ? (
+          Array(3).fill(0).map((_, i) => <MetricSkeleton key={i} />)
+        ) : [
+          { label: 'Active Offers', value: recentByRole.filter((b: any) => b.status === 'offered').length, badge: 'New', badgeColor: 'text-blue-600 bg-blue-50' },
+          { label: 'Booked Sessions', value: recentByRole.filter((b: any) => b.status === 'confirmed').length, badge: 'Active', badgeColor: 'text-indigo-600 bg-indigo-50' },
+          { label: 'Settled Earnings', value: `£${(stats?.earnings || 0).toLocaleString()}`, badge: 'Total', badgeColor: 'text-emerald-600 bg-emerald-50' },
+        ].map((m, i) => (
+          <div key={i} className={`flex items-center gap-3 ${i > 0 ? 'md:border-l border-slate-100 md:pl-8' : ''}`}>
+            <div>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">{m.label}</div>
+              <div className="text-lg font-black text-slate-900 mt-1 leading-none">{m.value}</div>
+            </div>
+            <div className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${m.badgeColor}`}>{m.badge}</div>
           </div>
-          <div className="flex items-center gap-3 md:border-l border-slate-100 md:pl-10">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Upcoming Jobs</div>
-            <div className="text-sm font-bold text-slate-800">{recentByRole.filter((b: any) => b.status === 'confirmed').length}</div>
-          </div>
-          <div className="flex items-center gap-3 md:border-l border-slate-100 md:pl-10">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Total Earnings</div>
-            <div className="text-sm font-bold text-slate-800">{stats.earnings ? `£${stats.earnings.toFixed(2)}` : '£0.00'}</div>
-            <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded">+8%</div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-50/50">
-        <div className="flex-1 flex flex-col p-6 overflow-hidden">
-          <HighDensityActivityTable title="Upcoming Schedule" data={recentByRole.filter((b: any) => b.status === 'confirmed' || b.status === 'completed')} />
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col p-4 overflow-hidden">
+          <HighDensityActivityTable title="Upcoming Rota" data={recentByRole.filter((b: any) => b.status === 'confirmed' || b.status === 'completed')} loading={loading} />
         </div>
 
         <aside className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col shrink-0">
-          <div className="flex-1 p-4 overflow-y-auto">
-            <h3 className="font-bold text-slate-800 text-[10px] uppercase tracking-widest mb-4">Live Opportunities</h3>
-            <div className="space-y-3">
+          <div className="flex-1 p-6 overflow-y-auto">
+            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Market Opportunities</h3>
+            <div className="space-y-4">
               {recentByRole.filter((b: any) => b.status === 'offered').length === 0 ? (
-                <div className="text-xs text-slate-400 py-4 text-center">No live offers currently.</div>
+                <div className="text-xs text-slate-400 py-12 text-center font-bold uppercase tracking-widest border border-dashed border-slate-200 rounded-2xl">No open offers</div>
               ) : (
                 recentByRole.filter((b: any) => b.status === 'offered').map((offer: any, i: number) => (
-                  <div key={i} className="p-3 bg-white border border-slate-200 rounded hover:border-blue-300 transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-bold text-[11px] text-slate-800">{offer.service}</h4>
-                      <span className="text-[9px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded uppercase">New</span>
+                  <div key={i} className="p-4 bg-white border border-slate-200 rounded-2xl hover:border-blue-400 transition-all shadow-sm group">
+                    <div className="flex justify-between items-start mb-3">
+                      <h4 className="font-black text-xs text-slate-900">{offer.service}</h4>
+                      <span className="text-[9px] font-black bg-blue-900 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm group-hover:scale-110 transition-transform">Live</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 font-medium flex items-center mb-3">
-                      <CalendarDays size={10} className="mr-1" /> {offer.date}, {offer.time}
+                    <p className="text-[11px] text-slate-500 font-bold flex items-center mb-4">
+                      <CalendarDays size={12} className="mr-2 text-blue-500" /> {offer.date} <span className="mx-2 text-slate-200">|</span> {offer.time}
                     </p>
                     <div className="flex gap-2">
-                      <button onClick={() => navigate('/interpreter/offers')} className="flex-1 py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded hover:bg-blue-700 transition-colors">Accept</button>
-                      <button onClick={() => navigate('/interpreter/offers')} className="flex-1 py-1.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded hover:bg-slate-200 transition-colors">Details</button>
+                      <button onClick={() => navigate('/interpreter/offers')} className="flex-1 py-2 bg-slate-900 text-white text-[10px] font-black rounded-xl hover:bg-black transition-colors uppercase tracking-widest shadow-lg shadow-slate-100">Accept</button>
+                      <button onClick={() => navigate('/interpreter/offers')} className="flex-1 py-2 bg-slate-50 text-slate-600 text-[10px] font-black rounded-xl hover:bg-slate-100 transition-colors uppercase tracking-widest border border-slate-100">Details</button>
                     </div>
                   </div>
                 ))
@@ -556,7 +572,7 @@ export const Dashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <div className="min-h-screen">
       {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && renderAdminDashboard()}
       {user?.role === UserRole.CLIENT && renderClientDashboard()}
       {user?.role === UserRole.INTERPRETER && renderInterpreterDashboard()}

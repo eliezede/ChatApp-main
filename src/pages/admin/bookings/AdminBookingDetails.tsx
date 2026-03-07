@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { BookingService, InterpreterService } from '../../../services/api';
+import { BookingService, InterpreterService, BillingService } from '../../../services/api';
 import { ChatService } from '../../../services/chatService';
-import { Booking, BookingAssignment, Interpreter, BookingStatus, AssignmentStatus, ServiceType } from '../../../types';
+import { Booking, BookingAssignment, Interpreter, BookingStatus, AssignmentStatus, ServiceType, Timesheet } from '../../../types';
 import { LANGUAGES } from '../../../constants/languages';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { Button } from '../../../components/ui/Button';
@@ -14,7 +14,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useChat } from '../../../context/ChatContext';
 import {
   Calendar, Clock, MapPin, Video, Globe2, ChevronLeft,
-  User, CheckCircle2, XCircle, Send, AlertCircle, Edit, Trash2, Search, UserPlus, Filter, Eye, List, MessageSquare, Building2, Mail, Phone, CreditCard, Zap
+  User, CheckCircle2, XCircle, Send, AlertCircle, Edit, Trash2, Search, UserPlus, Filter, Eye, List, MessageSquare, Building2, Mail, Phone, CreditCard, Zap, TrendingUp, Plus
 } from 'lucide-react';
 
 const AdminBookingDetails = () => {
@@ -25,7 +25,9 @@ const AdminBookingDetails = () => {
   const { showToast } = useToast();
 
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [timesheet, setTimesheet] = useState<Timesheet | null>(null);
   const [assignments, setAssignments] = useState<BookingAssignment[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [suggestedInterpreters, setSuggestedInterpreters] = useState<Interpreter[]>([]);
   const [allInterpreters, setAllInterpreters] = useState<Interpreter[]>([]);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
@@ -54,15 +56,19 @@ const AdminBookingDetails = () => {
   const loadData = async (bookingId: string) => {
     setLoading(true);
     try {
-      const [bookingData, assignmentsData, interpretersList, bookingsList] = await Promise.all([
+      const [bookingData, assignmentsData, interpretersList, bookingsList, eventsData, timesheetData] = await Promise.all([
         BookingService.getById(bookingId),
         BookingService.getAssignmentsByBookingId(bookingId),
         InterpreterService.getAll(),
-        BookingService.getAll()
+        BookingService.getAll(),
+        BookingService.getJobEvents(bookingId),
+        BillingService.getTimesheetByBookingId(bookingId)
       ]);
 
       setBooking(bookingData || null);
+      setTimesheet(timesheetData || null);
       setAssignments(assignmentsData);
+      setEvents(eventsData);
       setAllInterpreters(interpretersList);
       setAllBookings(bookingsList);
 
@@ -211,7 +217,7 @@ const AdminBookingDetails = () => {
 
     return allBookings.filter(b =>
       b.interpreterId === interpreterId &&
-      [BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status) &&
+      ['BOOKED', 'TIMESHEET_SUBMITTED', 'VERIFIED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(b.status)) &&
       new Date(b.date) >= startOfWeek && new Date(b.date) <= endOfWeek
     ).length;
   };
@@ -219,7 +225,7 @@ const AdminBookingDetails = () => {
   const getInterpreterSchedule = (interpreterId: string) => {
     return allBookings.filter((b: Booking) =>
       b.interpreterId === interpreterId &&
-      [BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)
+      ['BOOKED', 'TIMESHEET_SUBMITTED', 'VERIFIED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(b.status))
     ).sort((a: Booking, b: Booking) => a.date.localeCompare(b.date));
   };
 
@@ -254,9 +260,9 @@ const AdminBookingDetails = () => {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => handleUpdateStatus(BookingStatus.CANCELLED)}
+            onClick={() => handleUpdateStatus('CANCELLED' as BookingStatus)}
             className="text-amber-600 border-amber-200 hover:bg-amber-50"
-            disabled={processing || booking.status === BookingStatus.CANCELLED}
+            disabled={processing || booking.status === 'CANCELLED'}
           >
             Reject / Cancel
           </Button>
@@ -275,6 +281,59 @@ const AdminBookingDetails = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {/* Next Action Callout */}
+          {(() => {
+            const status = String(booking.status);
+            let actionType: 'info' | 'warning' | 'success' | 'action' = 'info';
+            let message = '';
+            let actionBtn = null;
+
+            if (status === 'INCOMING') {
+              actionType = 'action';
+              message = 'Next Step: Find and assign an interpreter.';
+              actionBtn = <Button size="sm" onClick={() => { setAdvSearchQuery(booking.languageTo); setIsAdvancedModalOpen(true); }} icon={Search}>Find Interpreter</Button>;
+            } else if (status === 'PENDING_ASSIGNMENT') {
+              actionType = 'warning';
+              message = 'Next Step: Wait for the interpreter to accept the offer or assign one directly.';
+            } else if (status === 'BOOKED') {
+              actionType = 'info';
+              message = `Next Step: Session takes place on ${new Date(booking.date).toLocaleDateString()}.`;
+            } else if (status === 'TIMESHEET_SUBMITTED') {
+              actionType = 'action';
+              message = 'Next Step: Interpreter submitted their timesheet. Please verify it.';
+              // Using existing navigate logic (needs actual route)
+              actionBtn = <Button size="sm" onClick={() => navigate(`/admin/operations/timesheets?jobId=${booking.id}`)}>Review Timesheet</Button>;
+            } else if (status === 'VERIFIED') {
+              actionType = 'action';
+              message = 'Next Step: Timesheet verified. You can now generate the invoice.';
+              actionBtn = <Button size="sm" onClick={() => navigate(`/admin/billing/client-invoices?clientId=${booking.clientId}&start=${booking.date}&end=${booking.date}`)} icon={Plus}>Generate Invoice</Button>;
+            } else if (status === 'INVOICING' || status === 'INVOICED') {
+              actionType = 'info';
+              message = 'Next Step: Waiting for client payment.';
+            } else if (status === 'PAID') {
+              actionType = 'success';
+              message = 'Job is fully completed and paid.';
+            }
+
+            if (!message) return null;
+
+            const bgClass =
+              actionType === 'action' ? 'bg-indigo-50 border-indigo-200 text-indigo-900' :
+                actionType === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-900' :
+                  actionType === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' :
+                    'bg-blue-50 border-blue-200 text-blue-900';
+
+            return (
+              <div className={`p-4 rounded-xl border flex items-center justify-between ${bgClass} shadow-sm`}>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-0.5">Next Action</span>
+                  <span className="text-sm font-bold">{message}</span>
+                </div>
+                {actionBtn && <div>{actionBtn}</div>}
+              </div>
+            );
+          })()}
+
           <Card className="space-y-6">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <h2 className="text-lg font-bold text-gray-900">Session & Location</h2>
@@ -418,7 +477,7 @@ const AdminBookingDetails = () => {
             </div>
           </Card>
 
-          {(booking.status === BookingStatus.INCOMING || booking.status === BookingStatus.OPENED) && (
+          {(['INCOMING', 'PENDING_ASSIGNMENT'].includes(String(booking.status))) && (
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-900 flex items-center"><User size={16} className="mr-2 text-purple-600" />Suggested</h3>
@@ -448,6 +507,65 @@ const AdminBookingDetails = () => {
               </div>
             </Card>
           )}
+
+          {/* Financial Impact Section */}
+          {(['VERIFIED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(booking.status)) && timesheet) && (
+            <Card className="bg-emerald-50 border-emerald-100 shadow-sm">
+              <div className="flex items-center justify-between mb-4 border-b border-emerald-100 pb-2">
+                <h3 className="font-bold text-emerald-900 flex items-center gap-2"><TrendingUp size={16} /> Financial Impact</h3>
+                <span className="text-[10px] font-black text-emerald-600 bg-white px-2 py-0.5 rounded-full border border-emerald-200 uppercase">Verified</span>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-0.5">Revenue</p>
+                    <p className="text-xl font-black text-emerald-900 leading-none">£{timesheet.clientAmountCalculated?.toFixed(2) || '0.00'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Cost</p>
+                    <p className="text-xl font-black text-slate-600 leading-none">£{timesheet.interpreterAmountCalculated?.toFixed(2) || '0.00'}</p>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-emerald-200 flex justify-between items-center">
+                  <div>
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-0.5">Gross Profit</p>
+                    <p className="text-2xl font-black text-emerald-700 leading-none">
+                      £{((timesheet.clientAmountCalculated || 0) - (timesheet.interpreterAmountCalculated || 0)).toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="bg-white px-3 py-1.5 rounded-lg border border-emerald-200">
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-tight">Margin</p>
+                    <p className="text-sm font-black text-emerald-700 leading-none">
+                      {timesheet.clientAmountCalculated ?
+                        Math.round(((timesheet.clientAmountCalculated - timesheet.interpreterAmountCalculated) / timesheet.clientAmountCalculated) * 100) : 0}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Job Timeline */}
+          <Card>
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center"><List size={16} className="mr-2 text-slate-400" /> Event Timeline</h3>
+            <div className="space-y-4">
+              {events.length === 0 ? (
+                <p className="text-xs text-slate-500 italic text-center py-2">No events recorded yet.</p>
+              ) : (
+                <div className="relative border-l border-slate-200 ml-2 pl-4 space-y-4">
+                  {events.map((evt, idx) => (
+                    <div key={evt.id || idx} className="relative">
+                      <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white"></div>
+                      <p className="text-xs font-bold text-slate-900 capitalize">{String(evt.type).replace(/_/g, ' ').toLowerCase()}</p>
+                      <p className="text-[10px] text-slate-500">{new Date(evt.createdAt).toLocaleString()}</p>
+                      {evt.actorUserId && <p className="text-[10px] text-slate-400 mt-0.5">By UUID: {evt.actorUserId.substring(0, 6)}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
 

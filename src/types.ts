@@ -1,4 +1,27 @@
 // Define all core types and enums for the Lingland platform
+import { ServiceType, AssignmentStatus, GuestContact, Currency } from './shared/types/common';
+import { TenantScopedEntity } from './shared/types/baseEntity';
+import { JobStatus } from './domains/jobs/status';
+import { Job, JobAssignment } from './domains/jobs/types';
+import { allowedTransitions, canTransition } from './domains/jobs/stateMachine';
+import { JobEventType, JobEvent } from './domains/jobs/jobEvents';
+
+export type {
+  GuestContact,
+  Currency,
+  JobStatus,
+  Job,
+  JobAssignment,
+  JobEventType,
+  JobEvent
+};
+
+export {
+  ServiceType,
+  AssignmentStatus,
+  allowedTransitions,
+  canTransition
+};
 
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN', // Can manage global settings, system views, and all admin functions
@@ -16,13 +39,6 @@ export interface User {
   profileId?: string;
 }
 
-export enum ServiceType {
-  FACE_TO_FACE = 'Face-to-Face',
-  VIDEO = 'Video Call',
-  TELEPHONE = 'Telephone',
-  TRANSLATION = 'Translation',
-  BSL = 'British Sign Language'
-}
 
 export enum BookingStatus {
   INCOMING = 'INCOMING', // Initial state
@@ -35,11 +51,6 @@ export enum BookingStatus {
   PAID = 'PAID' // Invoice paid
 }
 
-export enum AssignmentStatus {
-  OFFERED = 'OFFERED',
-  ACCEPTED = 'ACCEPTED',
-  DECLINED = 'DECLINED'
-}
 
 export interface Booking {
   id: string;
@@ -72,6 +83,9 @@ export interface Booking {
   currency?: string;
   priority?: 'High' | 'Normal' | 'Low';
   totalAmount?: number;
+  endTime?: string;
+  patientReference?: string;
+  adminNotes?: string;
 }
 
 export interface BookingAssignment {
@@ -84,8 +98,7 @@ export interface BookingAssignment {
   bookingSnapshot?: Partial<Booking>;
 }
 
-export interface Client {
-  id: string;
+export interface Client extends TenantScopedEntity {
   companyName: string;
   billingAddress: string;
   paymentTermsDays: number;
@@ -95,8 +108,7 @@ export interface Client {
   defaultCostCodeType: 'PO' | 'Cost Code' | 'Client Name';
 }
 
-export interface Interpreter {
-  id: string;
+export interface Interpreter extends TenantScopedEntity {
   name: string;
   email: string;
   phone: string;
@@ -123,8 +135,7 @@ export enum InvoiceStatus {
   APPROVED = 'APPROVED'
 }
 
-export interface Timesheet {
-  id: string;
+export interface Timesheet extends TenantScopedEntity {
   bookingId: string;
   interpreterId: string;
   clientId: string;
@@ -148,8 +159,38 @@ export interface Timesheet {
   supportingDocumentUrl?: string;
 }
 
-export interface ClientInvoice {
+export type FiscalCategory =
+  | 'INTERPRETING_SERVICES'
+  | 'TRANSLATION_SERVICES'
+  | 'TRAVEL_TIME'
+  | 'MILEAGE'
+  | 'CANCELLATION_FEE'
+  | 'LATE_NOTICE_FEE'
+  | 'ADMIN_FEE'
+  | 'ADDITIONAL_EXPENSES';
+
+export interface ClientInvoiceItem {
   id: string;
+  category: FiscalCategory;
+  description: string;
+  units: number;
+  rate: number;
+  total: number;
+  quantity?: number;
+  taxable?: boolean;
+}
+
+export interface InterpreterPaymentItem {
+  id: string;
+  category: FiscalCategory;
+  description: string;
+  units: number;
+  rate: number;
+  total: number;
+  taxable?: boolean;
+}
+
+export interface ClientInvoice extends TenantScopedEntity {
   clientId: string;
   clientName: string;
   reference: string;
@@ -161,17 +202,10 @@ export interface ClientInvoice {
   periodEnd: string;
   totalAmount: number;
   currency: string;
-  items: Array<{
-    description: string;
-    units: number;
-    rate: number;
-    total: number;
-    quantity?: number;
-  }>;
+  items: ClientInvoiceItem[];
 }
 
-export interface InterpreterInvoice {
-  id: string;
+export interface InterpreterInvoice extends TenantScopedEntity {
   interpreterId: string;
   interpreterName: string;
   model: 'UPLOAD' | 'SELF_BILL';
@@ -179,10 +213,7 @@ export interface InterpreterInvoice {
   externalInvoiceReference?: string;
   totalAmount: number;
   issueDate: string;
-  items: Array<{
-    description: string;
-    total: number;
-  }>;
+  items: InterpreterPaymentItem[];
   currency: string;
   uploadedPdfUrl?: string;
 }
@@ -244,13 +275,6 @@ export interface SystemSettings {
   };
 }
 
-export interface GuestContact {
-  name: string;
-  organisation: string;
-  email: string;
-  phone: string;
-  billingEmail?: string;
-}
 
 export enum NotificationType {
   INFO = 'INFO',
@@ -352,8 +376,7 @@ export interface BookingView {
   sortRules?: ViewSortRule[];
 }
 
-export interface EmailTemplate {
-  id: string; // e.g., 'INCOMING_CLIENT', 'BOOKED_INTERPRETER'
+export interface EmailTemplate extends TenantScopedEntity {
   triggerStatus: BookingStatus;
   recipientType: 'CLIENT' | 'INTERPRETER' | 'ADMIN';
   name: string;
@@ -361,7 +384,6 @@ export interface EmailTemplate {
   body: string; // Markdown or HTML content
   allowedVariables: string[]; // e.g., ['{{clientName}}', '{{interpreterName}}', '{{bookingRef}}']
   isActive: boolean;
-  updatedAt?: string;
 }
 
 export const EMAIL_VARIABLES = {
