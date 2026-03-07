@@ -327,7 +327,7 @@ export interface ViewFilter {
 }
 
 export type SortableField = 'date' | 'status' | 'client' | 'interpreter' | 'languageTo' | 'duration' | 'amount';
-export type FilterableField = 'status' | 'languageTo' | 'serviceType' | 'locationType' | 'hasInterpreter' | 'dateRange';
+export type FilterableField = 'status' | 'languageTo' | 'serviceType' | 'locationType' | 'interpreterId' | 'date';
 export type GroupableField = 'status' | 'languageTo' | 'serviceType' | 'locationType' | 'date';
 
 export type BookingColumnField =
@@ -357,7 +357,7 @@ export interface ViewSortRule {
 export interface ViewFilterRule {
   id: string;
   field: FilterableField;
-  operator: 'is' | 'isNot' | 'contains';
+  operator: 'is' | 'isNot' | 'contains' | 'isBetween' | 'isAfter' | 'isBefore';
   value: any;
 }
 

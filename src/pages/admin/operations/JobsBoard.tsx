@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Clock, Building2, Globe2, MapPin, Video, Eye, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
+import { Plus, Clock, Building2, Globe2, MapPin, Video, Eye, Pencil, Trash2, CheckCircle2, UserPlus, UserCircle2 } from 'lucide-react';
 import { useBookings } from '../../../hooks/useBookings';
 import { useAuth } from '../../../context/AuthContext';
 import { useBookingViews } from '../../../hooks/useBookingViews';
@@ -13,6 +13,11 @@ import { BulkActionBar } from '../../../components/ui/BulkActionBar';
 import { Booking, BookingStatus } from '../../../types';
 import { useToast } from '../../../context/ToastContext';
 import { updateJobStatusAction, createDependencies } from '../../../ui/actions';
+import { InterpreterAllocationDrawer } from '../../../components/operations/InterpreterAllocationDrawer';
+import { InterpreterPreviewDrawer } from '../../../components/operations/InterpreterPreviewDrawer';
+import { filterBookings, groupBookings } from '../../../utils/bookingFilters';
+import { ViewManagerDrawer } from '../../../components/operations/ViewManagerDrawer';
+import { Settings, Plus as PlusIcon } from 'lucide-react';
 
 export const JobsBoard = () => {
     const navigate = useNavigate();
@@ -27,9 +32,31 @@ export const JobsBoard = () => {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [isBulkLoading, setIsBulkLoading] = useState(false);
 
+    // Assignment States
+    const [isAllocationOpen, setIsAllocationOpen] = useState(false);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [targetInterpreterId, setTargetInterpreterId] = useState<string | null>(null);
+
+    // View Manager States
+    const [isViewManagerOpen, setIsViewManagerOpen] = useState(false);
+    const [editingViewId, setEditingViewId] = useState<string | null>(null);
+
     const handleRowClick = (job: Booking) => {
         setSelectedJob(job);
         setIsDrawerOpen(true);
+    };
+
+    const handleAssignClick = (e: React.MouseEvent, job: Booking) => {
+        e.stopPropagation();
+        setSelectedJob(job);
+        setIsAllocationOpen(true);
+    };
+
+    const handleInterpreterPreview = (e: React.MouseEvent, job: Booking) => {
+        e.stopPropagation();
+        setSelectedJob(job);
+        setTargetInterpreterId(job.interpreterId || null);
+        setIsPreviewOpen(true);
     };
 
     const handleQuickStatusChange = async (job: Booking, status: BookingStatus) => {
@@ -107,50 +134,129 @@ export const JobsBoard = () => {
             )
         },
         {
+            header: 'Interpreter',
+            accessor: (job: Booking) => (
+                <div className="flex flex-col">
+                    {job.interpreterId ? (
+                        <button
+                            onClick={(e) => handleInterpreterPreview(e, job)}
+                            className="flex items-center text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-tight group"
+                        >
+                            <UserCircle2 size={12} className="mr-1 text-blue-400 group-hover:text-blue-600" />
+                            Assigned: {job.interpreterName || 'Professional'}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={(e) => handleAssignClick(e, job)}
+                            className="flex items-center text-[10px] font-black text-amber-600 hover:text-amber-700 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30 transition-all hover:scale-105"
+                        >
+                            <UserPlus size={12} className="mr-1.5" />
+                            Assign Now
+                        </button>
+                    )}
+                </div>
+            )
+        },
+        {
             header: 'Status',
             accessor: (job: Booking) => <StatusBadge status={job.status} />
         }
     ];
+
+    const filteredBookings = filterBookings(bookings, activeView);
+    const groupedBookings = groupBookings(filteredBookings, activeView.groupBy);
+    const groupKeys = Object.keys(groupedBookings);
 
     return (
         <div className="space-y-6">
             <PageHeader title="Jobs Board" subtitle="Operational request management">
                 <div className="flex items-center space-x-2 mr-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-sm">
                     {views.map(view => (
-                        <button
-                            key={view.id}
-                            onClick={() => setActiveViewId(view.id)}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${activeView.id === view.id
-                                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                }`}
-                        >
-                            {view.name}
-                        </button>
+                        <div key={view.id} className="relative group/view">
+                            <button
+                                onClick={() => setActiveViewId(view.id)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${activeView.id === view.id
+                                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                {view.name}
+                                {activeView.id === view.id && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingViewId(view.id);
+                                            setIsViewManagerOpen(true);
+                                        }}
+                                        className="p-0.5 hover:bg-slate-700 dark:hover:bg-slate-200 rounded transition-colors"
+                                    >
+                                        <Settings size={10} />
+                                    </button>
+                                )}
+                            </button>
+                        </div>
                     ))}
+                    <button
+                        onClick={() => {
+                            setEditingViewId(null);
+                            setIsViewManagerOpen(true);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                        title="Create New View"
+                    >
+                        <PlusIcon size={14} />
+                    </button>
                 </div>
                 <Button onClick={() => navigate('/admin/bookings/new')} icon={Plus} size="sm">Create Booking</Button>
             </PageHeader>
 
-            <Table
-                data={bookings}
-                columns={columns}
-                selectable
-                selectedIds={selectedIds}
-                onSelectionChange={setSelectedIds}
-                onRowClick={handleRowClick}
-                renderContextMenu={renderContextMenu}
-                isLoading={loading}
-            />
+            {groupKeys.length > 1 || (groupKeys.length === 1 && groupKeys[0] !== 'All Jobs') ? (
+                <div className="space-y-12">
+                    {groupKeys.map(groupKey => (
+                        <div key={groupKey} className="space-y-4">
+                            <div className="flex items-center gap-3 px-2">
+                                <div className="h-8 w-1.5 bg-blue-600 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
+                                <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">
+                                    {groupKey}
+                                    <span className="ml-3 text-[10px] text-slate-400 font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                        {groupedBookings[groupKey].length} jobs
+                                    </span>
+                                </h2>
+                            </div>
+                            <Table
+                                data={groupedBookings[groupKey]}
+                                columns={columns}
+                                selectable
+                                selectedIds={selectedIds}
+                                onSelectionChange={setSelectedIds}
+                                onRowClick={handleRowClick}
+                                renderContextMenu={renderContextMenu}
+                                isLoading={loading}
+                            />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <Table
+                    data={filteredBookings}
+                    columns={columns}
+                    selectable
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onRowClick={handleRowClick}
+                    renderContextMenu={renderContextMenu}
+                    isLoading={loading}
+                />
+            )}
 
             {/* Phase 5: Floating Bulk Action Bar */}
             <BulkActionBar
                 selectedCount={selectedIds.length}
-                totalCount={bookings.length}
+                totalCount={filteredBookings.length}
                 entityLabel="job"
                 isLoading={isBulkLoading}
                 onClearSelection={() => setSelectedIds([])}
-                onSelectAll={() => setSelectedIds(bookings.map(b => b.id))}
+                onSelectAll={() => setSelectedIds(filteredBookings.map(b => b.id))}
                 actions={[
                     {
                         label: 'Confirm',
@@ -246,6 +352,37 @@ export const JobsBoard = () => {
 
                         {/* People */}
                         <div className="grid grid-cols-1 gap-4">
+                            {/* Interpreter Section */}
+                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Interpreter Assignment</h4>
+                                {selectedJob.interpreterId ? (
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center text-purple-600">
+                                                <UserCircle2 size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{selectedJob.interpreterName}</p>
+                                                <button
+                                                    onClick={(e) => handleInterpreterPreview(e, selectedJob)}
+                                                    className="text-[11px] text-blue-600 font-bold uppercase hover:underline"
+                                                >
+                                                    View Intelligence
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-slate-500 italic">No professional assigned yet.</p>
+                                        <Button size="sm" variant="outline" className="h-8 py-1 bg-white dark:bg-slate-900" onClick={(e) => handleAssignClick(e, selectedJob)}>
+                                            <UserPlus size={14} className="mr-2" />
+                                            Assign
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Client Information</h4>
                                 <div className="flex items-center space-x-3">
@@ -264,6 +401,27 @@ export const JobsBoard = () => {
                     </div>
                 )}
             </Modal>
+
+            <InterpreterAllocationDrawer
+                isOpen={isAllocationOpen}
+                onClose={() => setIsAllocationOpen(false)}
+                job={selectedJob}
+                onSuccess={refresh}
+            />
+
+            <InterpreterPreviewDrawer
+                isOpen={isPreviewOpen}
+                onClose={() => setIsPreviewOpen(false)}
+                interpreterId={targetInterpreterId}
+                jobId={selectedJob?.id || null}
+                onSuccess={refresh}
+            />
+
+            <ViewManagerDrawer
+                isOpen={isViewManagerOpen}
+                onClose={() => setIsViewManagerOpen(false)}
+                viewId={editingViewId}
+            />
         </div>
     );
 };

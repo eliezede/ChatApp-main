@@ -17,6 +17,8 @@ import { useTheme } from '../context/ThemeContext';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Skeleton } from '../components/ui/Skeleton';
+import { InterpreterAllocationDrawer } from '../components/operations/InterpreterAllocationDrawer';
+import { InterpreterPreviewDrawer } from '../components/operations/InterpreterPreviewDrawer';
 
 // --- Components ---
 
@@ -109,39 +111,49 @@ export const Dashboard = () => {
   const [recentByRole, setRecentByRole] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        let currentStats;
-        if (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) {
-          currentStats = await StatsService.getAdminStats();
-        } else if (user?.role === UserRole.CLIENT) {
-          currentStats = await StatsService.getClientStats(user.profileId || user.id);
-        } else if (user?.role === UserRole.INTERPRETER) {
-          currentStats = await StatsService.getInterpreterStats(user.profileId || user.id);
-        }
+  // Drawer State
+  const [isAllocationOpen, setIsAllocationOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedInterpId, setSelectedInterpId] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Booking | null>(null);
 
-        if (currentStats) setStats(currentStats);
-
-        const recent = await BookingService.getRecentBookings(10);
-        setRecentByRole(recent.map((b: Booking) => ({
-          id: b.id,
-          name: b.clientName || 'Guest',
-          service: `${b.languageTo} Interpreting`,
-          status: b.status.toLowerCase(),
-          date: b.date,
-          rawDate: b.date,
-          time: b.startTime,
-          amount: b.totalAmount ? `£${b.totalAmount.toFixed(2)}` : 'N/A',
-          avatar: (b.clientName || 'G').substring(0, 2).toUpperCase()
-        })));
-      } catch (e) {
-        console.error("Dashboard data load failed", e);
-      } finally {
-        setLoading(false);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      let currentStats;
+      if (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) {
+        currentStats = await StatsService.getAdminStats();
+      } else if (user?.role === UserRole.CLIENT) {
+        currentStats = await StatsService.getClientStats(user.profileId || user.id);
+      } else if (user?.role === UserRole.INTERPRETER) {
+        currentStats = await StatsService.getInterpreterStats(user.profileId || user.id);
       }
-    };
+
+      if (currentStats) setStats(currentStats);
+
+      const recent = await BookingService.getRecentBookings(10);
+      setRecentByRole(recent.map((b: Booking) => ({
+        id: b.id,
+        name: b.clientName || 'Guest',
+        service: `${b.languageTo} Interpreting`,
+        status: b.status.toLowerCase(),
+        date: b.date,
+        rawDate: b.date,
+        time: b.startTime,
+        amount: b.totalAmount ? `£${b.totalAmount.toFixed(2)}` : 'N/A',
+        avatar: (b.clientName || 'G').substring(0, 2).toUpperCase(),
+        interpreterId: b.interpreterId,
+        interpreterName: b.interpreterName,
+        rawBooking: b
+      })));
+    } catch (e) {
+      console.error("Dashboard data load failed", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, [user]);
 
@@ -239,7 +251,7 @@ export const Dashboard = () => {
                 <div className="flex flex-wrap gap-2">
                   {unassigned.length > 0 && (
                     <button
-                      onClick={() => navigate('/admin/bookings')}
+                      onClick={() => navigate('/admin/operations/assignments')}
                       className="flex items-center gap-2 px-3 py-2 bg-white border border-amber-200 hover:border-amber-400 rounded-lg text-left transition-all group shadow-sm"
                     >
                       <div className="w-7 h-7 bg-red-100 rounded-lg flex items-center justify-center text-red-600 font-bold text-sm">{unassigned.length}</div>
@@ -324,6 +336,7 @@ export const Dashboard = () => {
                       <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Client</th>
                       <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Service</th>
                       <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Interpreter</th>
                       <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date & Time</th>
                       <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
                       <th className="px-4 py-2.5"></th>
@@ -356,6 +369,32 @@ export const Dashboard = () => {
                                     'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                             {item.status}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {item.interpreterId ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedInterpId(item.interpreterId);
+                                setSelectedJob(item.rawBooking);
+                                setIsPreviewOpen(true);
+                              }}
+                              className="flex items-center text-xs font-bold text-blue-600 hover:underline"
+                            >
+                              {item.interpreterName}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedJob(item.rawBooking);
+                                setIsAllocationOpen(true);
+                              }}
+                              className="text-[10px] font-black uppercase text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100 hover:bg-amber-100 transition-colors"
+                            >
+                              Assign
+                            </button>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-1 text-xs text-slate-600 font-medium">
@@ -576,6 +615,24 @@ export const Dashboard = () => {
       {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && renderAdminDashboard()}
       {user?.role === UserRole.CLIENT && renderClientDashboard()}
       {user?.role === UserRole.INTERPRETER && renderInterpreterDashboard()}
+
+      {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && selectedJob && (
+        <>
+          <InterpreterAllocationDrawer
+            isOpen={isAllocationOpen}
+            onClose={() => setIsAllocationOpen(false)}
+            job={selectedJob}
+            onSuccess={() => loadData()}
+          />
+          <InterpreterPreviewDrawer
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+            interpreterId={selectedInterpId}
+            jobId={selectedJob.id}
+            onSuccess={() => loadData()}
+          />
+        </>
+      )}
     </div>
   );
 };

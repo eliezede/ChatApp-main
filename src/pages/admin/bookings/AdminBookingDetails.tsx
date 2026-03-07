@@ -14,9 +14,12 @@ import { useAuth } from '../../../context/AuthContext';
 import { useChat } from '../../../context/ChatContext';
 import {
   Calendar, Clock, MapPin, Video, Globe2, ChevronLeft,
-  User, CheckCircle2, XCircle, Send, AlertCircle, Edit, Trash2, Search, UserPlus, Filter, Eye, List, MessageSquare, Building2, Mail, Phone, CreditCard, Zap, TrendingUp, Plus, History, FileText, Receipt
+  User, CheckCircle2, AlertCircle, Edit, Trash2, MessageSquare, Building2, Mail, Phone, CreditCard, Zap, TrendingUp, Plus, History, FileText, Receipt,
+  UserCircle2, Tag, ArrowLeft, Edit3, Printer, Languages, Star, ShieldCheck, UserPlus, UserMinus
 } from 'lucide-react';
 import { ActivityTimeline } from '../../../components/operations/ActivityTimeline';
+import { InterpreterAllocationDrawer } from '../../../components/operations/InterpreterAllocationDrawer';
+import { InterpreterPreviewDrawer } from '../../../components/operations/InterpreterPreviewDrawer';
 
 const AdminBookingDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,9 +40,10 @@ const AdminBookingDetails = () => {
   const [processing, setProcessing] = useState(false);
 
   // Advanced Selection State
-  const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false);
-  const [advSearchQuery, setAdvSearchQuery] = useState('');
-  const [selectedIntForSchedule, setSelectedIntForSchedule] = useState<string | null>(null);
+  const [isAllocationOpen, setIsAllocationOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedInterpId, setSelectedInterpId] = useState<string | null>(null);
+  const [isIntLoading, setIsIntLoading] = useState(false);
 
   // Edit State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -50,11 +54,11 @@ const AdminBookingDetails = () => {
 
   useEffect(() => {
     if (id) {
-      loadData(id);
+      loadBookingData(id);
     }
   }, [id]);
 
-  const loadData = async (bookingId: string) => {
+  const loadBookingData = async (bookingId: string) => {
     setLoading(true);
     try {
       const [bookingData, assignmentsData, interpretersList, bookingsList, eventsData, timesheetData] = await Promise.all([
@@ -158,7 +162,7 @@ const AdminBookingDetails = () => {
       await BookingService.update(booking.id, editFormData);
       showToast('Booking updated', 'success');
       setIsEditModalOpen(false);
-      await loadData(booking.id);
+      await loadBookingData(booking.id);
     } catch (error) {
       showToast('Failed to update', 'error');
     } finally {
@@ -171,7 +175,7 @@ const AdminBookingDetails = () => {
     try {
       await BookingService.createAssignment(booking.id, interpreterId);
       showToast('Offer sent', 'success');
-      await loadData(booking.id);
+      await loadBookingData(booking.id);
     } catch (error) {
       showToast('Failed to send offer', 'error');
     } finally {
@@ -199,8 +203,8 @@ const AdminBookingDetails = () => {
     try {
       await BookingService.assignInterpreterToBooking(booking.id, interpreterId);
       showToast('Interpreter assigned directly', 'success');
-      await loadData(booking.id);
-      setIsAdvancedModalOpen(false);
+      await loadBookingData(booking.id);
+      setIsAllocationOpen(false);
     } catch (error) {
       showToast('Failed to assign', 'error');
     } finally {
@@ -230,6 +234,15 @@ const AdminBookingDetails = () => {
     ).sort((a: Booking, b: Booking) => a.date.localeCompare(b.date));
   };
 
+  const handleOpenAllocation = () => {
+    setIsAllocationOpen(true);
+  };
+
+  const handleOpenPreview = (interpreterId: string) => {
+    setSelectedInterpId(interpreterId);
+    setIsPreviewOpen(true);
+  };
+
   if (loading) return <div className="p-8 text-center text-gray-500">Loading booking details...</div>;
   if (!booking) return <div className="p-8 text-center text-red-500">Booking not found.</div>;
 
@@ -239,8 +252,8 @@ const AdminBookingDetails = () => {
 
   const filteredAdvancedList = allInterpreters.filter((i: Interpreter) =>
     i.status === 'ACTIVE' &&
-    (i.name.toLowerCase().includes(advSearchQuery.toLowerCase()) ||
-      i.languages.some((l: string) => l.toLowerCase().includes(advSearchQuery.toLowerCase())))
+    (i.name.toLowerCase().includes(booking.languageTo.toLowerCase()) ||
+      i.languages.some((l: string) => l.toLowerCase().includes(booking.languageTo.toLowerCase())))
   );
 
   return (
@@ -301,7 +314,7 @@ const AdminBookingDetails = () => {
             if (status === 'INCOMING') {
               actionType = 'action';
               message = 'Next Step: Find and assign an interpreter.';
-              actionBtn = <Button size="sm" onClick={() => { setAdvSearchQuery(booking.languageTo); setIsAdvancedModalOpen(true); }} icon={Search}>Find Interpreter</Button>;
+              actionBtn = <Button size="sm" onClick={handleOpenAllocation} icon={UserPlus}>Find Interpreter</Button>;
             } else if (status === 'PENDING_ASSIGNMENT') {
               actionType = 'warning';
               message = 'Next Step: Wait for the interpreter to accept the offer or assign one directly.';
@@ -422,7 +435,7 @@ const AdminBookingDetails = () => {
           {/* Assignment Section with Chat Button */}
           <Card className="bg-blue-50/50 border-blue-100">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900 flex items-center"><Send size={16} className="mr-2 text-blue-600" />Current Status</h3>
+              <h3 className="font-bold text-gray-900 flex items-center"><UserCircle2 size={16} className="mr-2 text-blue-600" />Assignment</h3>
               {booking.interpreterId && (
                 <button
                   onClick={handleStartChat}
@@ -436,87 +449,42 @@ const AdminBookingDetails = () => {
 
             <div className="space-y-3">
               {booking.interpreterId ? (
-                <div className="p-4 rounded-xl border shadow-sm bg-white border-blue-200">
-                  <p className="text-[10px] font-black uppercase mb-1 text-blue-500">
-                    Confirmed Interpreter
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-900">{booking.interpreterName || interpretersMap[booking.interpreterId]?.name}</p>
-                    <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl relative group">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 transition-transform group-hover:scale-105">
+                      <UserCircle2 size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-[10px]">Assigned Professional</p>
+                      <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mt-0.5">{booking.interpreterName}</p>
                       <button
-                        onClick={() => navigate(`/admin/interpreters/${booking.interpreterId}`)}
-                        className="text-xs text-blue-600 hover:underline"
+                        onClick={() => handleOpenPreview(booking.interpreterId!)}
+                        className="text-[11px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-tighter mt-1 hover:underline"
                       >
-                        Profile
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (window.confirm('Are you sure you want to unassign this interpreter? The interpreter will be notified.')) {
-                            setProcessing(true);
-                            try {
-                              await BookingService.unassignInterpreterFromBooking(booking.id);
-                              showToast('Interpreter unassigned successfully', 'success');
-                              await loadData(booking.id);
-                            } catch (error) {
-                              showToast('Failed to unassign interpreter', 'error');
-                            } finally {
-                              setProcessing(false);
-                            }
-                          }
-                        }}
-                        disabled={processing}
-                        className="text-xs text-red-600 hover:text-red-800 transition-colors font-bold ml-2"
-                      >
-                        Unassign
+                        Manage Engagement
                       </button>
                     </div>
                   </div>
+                  <UserCircle2 size={40} className="absolute right-2 bottom-2 text-slate-100 dark:text-slate-800 -z-0 opacity-20" />
                 </div>
               ) : (
-                (assignments as BookingAssignment[]).map((assign: BookingAssignment) => (
-                  <div key={assign.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-sm text-gray-900">{interpretersMap[assign.interpreterId]?.name || 'Unknown'}</p>
-                      <p className="text-[10px] text-gray-500 uppercase">{assign.status}</p>
-                    </div>
-                    {assign.status === AssignmentStatus.ACCEPTED && <Button size="sm" onClick={() => handleConfirmAssignment(assign.interpreterId)}>Confirm</Button>}
+                <div className="p-6 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/10 rounded-full flex items-center justify-center text-amber-500 mb-3">
+                    <UserPlus size={24} />
                   </div>
-                ))
+                  <p className="text-xs font-bold text-slate-500 mb-4 px-4 uppercase tracking-widest">Awaiting Professional Match</p>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full bg-slate-900 hover:bg-black text-[10px] font-black uppercase tracking-widest py-3 rounded-xl shadow-lg shadow-slate-200 dark:shadow-none"
+                    onClick={handleOpenAllocation}
+                  >
+                    Find Match
+                  </Button>
+                </div>
               )}
-              {!booking.interpreterId && assignments.length === 0 && <p className="text-xs text-gray-500 italic text-center py-2">No offers sent.</p>}
             </div>
           </Card>
-
-          {(['INCOMING', 'PENDING_ASSIGNMENT'].includes(String(booking.status))) && (
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-900 flex items-center"><User size={16} className="mr-2 text-purple-600" />Suggested</h3>
-                <button
-                  onClick={() => { setAdvSearchQuery(booking.languageTo); setIsAdvancedModalOpen(true); }}
-                  className="text-[10px] font-black text-blue-600 uppercase hover:underline"
-                >
-                  Advanced Selection
-                </button>
-              </div>
-              <div className="space-y-3">
-                {activeSuggestions.slice(0, 3).map((interpreter: Interpreter) => (
-                  <div key={interpreter.id} className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50 transition-colors">
-                    <div className="flex justify-between items-center">
-                      <p className="font-bold text-sm text-gray-900">{interpreter.name}</p>
-                      <Badge variant="success" className="text-[9px]">ACTIVE</Badge>
-                    </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="text-[10px] text-gray-400">Qual: {interpreter.qualifications[0] || 'N/A'}</span>
-                      <Button size="sm" variant="ghost" onClick={() => handleSendOffer(interpreter.id)}>Offer</Button>
-                    </div>
-                  </div>
-                ))}
-                {activeSuggestions.length === 0 && (
-                  <p className="text-[10px] text-gray-400 italic text-center py-2">No other interpreters found for this language.</p>
-                )}
-              </div>
-            </Card>
-          )}
 
           {/* Financial Impact Section */}
           {(['VERIFIED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(booking.status)) && timesheet) && (
@@ -598,98 +566,22 @@ const AdminBookingDetails = () => {
           </Card>
         </div>
       </div>
+      <InterpreterAllocationDrawer
+        isOpen={isAllocationOpen}
+        onClose={() => setIsAllocationOpen(false)}
+        job={booking}
+        onSuccess={() => id && loadBookingData(id)}
+      />
 
-      {/* Advanced Selection Modal */}
-      <Modal isOpen={isAdvancedModalOpen} onClose={() => setIsAdvancedModalOpen(false)} title="Interpreter Curatorship" maxWidth="2xl">
-        <div className="space-y-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search by name or language..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
-              value={advSearchQuery}
-              onChange={e => setAdvSearchQuery(e.target.value)}
-            />
-          </div>
+      <InterpreterPreviewDrawer
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        interpreterId={selectedInterpId}
+        jobId={booking.id}
+        onSuccess={() => id && loadBookingData(id)}
+      />
 
-          <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase">Professional</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase">Workload (This Week)</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-black text-gray-400 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredAdvancedList.map(int => {
-                  const workload = getInterpreterWorkload(int.id);
-                  const isScheduleVisible = selectedIntForSchedule === int.id;
-                  return (
-                    <React.Fragment key={int.id}>
-                      <tr className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="font-bold text-sm text-gray-900">{int.name}</div>
-                            {int.acceptsDirectAssignment && (
-                              <Zap size={14} className="text-amber-500 fill-amber-500" />
-                            )}
-                          </div>
-                          <div className="text-[10px] text-gray-500 uppercase flex gap-1 mt-0.5">
-                            {int.languages.slice(0, 3).map(l => <span key={l} className="bg-gray-100 px-1 rounded">{l}</span>)}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center">
-                            <div className={`w-2 h-2 rounded-full mr-2 ${workload > 4 ? 'bg-red-500' : workload > 2 ? 'bg-yellow-500' : 'bg-green-500'}`} />
-                            <span className="text-sm font-medium">{workload} jobs scheduled</span>
-                          </div>
-                          <button
-                            onClick={() => setSelectedIntForSchedule(isScheduleVisible ? null : int.id)}
-                            className="text-[10px] text-blue-600 font-bold hover:underline flex items-center mt-1"
-                          >
-                            <Calendar size={10} className="mr-1" /> {isScheduleVisible ? 'Hide Schedule' : 'View Schedule'}
-                          </button>
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button onClick={() => handleSendOffer(int.id)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Send Offer"><Send size={16} /></button>
-                            <button onClick={() => handleConfirmAssignment(int.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Assign Directly"><UserPlus size={16} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                      {isScheduleVisible && (
-                        <tr className="bg-blue-50/30">
-                          <td colSpan={3} className="px-8 py-4">
-                            <div className="space-y-2">
-                              <p className="text-[10px] font-black text-blue-900 uppercase">Confirmed Agenda</p>
-                              {getInterpreterSchedule(int.id).length === 0 ? (
-                                <p className="text-xs text-gray-400 italic">No bookings found in history.</p>
-                              ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                  {getInterpreterSchedule(int.id).map(sch => (
-                                    <div key={sch.id} className="bg-white p-2 rounded border border-blue-100 text-[11px] flex justify-between">
-                                      <span className="font-bold">{sch.date}</span>
-                                      <span className="text-gray-500">{sch.startTime} - {sch.durationMinutes}min</span>
-                                      <span className="text-blue-600 font-medium">{sch.clientName}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Modal>
-
+      {/* Edit Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Booking Details" maxWidth="3xl">
         <form onSubmit={handleUpdateBooking} className="space-y-6 max-h-[80vh] overflow-y-auto px-1">
           {/* Section 1: Session */}
