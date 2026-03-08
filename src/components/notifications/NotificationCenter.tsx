@@ -3,13 +3,22 @@ import { Bell, CheckCheck, Inbox, MessageSquare, Briefcase, CreditCard } from 'l
 import { NotificationService } from '../../services/notificationService';
 import { Notification, NotificationType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export const NotificationCenter = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  const handleNotificationClick = (note: Notification) => {
+    NotificationService.markAsRead(note.id);
+    setIsOpen(false);
+    if (note.link) {
+      navigate(note.link);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -39,7 +48,7 @@ export const NotificationCenter = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 relative transition-all active:scale-90"
       >
@@ -56,7 +65,7 @@ export const NotificationCenter = () => {
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
             <h3 className="font-black text-xs uppercase tracking-widest text-slate-500">Notifications</h3>
             {unreadCount > 0 && (
-              <button 
+              <button
                 onClick={() => NotificationService.markAllAsRead(notifications)}
                 className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center"
               >
@@ -73,9 +82,9 @@ export const NotificationCenter = () => {
               </div>
             ) : (
               notifications.map(note => (
-                <div 
+                <div
                   key={note.id}
-                  onClick={() => NotificationService.markAsRead(note.id)}
+                  onClick={() => handleNotificationClick(note)}
                   className={`p-4 border-b border-slate-50 dark:border-slate-800/50 flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${!note.read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
                 >
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${!note.read ? 'bg-white dark:bg-slate-800 shadow-sm' : 'bg-slate-100 dark:bg-slate-900'}`}>
@@ -95,7 +104,7 @@ export const NotificationCenter = () => {
           </div>
 
           <div className="p-3 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 text-center">
-             <button className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600">View Activity History</button>
+            <button className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600">View Activity History</button>
           </div>
         </div>
       )}

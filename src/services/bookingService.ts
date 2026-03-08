@@ -160,7 +160,18 @@ export const BookingService = {
 
       const booking = await BookingService.getById(id);
       if (booking) {
-        await EmailService.sendStatusEmail(booking, status);
+        let intEmail = '';
+        if (booking.interpreterId) {
+          const intUser = await getInterpreterUser(booking.interpreterId);
+          const intSnap = await getDoc(doc(db, 'interpreters', booking.interpreterId));
+          const intDirectEmail = intSnap.exists() ? (intSnap.data() as any).email : '';
+          intEmail = intDirectEmail || intUser?.email || '';
+        }
+        await EmailService.sendStatusEmail(booking, status, {
+          interpreterId: booking.interpreterId,
+          interpreterName: booking.interpreterName,
+          interpreterEmail: intEmail
+        });
       }
     } catch (e) {
       console.warn('Firebase updateStatus failed', e);
@@ -386,7 +397,7 @@ export const BookingService = {
       // Notify Interpreter via real Firestore user lookup
       const interpreterUser = await getInterpreterUser(interpreterId);
       if (interpreterUser) {
-        NotificationService.notify(interpreterUser.id, 'New Job Offer', 'You have a new interpreting request matching your profile.', NotificationType.INFO, '/interpreter/offers');
+        NotificationService.notify(interpreterUser.id, 'New Job Offer', 'You have a new interpreting request matching your profile.', NotificationType.INFO, '/interpreter/jobs');
       }
 
       await EmailService.sendStatusEmail(bookingData, BookingStatus.OPENED, {
@@ -458,9 +469,9 @@ export const BookingService = {
       const q = query(collection(db, COLLECTION_NAME), where('interpreterId', '==', interpreterId));
       const snap = await getDocs(q);
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
-      return all.filter(b => [BookingStatus.OPENED, BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).sort((a, b) => a.date.localeCompare(b.date));
+      return all.filter(b => [BookingStatus.OPENED, 'PENDING_ASSIGNMENT' as any, BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).sort((a, b) => a.date.localeCompare(b.date));
     } catch (error) {
-      return MOCK_BOOKINGS.filter(b => b.interpreterId === interpreterId && (b.status === BookingStatus.OPENED || b.status === BookingStatus.BOOKED || b.status === BookingStatus.INVOICING || b.status === BookingStatus.INVOICED || b.status === BookingStatus.PAID));
+      return MOCK_BOOKINGS.filter(b => b.interpreterId === interpreterId && (b.status === BookingStatus.OPENED || (b.status as any) === 'PENDING_ASSIGNMENT' || b.status === BookingStatus.BOOKED || b.status === BookingStatus.INVOICING || b.status === BookingStatus.INVOICED || b.status === BookingStatus.PAID));
     }
   },
 

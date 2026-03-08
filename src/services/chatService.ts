@@ -1,5 +1,5 @@
-import { 
-  collection, query, where, onSnapshot, 
+import {
+  collection, query, where, onSnapshot,
   addDoc, serverTimestamp, doc, updateDoc, increment,
   setDoc, getDoc, limit, orderBy
 } from 'firebase/firestore';
@@ -12,7 +12,7 @@ export const ChatService = {
     // Generate a unique stable ID based on sorted participants or booking
     const threadId = bookingId ? `booking-${bookingId}` : participants.sort().join('_');
     const threadRef = doc(db, 'chatThreads', threadId);
-    
+
     const threadSnap = await getDoc(threadRef);
 
     if (!threadSnap.exists()) {
@@ -37,10 +37,10 @@ export const ChatService = {
   },
 
   sendMessage: async (
-    threadId: string, 
-    senderId: string, 
-    senderName: string, 
-    text: string, 
+    threadId: string,
+    senderId: string,
+    senderName: string,
+    text: string,
     recipientId: string,
     attachment?: { url: string, type: 'IMAGE' | 'DOCUMENT' }
   ) => {
@@ -56,7 +56,7 @@ export const ChatService = {
 
     // 1. Save message
     await addDoc(collection(db, 'messages'), messageData);
-    
+
     // 2. Update thread summary
     const updateData: any = {
       lastMessage: attachment ? (attachment.type === 'IMAGE' ? '📷 Sent a photo' : '📄 Sent a document') : text,
@@ -67,14 +67,14 @@ export const ChatService = {
     // 3. Increment unread for recipient
     if (recipientId) {
       updateData[`unreadCount.${recipientId}`] = increment(1);
-      
+
       // Send notification
       NotificationService.notify(
         recipientId,
         `New message from ${senderName}`,
         attachment ? (attachment.type === 'IMAGE' ? '📷 Photo' : '📄 Document') : (text.length > 60 ? text.substring(0, 57) + '...' : text),
         NotificationType.CHAT,
-        `/messages` 
+        ''
       );
     }
 
@@ -93,7 +93,7 @@ export const ChatService = {
       const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
       // Sort in memory because Firestore compound queries might require manual index creation 
       // which we want to avoid during simple dev phases unless absolutely necessary.
-      const sortedMsgs = msgs.sort((a, b) => 
+      const sortedMsgs = msgs.sort((a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       callback(sortedMsgs);

@@ -46,7 +46,8 @@ export enum BookingStatus {
   BOOKED = 'BOOKED', // Interpreter accepted
   ADMIN = 'ADMIN', // Manual standby by admin
   CANCELLED = 'CANCELLED',
-  INVOICING = 'INVOICING', // Job done, timesheet submitted
+  TIMESHEET_SUBMITTED = 'TIMESHEET_SUBMITTED', // Job done, timesheet submitted, awaiting admin verification
+  INVOICING = 'INVOICING', // Verified, ready for invoicing
   INVOICED = 'INVOICED', // Invoice generated
   PAID = 'PAID' // Invoice paid
 }
@@ -145,7 +146,7 @@ export interface Timesheet extends TenantScopedEntity {
   breakDurationMinutes: number;
   adminApproved: boolean;
   adminApprovedAt?: string;
-  status: 'SUBMITTED' | 'APPROVED' | 'INVOICED';
+  status: 'SUBMITTED' | 'APPROVED' | 'INVOICING' | 'INVOICED';
   readyForClientInvoice: boolean;
   readyForInterpreterInvoice: boolean;
   unitsBillableToClient: number;

@@ -1,10 +1,11 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useInterpreterInvoices } from '../../hooks/useInterpreterInvoices';
 import { StorageService } from '../../services/api';
-import { PoundSterling, Upload, FileText, Check } from 'lucide-react';
+import { PoundSterling, Upload, FileText, Check, CalendarDays, ExternalLink, Calculator } from 'lucide-react';
+import { PageHeader } from '../../components/layout/PageHeader';
+import { Button } from '../../components/ui/Button';
 
 export const InterpreterPayments = () => {
   const { user } = useAuth();
@@ -41,17 +42,7 @@ export const InterpreterPayments = () => {
 
   const handleSubmit = async () => {
     try {
-      // Pass the uploaded URL if your createInvoice supports it. 
-      // For now, assume BillingService logic will need update or we pass it as metadata elsewhere.
-      // But based on types, createInterpreterInvoiceUpload doesn't take URL yet. 
-      // Assuming api update was implicit or we handle it in real backend.
-      // *Correction*: BillingService.createInterpreterInvoiceUpload was just mock. 
-      // Real app would store URL. I will add it to the call if the service supports it, 
-      // otherwise this is UI only for now.
-
       await createInvoice(selectedJobs, invRef);
-      // In a full implementation, pass uploadedUrl to createInvoice
-
       showToast("Invoice created successfully!", "success");
       setSelectedJobs([]);
       setInvRef('');
@@ -65,112 +56,159 @@ export const InterpreterPayments = () => {
     .filter(t => selectedJobs.includes(t.id))
     .reduce((sum, t) => sum + (t.totalInterpreterAmount || 0), 0);
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading...</div>;
-
   return (
-    <div className="space-y-6 pb-20">
-      <h1 className="text-2xl font-bold text-gray-900">Money</h1>
+    <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)] bg-slate-50 animate-in fade-in duration-700">
+      <PageHeader
+        title="Financial Statements"
+        subtitle="Manage pending payables, combine sessions into invoices, and track settlements."
+      >
+        <Button onClick={() => window.print()} variant="secondary" icon={FileText} size="sm">Export Data</Button>
+      </PageHeader>
 
-      {/* Create Invoice Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-          <h2 className="font-bold text-gray-800 flex items-center">
-            <PoundSterling size={18} className="mr-2 text-blue-600" />
-            Ready to Invoice
-          </h2>
-          <div className="flex items-center text-[10px] bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">
-            Approved Jobs Only
+      <div className="flex-1 flex flex-col lg:flex-row p-4 md:p-8 max-w-7xl mx-auto w-full gap-8">
+
+        {/* Left Col: Invoice Builder */}
+        <div className="flex-1 space-y-8 min-w-0 flex flex-col">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden flex flex-col flex-1">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <PoundSterling size={16} className="text-emerald-600" />
+                <h3 className="font-black text-slate-800 text-[10px] uppercase tracking-[0.2em]">Generate Invoice</h3>
+              </div>
+              <div className="text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                {readyToInvoice.length} Uninvoiced Sessions
+              </div>
+            </div>
+
+            <div className="flex-1 flex flex-col">
+              {loading ? (
+                <div className="py-20 flex-1 flex flex-col items-center justify-center text-[10px] uppercase tracking-widest font-black text-slate-400">Loading Accounts...</div>
+              ) : readyToInvoice.length === 0 ? (
+                <div className="py-20 flex-1 flex flex-col items-center justify-center text-center px-6">
+                  <Calculator size={32} className="text-slate-300 mb-4" />
+                  <h3 className="text-slate-900 font-black text-sm">No Pending Sessions</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">All approved timesheets have been invoiced.</p>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+                  {/* Selection List */}
+                  <div className="flex-1 p-6 space-y-2 overflow-y-auto">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4">Select sessions to bundle</p>
+                    {readyToInvoice.map(job => (
+                      <label key={job.id} className={`group flex items-center p-4 border rounded-2xl cursor-pointer transition-all ${selectedJobs.includes(job.id) ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'}`}>
+                        <div className="mr-4 flex-shrink-0">
+                          <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${selectedJobs.includes(job.id) ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-50 border-slate-200 group-hover:border-emerald-400'}`}>
+                            {selectedJobs.includes(job.id) && <Check size={12} strokeWidth={4} />}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black text-slate-900 mb-1">{new Date(job.actualStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate">REF: {job.bookingId || 'CONFIDENTIAL'}</p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-sm font-black text-slate-900">£{job.totalInterpreterAmount?.toFixed(2)}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* Builder Controls */}
+                  <div className="w-full lg:w-72 shrink-0 bg-slate-50/50 p-6 flex flex-col">
+                    <div className="mb-6 flex-1">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Invoice Reference</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. INV-2024-001"
+                        className="w-full p-3 border border-slate-200 rounded-xl text-xs font-bold focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                        value={invRef}
+                        onChange={e => setInvRef(e.target.value)}
+                      />
+
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 mt-6">Attach Document (Optional)</label>
+                      <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${uploadedUrl ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 hover:bg-white hover:border-blue-400 cursor-pointer relative group'}`}>
+                        <input
+                          type="file"
+                          accept=".pdf,image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={handleFileUpload}
+                          disabled={uploading}
+                        />
+                        {uploading ? (
+                          <div className="flex flex-col items-center">
+                            <div className="w-5 h-5 border-2 border-emerald-500 border-t-emerald-200 rounded-full animate-spin mb-2" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Encrypting...</span>
+                          </div>
+                        ) : uploadedUrl ? (
+                          <div className="flex flex-col items-center text-emerald-700">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
+                              <Check size={16} className="text-emerald-600" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Document Secured</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                            <Upload size={20} className="mb-2" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Upload PDF/JPG</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-200">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Gross Total</span>
+                        <span className="text-xl font-black text-slate-900">£{totalSelected.toFixed(2)}</span>
+                      </div>
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={selectedJobs.length === 0 || !invRef}
+                        size="lg"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-600/20 disabled:opacity-50 disabled:shadow-none transition-all uppercase tracking-widest text-[10px]"
+                      >
+                        Submit Invoice
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {readyToInvoice.length === 0 ? (
-          <div className="p-6 text-center text-gray-400 text-sm">No approved jobs pending invoicing.</div>
-        ) : (
-          <div className="p-4">
-            <div className="space-y-2 mb-4">
-              {readyToInvoice.map(job => (
-                <label key={job.id} className="flex items-center p-3 border border-gray-200 rounded-lg bg-white active:bg-blue-50">
-                  <input
-                    type="checkbox"
-                    checked={selectedJobs.includes(job.id)}
-                    onChange={() => toggleJob(job.id)}
-                    className="w-5 h-5 text-blue-600 rounded mr-3"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{new Date(job.actualStart).toLocaleDateString()}</p>
-                    <p className="text-xs text-gray-500">Ref: {job.bookingId}</p>
+        {/* Right Col: Historical Statements */}
+        <aside className="w-full lg:w-[320px] shrink-0 space-y-6">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden flex flex-col h-full lg:max-h-[800px]">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="font-black text-slate-800 text-[10px] uppercase tracking-[0.2em]">Previous Statements</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+              {loading ? (
+                <div className="py-8 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Loading...</div>
+              ) : invoiceHistory.length === 0 ? (
+                <div className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">No historical records.</div>
+              ) : invoiceHistory.map(inv => (
+                <div key={inv.id} className="p-4 rounded-2xl border border-slate-100 hover:border-blue-200 bg-white transition-all shadow-sm group">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="text-xs font-black text-slate-900 group-hover:text-blue-700 transition-colors uppercase tracking-wider">{inv.externalInvoiceReference}</h4>
+                    <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm ${inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                      {inv.status}
+                    </span>
                   </div>
-                  <p className="text-sm font-bold text-gray-900">£{job.totalInterpreterAmount?.toFixed(2)}</p>
-                </label>
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-widest">
+                    <CalendarDays size={12} /> {new Date(inv.issueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </div>
+                  <div className="flex justify-between items-end border-t border-slate-50 pt-3">
+                    <span className="text-xs font-black text-slate-900">£{inv.totalAmount.toFixed(2)}</span>
+                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 cursor-pointer hover:underline">
+                      Details <ExternalLink size={10} />
+                    </span>
+                  </div>
+                </div>
               ))}
             </div>
-
-            <div className="border-t border-gray-100 pt-4 space-y-3">
-              <input
-                type="text"
-                placeholder="Your Invoice Number (e.g. 001)"
-                className="w-full p-3 border border-gray-300 rounded-lg text-sm"
-                value={invRef}
-                onChange={e => setInvRef(e.target.value)}
-              />
-
-              {/* File Upload Area */}
-              <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${uploadedUrl ? 'border-green-400 bg-green-50' : 'border-gray-300'}`}>
-                <input
-                  type="file"
-                  accept=".pdf,image/*"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                />
-                {uploading ? (
-                  <span className="text-sm text-blue-600">Uploading file...</span>
-                ) : uploadedUrl ? (
-                  <div className="flex items-center justify-center text-green-700">
-                    <Check size={16} className="mr-2" />
-                    <span className="text-sm font-medium">Invoice Attached</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center text-gray-500">
-                    <FileText size={16} className="mr-2" />
-                    <span className="text-sm">Attach Invoice PDF (Optional)</span>
-                  </div>
-                )}
-              </div>
-
-              <button
-                disabled={selectedJobs.length === 0 || !invRef}
-                onClick={handleSubmit}
-                className="w-full bg-green-600 text-white font-bold py-3 rounded-lg disabled:opacity-50 flex justify-center items-center"
-              >
-                <Upload size={18} className="mr-2" />
-                Invoice £{totalSelected.toFixed(2)}
-              </button>
-            </div>
           </div>
-        )}
-      </div>
+        </aside>
 
-      {/* History */}
-      <div>
-        <h3 className="font-bold text-gray-900 mb-3 px-1">Invoice History</h3>
-        <div className="space-y-3">
-          {invoiceHistory.map(inv => (
-            <div key={inv.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center">
-              <div>
-                <p className="font-bold text-gray-900 text-sm">{inv.externalInvoiceReference}</p>
-                <p className="text-xs text-gray-500">{new Date(inv.issueDate).toLocaleDateString()}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-gray-900">£{inv.totalAmount.toFixed(2)}</p>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${inv.status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                  {inv.status}
-                </span>
-              </div>
-            </div>
-          ))}
-          {invoiceHistory.length === 0 && <p className="text-center text-gray-400 text-sm py-4">No invoices yet.</p>}
-        </div>
       </div>
     </div>
   );

@@ -60,6 +60,7 @@ import { InterpreterTimesheets } from './pages/interpreter/InterpreterTimesheets
 import { InterpreterTimesheetForm } from './pages/interpreter/InterpreterTimesheetForm';
 import { InterpreterPayments } from './pages/interpreter/InterpreterPayments';
 import { InterpreterProfile } from './pages/interpreter/InterpreterProfile';
+import { InterpreterMessages } from './pages/interpreter/InterpreterMessages';
 
 // Client Pages
 import { ClientDashboard } from './pages/client/ClientDashboard';
@@ -117,6 +118,7 @@ const App = () => {
                             <Route path="timesheets/new/:bookingId" element={<InterpreterTimesheetForm />} />
                             <Route path="billing" element={<InterpreterPayments />} />
                             <Route path="profile" element={<InterpreterProfile />} />
+                            <Route path="messages" element={<InterpreterMessages />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </InterpreterLayout>

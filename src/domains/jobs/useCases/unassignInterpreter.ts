@@ -58,7 +58,7 @@ export const unassignInterpreter = async (jobId: string): Promise<void> => {
                     'Assignment Removed',
                     `You have been unassigned from the job on ${jobData.date}. Please check your portal for updates.`,
                     NotificationType.URGENT,
-                    '/interpreter/jobs'
+                    '/interpreter/dashboard'
                 );
 
                 // Send Email
@@ -94,7 +94,7 @@ export const unassignInterpreter = async (jobId: string): Promise<void> => {
                         'Assignment Removed',
                         `You have been unassigned from the job on ${oldDate}. Please check your portal for updates.`,
                         NotificationType.URGENT,
-                        '/interpreter/jobs'
+                        '/interpreter/dashboard'
                     );
                 }
             }

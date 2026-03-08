@@ -820,7 +820,7 @@ export const AdminBookings = () => {
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Status Filter</label>
                   <div className="flex flex-wrap gap-2">
-                    {['INCOMING', 'PENDING_ASSIGNMENT', 'BOOKED', 'TIMESHEET_SUBMITTED', 'VERIFIED', 'INVOICED', 'PAID', 'CANCELLED'].map(status => (
+                    {['INCOMING', 'OPENED', 'BOOKED', 'TIMESHEET_SUBMITTED', 'INVOICING', 'INVOICED', 'PAID', 'CANCELLED'].map(status => (
                       <button
                         key={status}
                         onClick={() => setNewViewStatuses(prev => prev.includes(status as any) ? prev.filter(s => s !== status) : [...prev, status as any])}

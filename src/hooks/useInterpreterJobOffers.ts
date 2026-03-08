@@ -3,7 +3,7 @@ import { BookingService } from '../services/api';
 import { BookingAssignment } from '../types';
 
 export const useInterpreterJobOffers = (interpreterId: string | undefined) => {
-  const [offers, setOffers] = useState<BookingAssignment[]>([]);
+  const [offers, setOffers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,8 +17,34 @@ export const useInterpreterJobOffers = (interpreterId: string | undefined) => {
     if (!interpreterId) return;
     setLoading(true);
     try {
-      const data = await BookingService.getInterpreterOffers(interpreterId);
-      setOffers(data);
+      const [offerList, schedule] = await Promise.all([
+        BookingService.getInterpreterOffers(interpreterId),
+        BookingService.getInterpreterSchedule(interpreterId)
+      ]);
+
+      const isPending = (s: string) => s === 'OPENED' || s === 'PENDING_ASSIGNMENT';
+      const directPending = schedule.filter((b: any) => isPending(b.status as string)).map(b => ({ ...b, _isDirect: true }));
+
+      // Enrol broadcast offers (fetching full booking details if missing)
+      const enrichedOffers: any[] = await Promise.all(
+        offerList.map(async (assignment: any) => {
+          const bookingId = assignment.bookingId;
+          const offerBase = { _isBroadcast: true, _assignmentId: assignment.id };
+
+          if (!bookingId) {
+            return { ...(assignment.bookingSnapshot || assignment), id: assignment.id, ...offerBase };
+          }
+          try {
+            const booking = await BookingService.getById(bookingId);
+            if (booking) {
+              return { ...booking, ...offerBase };
+            }
+          } catch {/* ignore */ }
+          return { ...(assignment.bookingSnapshot || assignment), id: assignment.id, ...offerBase };
+        })
+      );
+
+      setOffers([...directPending, ...enrichedOffers]);
     } catch (err) {
       setError("Failed to load job offers");
     } finally {
@@ -26,9 +52,13 @@ export const useInterpreterJobOffers = (interpreterId: string | undefined) => {
     }
   };
 
-  const acceptOffer = async (assignmentId: string) => {
+  const acceptOffer = async (id: string, isDirect?: boolean, assignmentId?: string) => {
     try {
-      await BookingService.acceptOffer(assignmentId);
+      if (isDirect) {
+        await BookingService.updateStatus(id, 'BOOKED' as any);
+      } else {
+        await BookingService.acceptOffer(assignmentId || id);
+      }
       await loadOffers(); // Refresh list
       return true;
     } catch (e) {
@@ -37,11 +67,15 @@ export const useInterpreterJobOffers = (interpreterId: string | undefined) => {
     }
   };
 
-  const declineOffer = async (assignmentId: string) => {
+  const declineOffer = async (id: string, isDirect?: boolean, assignmentId?: string) => {
     try {
-      await BookingService.declineOffer(assignmentId);
+      if (isDirect) {
+        await BookingService.unassignInterpreterFromBooking(id);
+      } else {
+        await BookingService.declineOffer(assignmentId || id);
+      }
       // Optimistic update
-      setOffers(prev => prev.filter(o => o.id !== assignmentId));
+      setOffers(prev => prev.filter(o => o.id !== id && o._assignmentId !== (assignmentId || id)));
       return true;
     } catch (e) {
       console.error(e);

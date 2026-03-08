@@ -12,12 +12,12 @@ export const createJobFirestoreRepository = (tenantId: string): JobRepository =>
             const snap = await getDoc(doc(db, 'bookings', id));
             if (snap.exists()) {
                 const data = snap.data() as Job;
-                if (data.organizationId !== tenantId) return null; // Guardrail
-                return { id: snap.id, ...data };
+                if (data.organizationId && data.organizationId !== tenantId) return null; // Guardrail
+                return { ...data, id: snap.id };
             }
         } catch { /* fallback to mock */ }
         const mock = MOCK_BOOKINGS.find(b => b.id === id) as any;
-        if (mock && mock.organizationId === tenantId) return mock;
+        if (mock && (!mock.organizationId || mock.organizationId === tenantId)) return mock;
         return null;
     },
 

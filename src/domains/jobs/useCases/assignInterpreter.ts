@@ -45,10 +45,10 @@ export const assignInterpreter = async (
     if (interpreterUser) {
         NotificationService.notify(
             interpreterUser.id,
-            'Job Confirmed',
-            `Your assignment for ${jobData.languageTo || 'Job'} on ${jobData.date} is officially confirmed.`,
-            NotificationType.SUCCESS,
-            `/interpreter/jobs/${jobId}`
+            'New Direct Assignment',
+            `You have been directly assigned a new ${jobData.languageTo || 'Job'} job on ${jobData.date}. Please review and accept.`,
+            NotificationType.JOB_OFFER,
+            `/interpreter/jobs`
         );
     }
 

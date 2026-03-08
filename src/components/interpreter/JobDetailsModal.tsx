@@ -12,9 +12,9 @@ import { useNavigate } from 'react-router-dom';
 interface JobDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    job: Booking | null;
-    onAccept?: (id: string) => Promise<void>;
-    onReject?: (id: string) => Promise<void>;
+    job: any | null; // Allow extended booking type with _isDirect and _assignmentId
+    onAccept?: (id: string, isDirect?: boolean, assignmentId?: string) => Promise<void>;
+    onReject?: (id: string, isDirect?: boolean, assignmentId?: string) => Promise<void>;
     onMessageAdmin?: (id: string) => void;
 }
 
@@ -31,7 +31,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
 
     if (!job) return null;
 
-    const isOffer = job.status === BookingStatus.INCOMING || job.status === BookingStatus.OPENED;
+    const isOffer = job.status === BookingStatus.INCOMING || job.status === BookingStatus.OPENED || job.status === 'PENDING_ASSIGNMENT';
 
     const handleAction = async (action: () => Promise<void> | undefined) => {
         if (!action) return;
@@ -49,52 +49,56 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     const footer = (
         <div className="flex flex-col sm:flex-row gap-3 w-full justify-between">
             <div className="flex gap-3">
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                        onClose();
+                        navigate(`/interpreter/jobs/${job.id}`);
+                    }}
+                    icon={ExternalLink}
+                    size="sm"
+                >
+                    Full Details
+                </Button>
                 {onMessageAdmin && (
                     <Button
                         variant="ghost"
                         onClick={() => onMessageAdmin(job.id)}
                         icon={MessageSquare}
-                        className="text-blue-600 hover:bg-blue-50"
+                        size="sm"
+                        className="text-blue-600 hover:bg-blue-50 hidden sm:flex"
                     >
-                        Message Admin
+                        Chat
                     </Button>
                 )}
             </div>
             <div className="flex gap-3">
-                {isOffer ? (
+                {isOffer && (
                     <>
                         {onReject && (
                             <Button
                                 variant="outline"
-                                onClick={() => handleAction(() => onReject(job.id))}
+                                onClick={() => handleAction(() => onReject(job.id, job._isDirect, job._assignmentId))}
                                 disabled={processing}
                                 icon={XCircle}
-                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                size="sm"
+                                className="text-red-600 border-red-200 hover:bg-red-50 flex-1 sm:flex-none"
                             >
                                 Decline
                             </Button>
                         )}
                         {onAccept && (
                             <Button
-                                onClick={() => handleAction(() => onAccept(job.id))}
+                                onClick={() => handleAction(() => onAccept(job.id, job._isDirect, job._assignmentId))}
                                 disabled={processing}
                                 icon={CheckCircle2}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 sm:flex-none"
                             >
                                 Accept Job
                             </Button>
                         )}
                     </>
-                ) : (
-                    <Button
-                        onClick={() => {
-                            onClose();
-                            navigate(`/interpreter/jobs/${job.id}`);
-                        }}
-                        icon={ExternalLink}
-                    >
-                        Full Details
-                    </Button>
                 )}
             </div>
         </div>
@@ -104,20 +108,20 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={job.status === BookingStatus.OPENED ? "Direct Assignment" : "Job Opportunity"}
+            title={job._isDirect || job.status === BookingStatus.OPENED ? "Direct Assignment" : "Job Opportunity"}
             footer={footer}
-            maxWidth="lg"
+            type="drawer"
         >
             <div className="space-y-6">
                 {/* Header Section */}
-                <div className="flex justify-between items-start bg-slate-50 -mx-4 -mt-4 p-4 border-b border-slate-100">
+                <div className="flex justify-between items-start bg-slate-50 -mx-4 -mt-4 p-4 border-b border-slate-100 rounded-t-2xl">
                     <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <span className="text-2xl font-black text-slate-900 leading-none">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span className="text-2xl font-black text-slate-900 leading-none mr-2">
                                 {job.languageFrom} → {job.languageTo}
                             </span>
                             <StatusBadge status={job.status} />
-                            {job.status === BookingStatus.OPENED && (
+                            {(job._isDirect || job.status === BookingStatus.OPENED) && (
                                 <span className="flex items-center gap-1 text-[9px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">
                                     <ShieldCheck size={12} strokeWidth={3} /> Direct
                                 </span>

@@ -8,29 +8,42 @@ import { Table } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { BulkActionBar } from '../../../components/ui/BulkActionBar';
-import { Booking, BookingStatus } from '../../../types';
-import { BookingService } from '../../../services/api';
+import { Booking, BookingStatus, Timesheet } from '../../../types';
+import { BookingService, BillingService } from '../../../services/api';
 
 export const TimesheetQueue = () => {
     const navigate = useNavigate();
     const { bookings = [], loading, refresh } = useBookings();
 
     // Filter jobs that have submitted timesheets but aren't verified yet
-    const pendingTimesheets = bookings.filter(b => b.status === 'INVOICING');
+    const pendingTimesheets = bookings.filter(b =>
+        (b.status as any) === BookingStatus.TIMESHEET_SUBMITTED ||
+        (b.status as any) === BookingStatus.INVOICING ||
+        (b.status as any) === 'TIMESHEET_SUBMITTED' // String literal for safety
+    );
 
     const [selectedJob, setSelectedJob] = useState<Booking | null>(null);
+    const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null);
     const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [isBulkLoading, setIsBulkLoading] = useState(false);
 
-    const openAuditHub = (job: Booking) => {
+    const openAuditHub = async (job: Booking) => {
         setSelectedJob(job);
+        setSelectedTimesheet(null);
         setIsAuditModalOpen(true);
+
+        try {
+            const ts = await BillingService.getTimesheetByBookingId(job.id);
+            setSelectedTimesheet(ts);
+        } catch (error) {
+            console.error("Failed to load timesheet evidence:", error);
+        }
     };
 
     const handleVerify = async (job: Booking) => {
         try {
-            await BookingService.updateStatus(job.id, 'INVOICED' as any);
+            await BillingService.approveTimesheetByBookingId(job.id);
             setIsAuditModalOpen(false);
             refresh();
         } catch (e) {
@@ -43,7 +56,7 @@ export const TimesheetQueue = () => {
         let done = 0;
         await Promise.allSettled(ids.map(async id => {
             try {
-                await BookingService.updateStatus(id, 'INVOICED' as any);
+                await BillingService.approveTimesheetByBookingId(id);
                 done++;
             } catch { /* silent */ }
         }));
@@ -211,11 +224,48 @@ export const TimesheetQueue = () => {
                         {/* Supporting Evidence */}
                         <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Supporting Evidence</h4>
-                            <div className="flex items-center justify-center h-40 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                                <div className="text-center">
-                                    <AlertCircle className="mx-auto text-slate-300 mb-2" size={24} />
-                                    <p className="text-xs text-slate-400 italic">No digital timesheet image attached.</p>
-                                </div>
+                            <div className="flex items-center justify-center min-h-40 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 overflow-hidden">
+                                {selectedTimesheet?.supportingDocumentUrl ? (
+                                    <div className="w-full">
+                                        {selectedTimesheet.supportingDocumentUrl.toLowerCase().endsWith('.pdf') ? (
+                                            <div className="flex flex-col items-center p-4">
+                                                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-lg flex items-center justify-center mb-3">
+                                                    <FileCheck size={32} />
+                                                </div>
+                                                <p className="text-sm font-bold text-slate-700 mb-4">PDF Document Attached</p>
+                                                <a
+                                                    href={selectedTimesheet.supportingDocumentUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
+                                                >
+                                                    View Evidence PDF
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <div className="relative group">
+                                                <img
+                                                    src={selectedTimesheet.supportingDocumentUrl}
+                                                    alt="Supporting Evidence"
+                                                    className="max-w-full h-auto rounded-lg shadow-sm"
+                                                />
+                                                <a
+                                                    href={selectedTimesheet.supportingDocumentUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg"
+                                                >
+                                                    <span className="bg-white text-slate-900 px-4 py-2 rounded-lg text-xs font-bold">Open Full Screen</span>
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center p-8">
+                                        <AlertCircle className="mx-auto text-slate-300 mb-2" size={24} />
+                                        <p className="text-xs text-slate-400 italic">No digital timesheet image attached.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

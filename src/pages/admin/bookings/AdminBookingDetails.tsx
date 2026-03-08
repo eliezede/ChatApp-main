@@ -222,7 +222,7 @@ const AdminBookingDetails = () => {
 
     return allBookings.filter(b =>
       b.interpreterId === interpreterId &&
-      ['BOOKED', 'TIMESHEET_SUBMITTED', 'VERIFIED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(b.status)) &&
+      ['BOOKED', 'TIMESHEET_SUBMITTED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(b.status)) &&
       new Date(b.date) >= startOfWeek && new Date(b.date) <= endOfWeek
     ).length;
   };
@@ -230,7 +230,7 @@ const AdminBookingDetails = () => {
   const getInterpreterSchedule = (interpreterId: string) => {
     return allBookings.filter((b: Booking) =>
       b.interpreterId === interpreterId &&
-      ['BOOKED', 'TIMESHEET_SUBMITTED', 'VERIFIED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(b.status))
+      ['BOOKED', 'TIMESHEET_SUBMITTED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(b.status))
     ).sort((a: Booking, b: Booking) => a.date.localeCompare(b.date));
   };
 
@@ -326,7 +326,7 @@ const AdminBookingDetails = () => {
               message = 'Next Step: Interpreter submitted their timesheet. Please verify it.';
               // Using existing navigate logic (needs actual route)
               actionBtn = <Button size="sm" onClick={() => navigate(`/admin/operations/timesheets?jobId=${booking.id}`)}>Review Timesheet</Button>;
-            } else if (status === 'VERIFIED') {
+            } else if (status === 'INVOICING') {
               actionType = 'action';
               message = 'Next Step: Timesheet verified. You can now generate the invoice.';
               actionBtn = <Button size="sm" onClick={() => navigate(`/admin/billing/client-invoices?clientId=${booking.clientId}&start=${booking.date}&end=${booking.date}`)} icon={Plus}>Generate Invoice</Button>;
@@ -487,7 +487,7 @@ const AdminBookingDetails = () => {
           </Card>
 
           {/* Financial Impact Section */}
-          {(['VERIFIED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(booking.status)) && timesheet) && (
+          {(['INVOICING', 'INVOICED', 'PAID'].includes(String(booking.status)) && timesheet) && (
             <Card className="bg-emerald-50 border-emerald-100 shadow-sm">
               <div className="flex items-center justify-between mb-4 border-b border-emerald-100 pb-2">
                 <h3 className="font-bold text-emerald-900 flex items-center gap-2"><TrendingUp size={16} /> Financial Impact</h3>

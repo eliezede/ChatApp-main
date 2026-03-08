@@ -12,6 +12,7 @@ import { StatusBadge } from '../../../components/StatusBadge';
 import { BulkActionBar } from '../../../components/ui/BulkActionBar';
 import { Booking, BookingStatus } from '../../../types';
 import { useToast } from '../../../context/ToastContext';
+import { BookingService, BillingService } from '../../../services/api';
 import { updateJobStatusAction, createDependencies } from '../../../ui/actions';
 import { InterpreterAllocationDrawer } from '../../../components/operations/InterpreterAllocationDrawer';
 import { InterpreterPreviewDrawer } from '../../../components/operations/InterpreterPreviewDrawer';
@@ -66,6 +67,17 @@ export const JobsBoard = () => {
             if (selectedJob?.id === job.id) setSelectedJob({ ...job, status });
         } catch {
             showToast('Failed to update job status', 'error');
+        }
+    };
+
+    const handleVerifyTimesheet = async (job: Booking) => {
+        try {
+            await BillingService.approveTimesheetByBookingId(job.id);
+            refresh();
+            if (selectedJob?.id === job.id) setSelectedJob({ ...job, status: BookingStatus.INVOICING });
+            showToast('Timesheet verified and job moved to invoicing', 'success');
+        } catch {
+            showToast('Failed to verify timesheet', 'error');
         }
     };
 
@@ -295,8 +307,24 @@ export const JobsBoard = () => {
                                 <StatusBadge status={selectedJob.status} />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <Button variant="outline" size="sm" className="bg-white dark:bg-slate-900 !text-[10px] py-1" onClick={() => handleQuickStatusChange(selectedJob, BookingStatus.BOOKED)}>Confirm Booking</Button>
-                                <Button variant="outline" size="sm" className="bg-white dark:bg-slate-900 !text-[10px] py-1" onClick={() => handleQuickStatusChange(selectedJob, BookingStatus.INVOICING)}>Verify Job</Button>
+                                {selectedJob.status === BookingStatus.INCOMING && (
+                                    <Button size="sm" className="bg-blue-600 text-white !text-[10px] py-1" onClick={() => handleQuickStatusChange(selectedJob, BookingStatus.OPENED)}>Open for Assignments</Button>
+                                )}
+                                {selectedJob.status === BookingStatus.OPENED && (
+                                    <Button size="sm" className="bg-amber-600 text-white !text-[10px] py-1" onClick={(e) => handleAssignClick(e, selectedJob)}>Assign Professional</Button>
+                                )}
+                                {selectedJob.status === BookingStatus.BOOKED && (
+                                    <Button variant="outline" size="sm" className="bg-white dark:bg-slate-900 !text-[10px] py-1" onClick={() => handleQuickStatusChange(selectedJob, BookingStatus.INVOICING)}>Manual Verification</Button>
+                                )}
+                                {(selectedJob.status === BookingStatus.TIMESHEET_SUBMITTED || (selectedJob.status as string) === 'TIMESHEET_SUBMITTED') && (
+                                    <Button size="sm" className="bg-emerald-600 text-white !text-[10px] py-1 col-span-2" onClick={() => handleVerifyTimesheet(selectedJob)}>Verify Timesheet</Button>
+                                )}
+                                {selectedJob.status === BookingStatus.INVOICING && (
+                                    <Button size="sm" className="bg-indigo-600 text-white !text-[10px] py-1 col-span-2" onClick={() => navigate('/admin/timesheets')}>Invoicing Review</Button>
+                                )}
+                                {selectedJob.status === BookingStatus.PAID && (
+                                    <p className="text-[10px] text-green-600 font-bold uppercase col-span-2 bg-green-50 p-2 rounded-lg text-center">Process Completed & Paid</p>
+                                )}
                             </div>
                         </div>
 

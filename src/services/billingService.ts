@@ -14,9 +14,10 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "./firebaseConfig";
-import { ClientInvoice, InterpreterInvoice, Timesheet, InvoiceStatus } from "../types";
-import { MOCK_TIMESHEETS, MOCK_CLIENT_INVOICES, MOCK_INTERPRETER_INVOICES, saveMockData, MOCK_BOOKINGS, MOCK_RATES } from "./mockData";
+import { ClientInvoice, InterpreterInvoice, Timesheet, InvoiceStatus, BookingStatus, NotificationType } from "../types";
+import { MOCK_TIMESHEETS, MOCK_CLIENT_INVOICES, MOCK_INTERPRETER_INVOICES, saveMockData, MOCK_BOOKINGS, MOCK_RATES, MOCK_USERS } from "./mockData";
 import { convertDoc, safeFetch } from './utils';
+import { NotificationService } from "./notificationService";
 
 export const BillingService = {
 
@@ -251,33 +252,71 @@ export const BillingService = {
       batch.update(tsDoc.ref, {
         adminApproved: true,
         adminApprovedAt: new Date().toISOString(),
-        status: 'APPROVED'
+        status: 'INVOICING'
       });
 
       if (ts.bookingId) {
         batch.update(doc(db, 'bookings', ts.bookingId), {
-          status: 'VERIFIED',
+          status: BookingStatus.INVOICING,
           updatedAt: serverTimestamp()
         });
       }
 
       await batch.commit();
+
+      // Notify Interpreter
+      if (ts.interpreterId) {
+        // Find user by profileId
+        const q = query(collection(db, 'users'), where('profileId', '==', ts.interpreterId));
+        const userSnap = await getDocs(q);
+        const userId = !userSnap.empty ? userSnap.docs[0].id : MOCK_USERS.find(u => u.profileId === ts.interpreterId)?.id;
+
+        if (userId) {
+          await NotificationService.notify(
+            userId,
+            'Timesheet Approved',
+            `Your timesheet for job on ${ts.actualStart.split('T')[0]} has been verified and approved for billing.`,
+            NotificationType.SUCCESS,
+            '/interpreter/timesheets'
+          );
+        }
+      }
     } catch (e) {
+      console.error("Error approving timesheet:", e);
       const ts = MOCK_TIMESHEETS.find(t => t.id === id);
       if (ts) {
-        // Mock logic
         ts.adminApproved = true;
-        ts.status = 'APPROVED';
-        // Calculate simple mock amounts
-        ts.unitsBillableToClient = 1;
-        ts.unitsPayableToInterpreter = 1;
-        ts.totalClientAmount = 40;
-        ts.totalInterpreterAmount = 25;
-        ts.clientAmountCalculated = 40;
-        ts.interpreterAmountCalculated = 25;
+        ts.status = 'INVOICING';
         ts.readyForClientInvoice = true;
         ts.readyForInterpreterInvoice = true;
+
+        const b = MOCK_BOOKINGS.find(book => book.id === ts.bookingId);
+        if (b) b.status = BookingStatus.INVOICING;
+
         saveMockData();
+      }
+    }
+  },
+
+  approveTimesheetByBookingId: async (bookingId: string) => {
+    try {
+      const q = query(collection(db, "timesheets"), where("bookingId", "==", bookingId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        await BillingService.approveTimesheet(snap.docs[0].id);
+      } else {
+        await updateDoc(doc(db, 'bookings', bookingId), {
+          status: BookingStatus.INVOICING,
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (e) {
+      // Mock fallback
+      const ts = MOCK_TIMESHEETS.find(t => t.bookingId === bookingId);
+      if (ts) await BillingService.approveTimesheet(ts.id);
+      else {
+        const b = MOCK_BOOKINGS.find(book => book.id === bookingId);
+        if (b) { b.status = BookingStatus.INVOICING; saveMockData(); }
       }
     }
   },
@@ -334,7 +373,8 @@ export const BillingService = {
       unitsBillableToClient: 0,
       unitsPayableToInterpreter: 0,
       clientAmountCalculated: 0,
-      interpreterAmountCalculated: 0
+      interpreterAmountCalculated: 0,
+      supportingDocumentUrl: data.supportingDocumentUrl
     };
     try {
       const batch = writeBatch(db);

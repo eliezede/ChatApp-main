@@ -5,119 +5,98 @@ import { BookingService, BillingService } from '../../services/api';
 import { Booking, BookingStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import {
-  MapPin, Clock, ArrowRight, CheckCircle2,
+  MapPin, Clock, CheckCircle2,
   Calendar, PoundSterling, Star, MessageSquare,
-  ChevronRight, AlertCircle, PlayCircle, Filter,
-  Bell, Plus, LayoutGrid, Award, ShieldCheck,
-  Video, Globe2, MoreVertical
+  ChevronRight, AlertCircle, Award, ShieldCheck,
+  Video, Globe2, Briefcase
 } from 'lucide-react';
-import { JobDetailsModal } from '../../components/interpreter/JobDetailsModal'; // Re-triggering HMR
+import { JobDetailsModal } from '../../components/interpreter/JobDetailsModal';
+import { NotificationCenter } from '../../components/notifications/NotificationCenter';
 import { useToast } from '../../context/ToastContext';
 import { useChat } from '../../context/ChatContext';
 import { ChatService } from '../../services/chatService';
+import { PageHeader } from '../../components/layout/PageHeader';
+import { Button } from '../../components/ui/Button';
+import { Skeleton } from '../../components/ui/Skeleton';
 
-// --- Sub-components for the New Design ---
+// --- Sub-components matching Admin Dashboard ---
 
-const StatCard = ({ label, value, sublabel, icon: Icon, colorClass, highlight }: any) => (
-  <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-    <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 ${colorClass} opacity-5 group-hover:scale-110 transition-transform`} />
-    <div className="flex justify-between items-start mb-4 relative z-10">
-      <div className={`p-2.5 rounded-xl ${colorClass} bg-opacity-10 shadow-sm`}>
-        <Icon size={20} className={colorClass.replace('bg-', 'text-')} />
-      </div>
-      {highlight && (
-        <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider">
-          {highlight}
-        </span>
-      )}
+const MetricSkeleton = () => (
+  <div className="flex items-center gap-3 md:border-l border-slate-100 md:pl-8">
+    <div className="space-y-1">
+      <Skeleton className="h-2 w-16" />
+      <Skeleton className="h-4 w-12" />
     </div>
-    <div className="relative z-10">
-      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">{label}</p>
-      <h3 className="text-2xl font-black text-slate-900 leading-tight">{value}</h3>
-      {sublabel && <p className="text-xs text-slate-500 mt-1 font-medium">{sublabel}</p>}
-    </div>
+    <Skeleton className="h-3 w-8 rounded-full" />
   </div>
 );
 
-const ScheduleItem = ({ job, onClick }: { job: Booking, onClick: () => void }) => {
-  const isPending = job.status === BookingStatus.OPENED;
-  const isRemote = job.locationType === 'ONLINE';
-
-  return (
-    <div onClick={onClick} className="flex items-start group cursor-pointer py-4 first:pt-0 last:pb-0 border-b border-slate-50 last:border-0">
-      <div className="flex flex-col items-center mr-6 text-center min-w-[48px]">
-        <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">
-          {job.date ? new Date(job.date.includes('T') ? job.date : job.date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short' }) : '—'}
-        </p>
-        <p className="text-xl font-black text-slate-900 leading-none">
-          {job.date ? new Date(job.date.includes('T') ? job.date : job.date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit' }) : '—'}
-        </p>
-      </div>
-      <div className="flex-1 bg-white hover:bg-slate-50 p-4 rounded-2xl border border-slate-100 transition-all group-hover:shadow-sm">
-        <div className="flex justify-between items-start mb-2">
-          <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">{job.serviceType}</h4>
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${isPending ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-blue-50 text-blue-600 border border-blue-100'
-            }`}>
-            {isPending ? 'Pending' : 'Confirmed'}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-slate-500">
-          <span className="flex items-center"><Clock size={14} className="mr-1.5 text-blue-500" /> {job.startTime}</span>
-          <span className="flex items-center">
-            {isRemote ? <Video size={14} className="mr-1.5 text-indigo-500" /> : <MapPin size={14} className="mr-1.5 text-red-500" />}
-            {isRemote ? 'Remote Call' : job.postcode || 'On-site'}
-          </span>
-          <span className="flex items-center font-bold text-slate-900"><Globe2 size={14} className="mr-1.5 text-slate-400" /> {job.languageFrom} → {job.languageTo}</span>
-        </div>
-      </div>
-      {isRemote && !isPending && (
-        <button className="ml-4 px-3 py-2 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors uppercase self-center whitespace-nowrap">
-          Join Room
-        </button>
-      )}
+const HighDensityActivityTable = ({ title, data, loading, onRowClick }: { title: string, data: any[], loading?: boolean, onRowClick: (job: any) => void }) => (
+  <div className="flex-1 flex flex-col min-w-0 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden shrink-0 min-h-[400px]">
+    <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white overflow-hidden">
+      <h3 className="font-black text-slate-800 text-[10px] uppercase tracking-[0.2em] shrink-0">{title}</h3>
     </div>
-  );
-};
-
-const JobOfferCard = ({ offer, onClick }: { offer: Booking, onClick: () => void }) => {
-  const isUrgent = offer.priority === 'High';
-  const isDirect = offer.status === BookingStatus.OPENED;
-
-  return (
-    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-300 transition-all group cursor-pointer" onClick={onClick}>
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex flex-col">
-          <h4 className="font-bold text-slate-900 line-clamp-1">{offer.serviceType}</h4>
-          {isDirect && (
-            <span className="text-[9px] font-black text-blue-600 flex items-center gap-1 mt-0.5">
-              <ShieldCheck size={10} /> Direct Assignment
-            </span>
-          )}
-        </div>
-        {isUrgent && (
-          <span className="text-[9px] font-black bg-red-50 text-red-600 px-2 py-0.5 rounded-full uppercase animate-pulse">
-            Urgent
-          </span>
-        )}
-      </div>
-      <p className="text-xs text-slate-500 mb-4 font-medium">Scheduled: {offer.date ? new Date(offer.date.includes('T') ? offer.date : offer.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBC'}</p>
-
-      <div className="flex items-center gap-3 mb-5">
-        <div className="flex items-center bg-slate-50 px-2 py-1 rounded-lg text-[10px] font-black text-slate-600">
-          <Globe2 size={12} className="mr-1 text-blue-500" /> {offer.languageFrom} → {offer.languageTo}
-        </div>
-        <div className="flex items-center bg-slate-50 px-2 py-1 rounded-lg text-[10px] font-black text-slate-600">
-          {offer.locationType === 'ONLINE' ? <Video size={12} className="mr-1 text-indigo-500" /> : <MapPin size={12} className="mr-1 text-red-500" />}
-          {offer.locationType === 'ONLINE' ? 'Video' : 'On-site'}
-        </div>
-      </div>
-
-      <button className="w-full bg-blue-600 text-white text-xs font-black py-3 rounded-xl shadow-lg shadow-blue-600/10 hover:bg-blue-700 hover:shadow-blue-600/20 transition-all uppercase tracking-wider">
-        Accept Job
-      </button>
+    <div className="overflow-x-auto custom-scrollbar flex-1">
+      <table className="w-full text-left border-collapse min-w-[600px]">
+        <thead className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
+          <tr>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client / Location</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Service</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date & Time</th>
+            <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Estimated</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {loading ? (
+            Array(5).fill(0).map((_, i) => (
+              <tr key={i}>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-16 rounded" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3 text-right"><Skeleton className="h-4 w-12 ml-auto" /></td>
+              </tr>
+            ))
+          ) : data.length === 0 ? (
+            <tr><td colSpan={5} className="px-4 py-12 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No scheduled sessions found.</td></tr>
+          ) : data.map((item, i) => (
+            <tr key={i} onClick={() => onRowClick(item.raw)} className="hover:bg-slate-50/80 group transition-colors cursor-pointer">
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-md border flex flex-col items-center justify-center text-[8px] font-black uppercase ${item.isOnline ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                    {item.isOnline ? <Video size={10} /> : <MapPin size={10} />}
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 whitespace-nowrap">{item.client || 'Confidential'}</span>
+                </div>
+              </td>
+              <td className="px-4 py-3 text-xs font-medium text-slate-600 whitespace-nowrap">
+                <span className="flex items-center gap-1.5"><Globe2 size={12} className="text-blue-500" /> {item.service}</span>
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
+                  ${item.raw.status === BookingStatus.INVOICING || item.raw.status === BookingStatus.BOOKED ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                    item.raw.status === BookingStatus.OPENED ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                      'bg-slate-50 text-slate-700 border border-slate-100'}`}>
+                  {item.raw.status === BookingStatus.BOOKED ? 'CONFIRMED' : item.raw.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
+                  {item.date} <span className="text-[10px] text-slate-300 font-normal">|</span> {item.time}
+                </div>
+              </td>
+              <td className="px-4 py-3 text-right text-xs font-black text-slate-900 whitespace-nowrap">
+                {item.pay}
+                <span className="opacity-0 group-hover:opacity-100 text-blue-600 ml-2 transition-opacity inline-block">→</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
-  );
-};
+  </div>
+);
 
 // --- Main Dashboard ---
 
@@ -128,14 +107,13 @@ export const InterpreterDashboard = () => {
   const { openThread } = useChat();
 
   const [loading, setLoading] = useState(true);
-  const [isOnline, setIsOnline] = useState(true);
 
   // Modal State
   const [selectedJob, setSelectedJob] = useState<Booking | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Data State
-  const [upcomingJobs, setUpcomingJobs] = useState<Booking[]>([]);
+  const [upcomingJobs, setUpcomingJobs] = useState<any[]>([]);
   const [pendingTimesheets, setPendingTimesheets] = useState<Booking[]>([]);
   const [offers, setOffers] = useState<Booking[]>([]);
   const [stats, setStats] = useState({
@@ -165,10 +143,11 @@ export const InterpreterDashboard = () => {
         StatsService.getInterpreterStats(interpreterId)
       ]);
 
-      // Categorize: BOOKED and beyond are 'Confirmed'
-      // OPENED for this interpreter are 'Direct Assignments' (Pending)
-      const confirmed = schedule.filter((b: Booking) => b.status !== BookingStatus.OPENED);
-      const directPending = schedule.filter((b: Booking) => b.status === BookingStatus.OPENED);
+      // Categorize
+      const isPending = (s: string) => s === BookingStatus.OPENED || s === 'PENDING_ASSIGNMENT';
+      const confirmed = schedule.filter((b: Booking) => !isPending(b.status as string));
+      // We tag these as "direct" so the UI knows they use Booking ID
+      const directPending = schedule.filter((b: Booking) => isPending(b.status as string)).map(b => ({ ...b, _isDirect: true }));
 
       const upcoming = confirmed
         .filter((b: Booking) => new Date(b.date + 'T' + (b.startTime || '00:00')) > new Date())
@@ -178,33 +157,36 @@ export const InterpreterDashboard = () => {
         .filter((b: Booking) => String(b.status) === 'BOOKED' && new Date(b.date + 'T' + (b.startTime || '23:59')) <= new Date())
         .sort((a: Booking, b: Booking) => new Date(b.date + 'T' + (b.startTime || '00:00')).getTime() - new Date(a.date + 'T' + (a.startTime || '00:00')).getTime());
 
-      setUpcomingJobs(upcoming);
+      setUpcomingJobs(upcoming.map(job => ({
+        client: job.clientName,
+        isOnline: job.locationType === 'ONLINE',
+        service: `${job.languageFrom} → ${job.languageTo}`,
+        date: new Date(job.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        time: job.startTime,
+        pay: '£45.00', // Mocked payload for assignment
+        raw: job
+      })));
       setPendingTimesheets(pastPendingTs);
 
-      // For each broadcast assignment, fetch the full booking document so we
-      // have all display fields (date, startTime, serviceType, address, etc.)
-      // We keep the ASSIGNMENT id on the merged object so acceptOffer/declineOffer work correctly.
-      const enrichedOffers: Booking[] = await Promise.all(
+      // Map over broadcast offers
+      const enrichedOffers: any[] = await Promise.all(
         offerList.map(async (assignment: any) => {
           const bookingId = assignment.bookingId;
+          const offerBase = { _isBroadcast: true, _assignmentId: assignment.id }; // Keep track of the assignment ID for accept/reject
+
           if (!bookingId) {
-            // Fallback: use whatever data is in the snapshot or assignment itself
-            return { ...(assignment.bookingSnapshot || assignment), id: assignment.id };
+            return { ...(assignment.bookingSnapshot || assignment), id: assignment.id, ...offerBase };
           }
           try {
             const booking = await BookingService.getById(bookingId);
             if (booking) {
-              // Merge: use full booking data but override `id` with the ASSIGNMENT id
-              // so that acceptOffer(id) hits the assignment doc, not the booking doc.
-              return { ...booking, id: assignment.id };
+              return { ...booking, ...offerBase };
             }
           } catch {/* ignore */ }
-          // Fallback to snapshot if booking fetch fails
-          return { ...(assignment.bookingSnapshot || assignment), id: assignment.id };
+          return { ...(assignment.bookingSnapshot || assignment), id: assignment.id, ...offerBase };
         })
       );
 
-      // Merge broadcast offers and direct assignments
       setOffers([...directPending, ...enrichedOffers]);
 
       setStats({
@@ -227,23 +209,35 @@ export const InterpreterDashboard = () => {
     setIsModalOpen(true);
   };
 
-  const handleAcceptJob = async (id: string) => {
+  const handleAcceptJob = async (id: string, isDirect?: boolean, assignmentId?: string) => {
     try {
-      await BookingService.acceptOffer(id);
+      if (isDirect) {
+        // Direct assignment: The ID is the Booking ID. Update the booking status to BOOKED.
+        await BookingService.updateStatus(id, BookingStatus.BOOKED);
+      } else {
+        // Broadcast offer: We need the assignment ID to accept.
+        await BookingService.acceptOffer(assignmentId || id);
+      }
       showToast('Job accepted successfully!', 'success');
       if (user?.profileId) loadDashboardData(user.profileId);
-    } catch (e) {
-      showToast('Failed to accept job', 'error');
+    } catch (e: any) {
+      showToast(e.message || 'Failed to accept job', 'error');
     }
   };
 
-  const handleRejectJob = async (id: string) => {
+  const handleRejectJob = async (id: string, isDirect?: boolean, assignmentId?: string) => {
     try {
-      await BookingService.declineOffer(id);
+      if (isDirect) {
+        // Direct assignment: Unassign interpreter
+        await BookingService.unassignInterpreterFromBooking(id);
+      } else {
+        // Broadcast Offer
+        await BookingService.declineOffer(assignmentId || id);
+      }
       showToast('Job declined', 'info');
-      setOffers(prev => prev.filter(o => o.id !== id));
-    } catch (e) {
-      showToast('Failed to decline job', 'error');
+      if (user?.profileId) loadDashboardData(user.profileId);
+    } catch (e: any) {
+      showToast(e.message || 'Failed to decline job', 'error');
     }
   };
 
@@ -261,163 +255,119 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  if (loading) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center opacity-50 scale-95 transition-all duration-700">
-      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Configuring Portal</p>
-    </div>
-  );
-
   return (
-    <div className="max-w-7xl mx-auto pb-20 p-4 md:p-8 animate-in fade-in duration-700">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Interpreter Portal</h1>
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all shadow-sm ${isOnline ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
-              }`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-              {isOnline ? 'Available for On-Call' : 'Currently Offline'}
-            </div>
-          </div>
-          <p className="text-slate-500 font-medium">Ready for another day of excellence, {user?.displayName?.split(' ')[0]}?</p>
-        </div>
+    <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)] bg-slate-50 animate-in fade-in duration-700">
+      <PageHeader
+        title="Agent Interface"
+        subtitle={`Session active for ${user?.displayName?.split(' ')[0] || 'Agent'}`}
+      >
+        <NotificationCenter />
+        <Button onClick={() => navigate('/interpreter/jobs')} variant="secondary" icon={Briefcase} size="sm">Browse Jobs</Button>
+      </PageHeader>
 
-        <div className="flex items-center gap-3">
-          <button className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm relative group">
-            <Bell size={20} />
-            <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white group-hover:scale-110 transition-transform" />
-          </button>
-          <button onClick={() => navigate('/interpreter/profile')} className="px-5 py-3 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2 uppercase tracking-wider">
-            <Plus size={16} /> Update Availability
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <StatCard label="Upcoming Jobs" value={stats.upcomingBookings} sublabel="Jobs scheduled" icon={Calendar} colorClass="bg-blue-600" highlight="+2 today" />
-        <StatCard label="Hours Worked" value={stats.hoursWorked} sublabel="This Month" icon={Clock} colorClass="bg-indigo-600" />
-        <StatCard label="Next Payout" value={stats.nextPayout} sublabel="Est. Dec 15" icon={PoundSterling} colorClass="bg-indigo-500" />
-        <StatCard label="Average Rating" value={`${stats.rating}/5`} sublabel="Excellent performance" icon={Star} colorClass="bg-amber-500" highlight="Top 5%" />
-      </div>
-
-      {/* Main Sections Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-
-        {/* Left Column: Schedule */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm shadow-slate-200/50">
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                <LayoutGrid size={22} className="text-blue-600" /> Upcoming Schedule
-              </h3>
-              <div className="flex gap-2">
-                <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"><ChevronRight size={18} className="rotate-180" /></button>
-                <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"><ChevronRight size={18} /></button>
-              </div>
-            </div>
-
-            {upcomingJobs.length === 0 ? (
-              <div className="py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                <Calendar size={48} className="mx-auto text-slate-200 mb-4" />
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">No Confirmed Sessions</p>
-                <button onClick={() => navigate('/interpreter/jobs')} className="mt-4 text-blue-600 text-xs font-black hover:underline uppercase tracking-wider">Browse Marketplace &rarr;</button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {upcomingJobs.map((job) => (
-                  <ScheduleItem key={job.id} job={job} onClick={() => openJobModal(job)} />
-                ))}
-
-                <button
-                  onClick={() => navigate('/interpreter/jobs')}
-                  className="w-full mt-6 py-4 flex items-center justify-center text-xs font-black text-slate-400 hover:text-blue-600 border border-dashed border-slate-200 rounded-2xl hover:border-blue-200 hover:bg-blue-50 transition-all uppercase tracking-wider gap-2"
-                >
-                  View Full Calendar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Offers & Health */}
-        <div className="space-y-10">
-
-          {/* Pending Timesheets Sidebar */}
-          {pendingTimesheets.length > 0 && (
+      {/* Metrics Ribbon */}
+      <div className="bg-white border border-slate-200 rounded-3xl px-8 py-5 flex flex-wrap items-center gap-x-12 gap-y-4 mb-8 shadow-sm mx-4 sm:mx-0">
+        {loading ? (
+          Array(3).fill(0).map((_, i) => <MetricSkeleton key={i} />)
+        ) : [
+          { label: 'Active Offers', value: offers.length, badge: 'New', badgeColor: 'text-blue-600 bg-blue-50' },
+          { label: 'Booked Sessions', value: upcomingJobs.length, badge: 'Active', badgeColor: 'text-indigo-600 bg-indigo-50' },
+          { label: 'Settled Earnings', value: stats.nextPayout, badge: 'Total', badgeColor: 'text-emerald-600 bg-emerald-50' },
+        ].map((m, i) => (
+          <div key={i} className={`flex items-center gap-3 ${i > 0 ? 'md:border-l border-slate-100 md:pl-8' : ''}`}>
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-black text-slate-900 tracking-tight text-amber-600 flex items-center gap-2"><AlertCircle size={18} /> Pending Timesheets</h3>
-                <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full uppercase">{pendingTimesheets.length} Action{pendingTimesheets.length !== 1 && 's'} needed</span>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">{m.label}</div>
+              <div className="text-lg font-black text-slate-900 mt-1 leading-none">{m.value}</div>
+            </div>
+            <div className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${m.badgeColor}`}>{m.badge}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden px-4 md:px-0">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Urgent Attention Zone */}
+          {(pendingTimesheets.length > 0 || offers.length > 0) && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle size={14} className="text-amber-600" />
+                <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wider">Action Required</h3>
               </div>
-              <div className="space-y-4">
-                {pendingTimesheets.slice(0, 3).map((tsJob) => (
-                  <div key={tsJob.id} onClick={() => navigate('/interpreter/timesheets')} className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm hover:shadow-md hover:border-amber-400 transition-all group cursor-pointer relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-amber-50 rounded-full -mr-8 -mt-8" />
-                    <div className="flex justify-between items-start mb-2 relative z-10">
-                      <h4 className="font-bold text-slate-900 line-clamp-1">{tsJob.serviceType}</h4>
+              <div className="flex flex-wrap gap-2">
+                {pendingTimesheets.length > 0 && (
+                  <button
+                    onClick={() => navigate('/interpreter/timesheets')}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-amber-200 hover:border-amber-400 rounded-lg text-left transition-all shadow-sm group"
+                  >
+                    <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600 font-bold text-sm">{pendingTimesheets.length}</div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Pending Timesheets</p>
+                      <p className="text-[10px] text-slate-500">Awaiting your submission →</p>
                     </div>
-                    <p className="text-xs text-slate-500 mb-4 font-medium relative z-10">Completed: {tsJob.date ? new Date(tsJob.date.includes('T') ? tsJob.date : tsJob.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown'}</p>
-                    <button className="w-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-black py-2.5 rounded-xl hover:bg-amber-100 transition-all uppercase tracking-wider relative z-10">
-                      Submit Timesheet
-                    </button>
-                  </div>
-                ))}
-                {pendingTimesheets.length > 3 && (
-                  <button onClick={() => navigate('/interpreter/timesheets')} className="w-full py-2 text-center text-xs font-black text-amber-600 hover:underline uppercase tracking-widest">
-                    View All ({pendingTimesheets.length})
+                  </button>
+                )}
+                {offers.length > 0 && (
+                  <button
+                    onClick={() => navigate('/interpreter/jobs', { state: { tab: 'OFFERS' } })}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-blue-200 hover:border-blue-400 rounded-lg text-left transition-all shadow-sm group"
+                  >
+                    <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm">{offers.length}</div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Job Offers Live</p>
+                      <p className="text-[10px] text-slate-500">Review pending marketplace assignments →</p>
+                    </div>
                   </button>
                 )}
               </div>
             </div>
           )}
 
-          {/* Job Offers Sidebar */}
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">Job Offers</h3>
-              <span className="text-[10px] font-black text-slate-400 uppercase">Based on expertise</span>
-            </div>
+          <HighDensityActivityTable title="Upcoming Schedule" data={upcomingJobs} loading={loading} onRowClick={openJobModal} />
+        </div>
 
+        <aside className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col shrink-0 mt-6 lg:mt-0 lg:ml-6 rounded-2xl lg:rounded-none overflow-hidden shadow-sm lg:shadow-none">
+          <div className="flex-1 p-6 overflow-y-auto">
+            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Market Opportunities</h3>
             <div className="space-y-4">
               {offers.length === 0 ? (
-                <div className="p-10 border border-dashed border-slate-200 rounded-3xl text-center">
-                  <Award size={32} className="mx-auto text-slate-200 mb-2" />
-                  <p className="text-slate-400 text-xs font-medium">Finding new roles...</p>
-                </div>
+                <div className="text-xs text-slate-400 py-12 text-center font-bold uppercase tracking-widest border border-dashed border-slate-200 rounded-2xl">No open offers</div>
               ) : (
-                offers.slice(0, 3).map((offer) => (
-                  <JobOfferCard key={offer.id} offer={offer} onClick={() => openJobModal(offer)} />
+                offers.slice(0, 3).map((offer: any, i: number) => (
+                  <div key={i} className="p-4 bg-white border border-slate-200 rounded-2xl hover:border-blue-400 transition-all shadow-sm group">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex flex-col">
+                        <h4 className="font-black text-xs text-slate-900">{offer.serviceType}</h4>
+                        {offer.status === BookingStatus.OPENED && <span className="text-[9px] font-black text-blue-600 flex items-center gap-1 mt-0.5"><ShieldCheck size={10} /> Direct Assignment</span>}
+                      </div>
+                      <span className="text-[9px] font-black bg-blue-900 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm group-hover:scale-110 transition-transform">Live</span>
+                    </div>
+                    <div className="flex items-center gap-3 mb-4 text-[10px] font-black text-slate-600">
+                      <span className="bg-slate-50 px-2 py-1 flex items-center rounded"><Globe2 size={12} className="mr-1 text-blue-500" /> {offer.languageFrom} → {offer.languageTo}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => openJobModal(offer)} className="flex-1 py-2 bg-slate-900 text-white text-[10px] font-black rounded-xl hover:bg-black transition-colors uppercase tracking-widest shadow-lg shadow-slate-100">Review</button>
+                    </div>
+                  </div>
                 ))
-              )}
-
-              {offers.length > 0 && (
-                <button onClick={() => navigate('/interpreter/jobs')} className="w-full py-2 text-center text-xs font-black text-blue-600 hover:underline uppercase tracking-widest">
-                  View Marketplace ({stats.liveOffers})
-                </button>
               )}
             </div>
           </div>
 
           {/* Certification / Action Card */}
-          <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-600/20 relative overflow-hidden group">
+          <div className="bg-blue-600 p-6 text-white relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-125 transition-transform duration-1000" />
             <ShieldCheck size={64} className="absolute -bottom-4 -right-4 text-white opacity-10 group-hover:rotate-12 transition-transform duration-700" />
 
             <div className="relative z-10">
-              <h4 className="text-lg font-black mb-1">Certification Update</h4>
-              <p className="text-blue-100 text-xs font-medium mb-6 opacity-80 leading-relaxed">Your HIPAA certification expires in 12 days. Renew now to stay active.</p>
+              <h4 className="text-sm font-black mb-1">Certification Update</h4>
+              <p className="text-blue-100 text-[10px] font-medium mb-4 opacity-80 leading-relaxed">Ensure compliance scores remain active.</p>
 
-              <button className="w-full bg-white text-blue-600 font-black py-3 rounded-xl text-xs shadow-lg hover:bg-blue-50 transition-all uppercase tracking-widest">
-                Renew Certification
+              <button className="w-full bg-white text-blue-600 font-black py-2 rounded-xl text-[10px] shadow-lg hover:bg-blue-50 transition-all uppercase tracking-widest">
+                Review Account
               </button>
             </div>
           </div>
-
-        </div>
-
+        </aside>
       </div>
 
       {/* Shared Job Details Modal */}
@@ -425,8 +375,8 @@ export const InterpreterDashboard = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         job={selectedJob}
-        onAccept={handleAcceptJob}
-        onReject={handleRejectJob}
+        onAccept={(id: string, isDirect?: boolean, assignmentId?: string) => handleAcceptJob(id, isDirect, assignmentId)}
+        onReject={(id: string, isDirect?: boolean, assignmentId?: string) => handleRejectJob(id, isDirect, assignmentId)}
         onMessageAdmin={handleMessageAdmin}
       />
     </div>
