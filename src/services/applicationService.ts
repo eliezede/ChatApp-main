@@ -1,6 +1,9 @@
 import { collection, addDoc, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { InterpreterApplication, ApplicationStatus } from '../types';
+import { InterpreterApplication, ApplicationStatus, NotificationType } from '../types';
+import { EmailService } from './emailService';
+import { NotificationService } from './notificationService';
+import { MOCK_USERS } from './mockData';
 
 const COLLECTION = 'applications';
 
@@ -14,15 +17,38 @@ export const ApplicationService = {
       status: ApplicationStatus.PENDING,
       submittedAt: new Date().toISOString()
     };
+    let createdApp: InterpreterApplication;
+
     try {
       const docRef = await addDoc(collection(db, COLLECTION), application);
-      return { id: docRef.id, ...application } as InterpreterApplication;
+      createdApp = { id: docRef.id, ...application } as InterpreterApplication;
     } catch (e) {
       console.warn("Application Service: Offline Mode / Mock Data Use");
-      const mockApp = { id: `app-${Date.now()}`, ...application } as InterpreterApplication;
-      MOCK_APPLICATIONS_CACHE.push(mockApp);
-      return mockApp;
+      createdApp = { id: `app-${Date.now()}`, ...application } as InterpreterApplication;
+      MOCK_APPLICATIONS_CACHE.push(createdApp);
     }
+
+    // --- TRIGGER NOTIFICATIONS & EMAILS ---
+
+    // 1. Notify Applicant via Email
+    await EmailService.sendApplicationEmail(createdApp, 'PENDING');
+
+    // 2. Notify Admins via Email
+    await EmailService.sendApplicationEmail(createdApp, 'PENDING', 'admin@lingland.com');
+
+    // 3. Notify Admins via In-App Notification
+    const admins = MOCK_USERS.filter(u => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN');
+    admins.forEach(admin => {
+      NotificationService.notify(
+        admin.id,
+        'New Interpreter Application',
+        `A new application was submitted by ${createdApp.name} (${createdApp.languages?.join(', ')}).`,
+        NotificationType.INFO,
+        `/admin/applications/${createdApp.id}`
+      );
+    });
+
+    return createdApp;
   },
 
   getAll: async (): Promise<InterpreterApplication[]> => {

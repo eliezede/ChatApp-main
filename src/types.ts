@@ -87,6 +87,16 @@ export interface Booking {
   endTime?: string;
   patientReference?: string;
   adminNotes?: string;
+  // Translation-specific fields
+  translationFormat?: string;
+  translationFormatOther?: string;
+  quoteRequested?: boolean;
+  sourceFiles?: string[];
+  deliveryEmail?: string;
+  gdprConsent?: boolean;
+  agreedToTerms?: boolean;
+  professionalName?: string;
+  patientName?: string;
 }
 
 export interface BookingAssignment {
@@ -109,21 +119,122 @@ export interface Client extends TenantScopedEntity {
   defaultCostCodeType: 'PO' | 'Cost Code' | 'Client Name';
 }
 
+export interface LanguageProficiency {
+  language: string;
+  l1: number; // 1 to 15 (priority)
+  translateOrder: 'T1' | 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7' | 'no';
+}
+
+export interface InterpreterRates {
+  pricing?: string;
+  ratesType: 'Lingland Rates' | 'Special Rates';
+  f2fRate: number;
+  stF2F: number;
+  stVideo: number;
+  stPhone: number;
+  oohF2F: number;
+  oohVideo: number;
+  oohPhone: number;
+  spRatesInt: number;
+  travelTimeST: number;
+  mileageST: number;
+}
+
+export type OnboardingDocStatus = 'MISSING' | 'IN_REVIEW' | 'VERIFIED' | 'REJECTED';
+
 export interface Interpreter extends TenantScopedEntity {
+  // Identification
   name: string;
+  shortName?: string;
+  joinedDate?: string;
+  
+  // Personal Data
   email: string;
   phone: string;
-  languages: string[];
+  homePhone?: string;
+  gender: 'M' | 'F' | 'O';
+  address: {
+    street: string;
+    town: string;
+    county: string;
+    postcode: string;
+    country: string;
+  };
+  hasCar: boolean;
+  skypeId?: string;
+
+  // Language & Priority
+  languages: string[]; // Keep for legacy/compat
   regions: string[];
+  languageProficiencies: LanguageProficiency[];
+  
+  // Status & Activity
+  status: 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'UNRELIABLE' | 'ONLY_TRANSL' | 'APPLICANT' | 'ONBOARDING' | 'SUSPENDED' | 'BLOCKED';
+  keyInterpreter: boolean;
+  nhsLevel?: 'Level 1' | 'Level 2' | 'Level 3';
+
+  // DBS & Checks
+  dbs: {
+    level: 'DBS' | 'S-DBS' | 'CRB' | 'N/A' | 'FAILED';
+    issuedDate?: string;
+    number?: string;
+    autoRenew: boolean;
+    renewDate?: string;
+    notes?: string;
+  };
+
+  // Qualifications & Registration
   qualifications: string[];
-  status: 'ACTIVE' | 'ONBOARDING' | 'SUSPENDED' | 'BLOCKED';
-  isAvailable: boolean;
-  dbsExpiry: string;
-  addressLine1?: string;
-  postcode?: string;
-  dbsDocumentUrl?: string;
-  unavailableDates?: string[];
-  acceptsDirectAssignment: boolean;
+  nrpsi: {
+    registered: boolean;
+    number?: string;
+  };
+  dpsi: boolean;
+  experience?: string;
+  documentUrls: string[]; // For scanned docs
+
+  // Badge & ID
+  badge: {
+    idStatus: 'In use' | 'Being made' | 'Not made yet' | 'Not needed/Other' | 'collected/returned';
+    issuedDate?: string;
+  };
+  registrationDate?: string;
+
+  // Work Checks & Forms (signed/completed)
+  inductionsCompleted: string[]; // MS Teams, Skype, Training with other staff
+  workChecksCompleted: string[]; // CV, Interviewed, Passport checked, Reference 1, Reference 2, Right to work UK
+  workFormsSigned: string[]; // Code of Conduct, IR Disclaimer
+  otherPaperwork: string[]; // added mobile to office, sent welcome letter, etc.
+
+  // Rates
+  rates: InterpreterRates;
+
+  // Auxiliary
+  notes?: string;
+  isAvailable: boolean; // Keep for legacy/UI
+
+  // Legacy & Compatibility fields (used by frontend forms)
+  postcode?: string; // Flat postcode field (mirrors address.postcode)
+  addressLine1?: string; // Flat address line (mirrors address.street)
+  dbsExpiry?: string; // DBS expiry shorthand (mirrors dbs.renewDate)
+  dbsDocumentUrl?: string; // Direct DBS doc URL (mirrors documentUrls[0])
+  unavailableDates?: string[]; // Dates interpreter marked as unavailable
+  acceptsDirectAssignment?: boolean; // Whether interpreter accepts direct booking
+
+  // Onboarding Tracking
+  onboarding?: {
+    dbs: { url?: string; status: OnboardingDocStatus; notes?: string };
+    idCheck: { url?: string; status: OnboardingDocStatus; notes?: string };
+    certifications: { urls?: string[]; status: OnboardingDocStatus; notes?: string };
+    rightToWork: { 
+      type?: 'BRP' | 'SHARE_CODE';
+      url?: string; 
+      shareCode?: string;
+      status: OnboardingDocStatus; 
+      notes?: string 
+    };
+    overallStatus: 'DOCUMENTS_PENDING' | 'IN_REVIEW' | 'INTERVIEW_PENDING' | 'COMPLETED';
+  };
 }
 
 export enum InvoiceStatus {
@@ -236,13 +347,30 @@ export enum ApplicationStatus {
 export interface InterpreterApplication {
   id: string;
   name: string;
+  shortName?: string;
   email: string;
   phone: string;
-  postcode: string;
-  languages: string[];
+  gender: 'M' | 'F' | 'O';
+  address: {
+    street: string;
+    town: string;
+    county: string;
+    postcode: string;
+    country: string;
+  };
+  hasCar: boolean;
+  skypeId?: string;
+  languageProficiencies: LanguageProficiency[];
+  languages: string[]; // For backward compatibility
   qualifications: string[];
+  nrpsi: {
+    registered: boolean;
+    number?: string;
+  };
+  dpsi: boolean;
   dbsNumber?: string;
   experienceSummary: string;
+  cvUrl?: string;
   status: ApplicationStatus;
   submittedAt: string;
 }
@@ -378,8 +506,9 @@ export interface BookingView {
 }
 
 export interface EmailTemplate extends TenantScopedEntity {
-  triggerStatus: BookingStatus;
-  recipientType: 'CLIENT' | 'INTERPRETER' | 'ADMIN';
+  category: 'BOOKINGS' | 'APPLICATIONS' | 'INVOICING' | 'SYSTEM';
+  triggerStatus: BookingStatus | string; // Extended to support ApplicationStatus string
+  recipientType: 'CLIENT' | 'INTERPRETER' | 'ADMIN' | 'APPLICANT';
   name: string;
   subject: string;
   body: string; // Markdown or HTML content
@@ -390,5 +519,6 @@ export interface EmailTemplate extends TenantScopedEntity {
 export const EMAIL_VARIABLES = {
   CLIENT: ['{{clientName}}', '{{bookingRef}}', '{{date}}', '{{time}}', '{{location}}', '{{languageFrom}}', '{{languageTo}}', '{{serviceType}}', '{{durationMinutes}}', '{{totalAmount}}'],
   INTERPRETER: ['{{interpreterName}}', '{{bookingRef}}', '{{date}}', '{{time}}', '{{location}}', '{{languageFrom}}', '{{languageTo}}', '{{serviceType}}', '{{durationMinutes}}'],
-  ADMIN: ['{{clientName}}', '{{interpreterName}}', '{{bookingRef}}', '{{status}}']
+  ADMIN: ['{{clientName}}', '{{interpreterName}}', '{{bookingRef}}', '{{status}}'],
+  APPLICANT: ['{{applicantName}}', '{{applicantEmail}}', '{{applicantPhone}}', '{{languages}}', '{{applicationDate}}', '{{applicationStatus}}']
 };

@@ -3,10 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { BillingService } from '../../../services/api';
 import { Timesheet, InterpreterInvoice } from '../../../types';
 import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../context/ToastContext';
 import { PoundSterling, Upload, FileText } from 'lucide-react';
 
 export const InterpreterBilling = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [pendingJobs, setPendingJobs] = useState<Timesheet[]>([]);
   const [history, setHistory] = useState<InterpreterInvoice[]>([]);
   const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
@@ -45,7 +47,7 @@ export const InterpreterBilling = () => {
 
     await BillingService.createInterpreterInvoiceUpload(user.profileId, selectedJobs, invRef, amount);
     
-    alert('Invoice Submitted!');
+    showToast('Invoice Submitted Successfully!', 'success');
     setInvRef('');
     setSelectedJobs([]);
     loadData(user.profileId);

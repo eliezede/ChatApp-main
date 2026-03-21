@@ -10,8 +10,10 @@ import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
 import { Badge } from '../../../components/ui/Badge';
 import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useChat } from '../../../context/ChatContext';
+import { useClients } from '../../../context/ClientContext';
 import {
   Calendar, Clock, MapPin, Video, Globe2, ChevronLeft,
   User, CheckCircle2, AlertCircle, Edit, Trash2, MessageSquare, Building2, Mail, Phone, CreditCard, Zap, TrendingUp, Plus, History, FileText, Receipt,
@@ -27,6 +29,8 @@ const AdminBookingDetails = () => {
   const { user } = useAuth();
   const { openThread } = useChat();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
+  const { getClientCompany } = useClients();
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [timesheet, setTimesheet] = useState<Timesheet | null>(null);
@@ -195,7 +199,12 @@ const AdminBookingDetails = () => {
     );
 
     if (conflictingBooking) {
-      const proceed = window.confirm(`ATENÇÃO: Conflito de horário detectado para este intérprete!\n\nEle já tem um job em ${conflictingBooking.date} às ${conflictingBooking.startTime}.\nDeseja forçar a atribuição mesmo assim?`);
+      const proceed = await confirm({
+        title: 'Schedule Conflict Detected',
+        message: `WARNING: This interpreter already has a booking on ${conflictingBooking.date} at ${conflictingBooking.startTime}. Are you sure you want to force this assignment?`,
+        confirmLabel: 'Force Assign',
+        variant: 'warning'
+      });
       if (!proceed) return;
     }
 
@@ -267,7 +276,7 @@ const AdminBookingDetails = () => {
               <h1 className="text-2xl font-bold text-gray-900">Booking #{booking.bookingRef || booking.id.substring(0, 6).toUpperCase()}</h1>
               <StatusBadge status={booking.status} />
             </div>
-            <p className="text-gray-500 text-sm mt-1">Requested by {booking.clientName} on {new Date(booking.date).toLocaleDateString()}</p>
+            <p className="text-gray-500 text-sm mt-1">Requested by {getClientCompany(booking.clientId, booking.clientName)} on {new Date(booking.date).toLocaleDateString()}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -369,31 +378,71 @@ const AdminBookingDetails = () => {
                   <div className="flex items-center mt-1"><Globe2 size={18} className="text-blue-500 mr-2" /><span className="font-medium text-gray-900">{booking.languageFrom} &rarr; {booking.languageTo}</span></div>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase">Service & Gender</label>
-                  <div className="flex items-center mt-1"><User size={18} className="text-indigo-500 mr-2" /><span className="font-medium text-gray-900">{booking.serviceType} {booking.genderPreference !== 'None' && `(${booking.genderPreference} Preferred)`}</span></div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">{booking.serviceType === ServiceType.TRANSLATION ? 'Service' : 'Service & Gender'}</label>
+                  <div className="flex items-center mt-1"><User size={18} className="text-indigo-500 mr-2" /><span className="font-medium text-gray-900">{booking.serviceType} {booking.serviceType !== ServiceType.TRANSLATION && booking.genderPreference !== 'None' && `(${booking.genderPreference} Preferred)`}</span></div>
                 </div>
+                {booking.serviceType === ServiceType.TRANSLATION && (
+                  <>
+                    <div>
+                      <label className="text-xs font-bold text-gray-400 uppercase">Format & Delivery</label>
+                      <div className="flex flex-col mt-1 gap-1">
+                        <div className="flex items-center"><FileText size={16} className="text-blue-400 mr-2" /><span className="text-sm font-medium">{booking.translationFormat === 'Other' ? booking.translationFormatOther : booking.translationFormat}</span></div>
+                        <div className="flex items-center"><Mail size={16} className="text-slate-400 mr-2" /><span className="text-sm font-medium">{booking.deliveryEmail || 'N/A'}</span></div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase">Date & Time</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase">{booking.serviceType === ServiceType.TRANSLATION ? 'Delivery Date' : 'Date & Time'}</label>
                   <div className="flex items-center mt-1"><Calendar size={18} className="text-gray-500 mr-2" /><span className="font-medium text-gray-900">{new Date(booking.date).toLocaleDateString()}</span></div>
-                  <div className="flex items-center mt-1 ml-7"><Clock size={16} className="text-gray-400 mr-2" /><span className="text-sm text-gray-600">{booking.startTime} ({booking.durationMinutes} mins)</span></div>
+                  {booking.serviceType !== ServiceType.TRANSLATION && (
+                    <div className="flex items-center mt-1 ml-7"><Clock size={16} className="text-gray-400 mr-2" /><span className="text-sm text-gray-600">{booking.startTime} ({booking.durationMinutes} mins)</span></div>
+                  )}
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase">Location Type</label>
-                  <div className="flex items-start mt-1">
-                    {booking.locationType === 'ONLINE' ? <Video size={18} className="text-blue-500 mr-2 mt-0.5" /> : <MapPin size={18} className="text-red-500 mr-2 mt-0.5" />}
-                    <span className="font-medium text-gray-900 text-sm">
-                      {booking.locationType === 'ONLINE' ? (
-                        <a href={booking.onlineLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{booking.onlineLink || 'Link TBC'}</a>
-                      ) : (
-                        `${booking.address || 'Address TBC'}, ${booking.postcode || ''}`
-                      )}
-                    </span>
+                {booking.serviceType === ServiceType.TRANSLATION ? (
+                  <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase">Pricing / Quote</label>
+                    <div className="mt-1">
+                      <Badge variant={booking.quoteRequested ? 'warning' : 'success'}>
+                        {booking.quoteRequested ? 'Quote Before Proceeding' : 'Standard Rates Apply'}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase">Location Type</label>
+                    <div className="flex items-start mt-1">
+                      {booking.locationType === 'ONLINE' ? <Video size={18} className="text-blue-500 mr-2 mt-0.5" /> : <MapPin size={18} className="text-red-500 mr-2 mt-0.5" />}
+                      <span className="font-medium text-gray-900 text-sm">
+                        {booking.locationType === 'ONLINE' ? (
+                          <a href={booking.onlineLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{booking.onlineLink || 'Link TBC'}</a>
+                        ) : (
+                          `${booking.address || 'Address TBC'}, ${booking.postcode || ''}`
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+            {booking.serviceType === ServiceType.TRANSLATION && booking.sourceFiles && booking.sourceFiles.length > 0 && (
+              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Source Files</label>
+                <div className="space-y-2">
+                  {booking.sourceFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <FileText size={16} className="text-blue-500" />
+                        <span className="text-xs font-medium text-slate-600">{file.split('/').pop()}</span>
+                      </div>
+                      <a href={file} target="_blank" rel="noreferrer" className="text-xs font-black text-blue-600 uppercase hover:underline">Download</a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {booking.notes && (
               <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
@@ -409,7 +458,7 @@ const AdminBookingDetails = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase">Organisation / Client</label>
-                  <div className="flex items-center mt-1"><Building2 size={18} className="text-slate-500 mr-2" /><span className="font-medium text-gray-900">{booking.guestContact?.organisation || booking.clientName}</span></div>
+                  <div className="flex items-center mt-1"><Building2 size={18} className="text-slate-500 mr-2" /><span className="font-medium text-gray-900">{getClientCompany(booking.clientId, booking.guestContact?.organisation || booking.clientName)}</span></div>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase">Contact Name</label>
@@ -425,6 +474,35 @@ const AdminBookingDetails = () => {
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase">Purchase Order / Cost Code</label>
                   <div className="flex items-center mt-1"><CreditCard size={18} className="text-emerald-500 mr-2" /><span className="font-mono text-sm text-emerald-700 font-bold">{booking.costCode || 'N/A'}</span></div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Patient / Client Name</label>
+                  <div className="flex items-center mt-1 font-medium text-gray-900">{booking.patientName || 'N/A'}</div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Professional Name</label>
+                  <div className="flex items-center mt-1 font-medium text-gray-900">{booking.professionalName || 'N/A'}</div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Data Consent (GDPR)</label>
+                  <div className="flex items-center mt-1">
+                    {booking.gdprConsent ? (
+                      <span className="flex items-center text-emerald-600 text-xs font-bold bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
+                        <CheckCircle2 size={12} className="mr-1" /> CONSENT GIVEN
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-slate-400 text-xs font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                        <AlertCircle size={12} className="mr-1" /> NOT SPECIFIED
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -617,63 +695,88 @@ const AdminBookingDetails = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{editFormData.serviceType === ServiceType.TRANSLATION ? 'Delivery Date' : 'Date'}</label>
                 <input type="date" className="w-full p-2 border rounded-lg text-sm" value={editFormData.date || ''} onChange={e => setEditFormData({ ...editFormData, date: e.target.value })} />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Start Time</label>
-                <input type="time" className="w-full p-2 border rounded-lg text-sm" value={editFormData.startTime || ''} onChange={e => setEditFormData({ ...editFormData, startTime: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Duration (Min)</label>
-                <input type="number" className="w-full p-2 border rounded-lg text-sm" value={editFormData.durationMinutes || ''} onChange={e => setEditFormData({ ...editFormData, durationMinutes: Number(e.target.value) })} />
-              </div>
+              {editFormData.serviceType !== ServiceType.TRANSLATION && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Start Time</label>
+                    <input type="time" className="w-full p-2 border rounded-lg text-sm" value={editFormData.startTime || ''} onChange={e => setEditFormData({ ...editFormData, startTime: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Duration (Min)</label>
+                    <input type="number" className="w-full p-2 border rounded-lg text-sm" value={editFormData.durationMinutes || ''} onChange={e => setEditFormData({ ...editFormData, durationMinutes: Number(e.target.value) })} />
+                  </div>
+                </>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Service Type</label>
-                <select className="w-full p-2 border rounded-lg text-sm bg-white" value={editFormData.serviceType} onChange={e => setEditFormData({ ...editFormData, serviceType: e.target.value as ServiceType })}>
+                <select 
+                  className="w-full p-2 border rounded-lg text-sm bg-white" 
+                  value={editFormData.serviceType} 
+                  onChange={e => setEditFormData({ ...editFormData, serviceType: e.target.value as ServiceType })}
+                >
                   {Object.values(ServiceType).map(st => <option key={st} value={st}>{st}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gender Pref.</label>
-                <select className="w-full p-2 border rounded-lg text-sm bg-white" value={editFormData.genderPreference} onChange={e => setEditFormData({ ...editFormData, genderPreference: e.target.value as any })}>
-                  <option value="None">None</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
+              {editFormData.serviceType !== ServiceType.TRANSLATION && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gender Pref.</label>
+                  <select className="w-full p-2 border rounded-lg text-sm bg-white" value={editFormData.genderPreference} onChange={e => setEditFormData({ ...editFormData, genderPreference: e.target.value as any })}>
+                    <option value="None">None</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              )}
             </div>
-          </div>
 
-          <hr className="border-slate-100" />
-
-          {/* Section 2: Location */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider">Location</h4>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                <input type="radio" className="w-4 h-4 text-blue-600 focus:ring-blue-500" checked={editFormData.locationType === 'ONSITE'} onChange={() => setEditFormData({ ...editFormData, locationType: 'ONSITE' })} /> Onsite
-              </label>
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                <input type="radio" className="w-4 h-4 text-blue-600 focus:ring-blue-500" checked={editFormData.locationType === 'ONLINE'} onChange={() => setEditFormData({ ...editFormData, locationType: 'ONLINE' })} /> Online
-              </label>
-            </div>
-            {editFormData.locationType === 'ONLINE' ? (
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meeting Link</label>
-                <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.onlineLink || ''} onChange={e => setEditFormData({ ...editFormData, onlineLink: e.target.value })} placeholder="https://..." />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Address</label>
-                  <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.address || ''} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} />
+            {editFormData.serviceType === ServiceType.TRANSLATION && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 group animate-in fade-in slide-in-from-top-1">
+                <div className="md:col-span-2 font-bold text-xs text-blue-600 uppercase tracking-widest">Translation Specifics</div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Output Format</label>
+                  <select 
+                    className="w-full p-2 border rounded-lg text-sm bg-white"
+                    value={editFormData.translationFormat}
+                    onChange={e => setEditFormData({ ...editFormData, translationFormat: e.target.value })}
+                  >
+                    {['Body of Email', 'Only Word', 'Only Pdf', 'Word+Pdf', 'Leaflet', 'Other'].map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Postcode</label>
-                  <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.postcode || ''} onChange={e => setEditFormData({ ...editFormData, postcode: e.target.value })} />
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Delivery Email</label>
+                  <input 
+                    type="email"
+                    className="w-full p-2 border rounded-lg text-sm"
+                    value={editFormData.deliveryEmail || ''}
+                    onChange={e => setEditFormData({ ...editFormData, deliveryEmail: e.target.value })}
+                  />
+                </div>
+                {editFormData.translationFormat === 'Other' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Specify Format</label>
+                    <input 
+                      type="text"
+                      className="w-full p-2 border rounded-lg text-sm"
+                      value={editFormData.translationFormatOther || ''}
+                      onChange={e => setEditFormData({ ...editFormData, translationFormatOther: e.target.value })}
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-2">
+                  <input 
+                    type="checkbox"
+                    id="editQuoteRequested"
+                    checked={editFormData.quoteRequested}
+                    onChange={e => setEditFormData({ ...editFormData, quoteRequested: e.target.checked })}
+                  />
+                  <label htmlFor="editQuoteRequested" className="text-sm font-medium">Quote Requested</label>
                 </div>
               </div>
             )}
@@ -681,8 +784,66 @@ const AdminBookingDetails = () => {
 
           <hr className="border-slate-100" />
 
+          {/* Section 2: Location - Only for interpreting */}
+          {editFormData.serviceType !== ServiceType.TRANSLATION && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider">Location</h4>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                  <input type="radio" className="w-4 h-4 text-blue-600 focus:ring-blue-500" checked={editFormData.locationType === 'ONSITE'} onChange={() => setEditFormData({ ...editFormData, locationType: 'ONSITE' })} /> Onsite
+                </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                  <input type="radio" className="w-4 h-4 text-blue-600 focus:ring-blue-500" checked={editFormData.locationType === 'ONLINE'} onChange={() => setEditFormData({ ...editFormData, locationType: 'ONLINE' })} /> Online
+                </label>
+              </div>
+              {editFormData.locationType === 'ONLINE' ? (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meeting Link</label>
+                  <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.onlineLink || ''} onChange={e => setEditFormData({ ...editFormData, onlineLink: e.target.value })} placeholder="https://..." />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Address</label>
+                    <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.address || ''} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Postcode</label>
+                    <input type="text" className="w-full p-2 border rounded-lg text-sm" value={editFormData.postcode || ''} onChange={e => setEditFormData({ ...editFormData, postcode: e.target.value })} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <hr className="border-slate-100" />
+
           {/* Section 3: Contact */}
           <div className="space-y-4">
+            <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider">Patient & Professional</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Patient Name / Number</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded-lg text-sm"
+                  value={editFormData.patientName || ''}
+                  onChange={e => setEditFormData({ ...editFormData, patientName: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Professional Name</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded-lg text-sm"
+                  value={editFormData.professionalName || ''}
+                  onChange={e => setEditFormData({ ...editFormData, professionalName: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <hr className="border-slate-100" />
+
             <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider">Contact & Billing</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

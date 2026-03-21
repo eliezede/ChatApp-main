@@ -18,6 +18,10 @@ export interface GuestContact {
     email: string;
     phone: string;
     billingEmail?: string;
+    gdprConsent?: boolean;
+    agreedToTerms?: boolean;
+    patientName?: string;
+    professionalName?: string;
 }
 
 export type Currency = string;

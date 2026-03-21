@@ -37,10 +37,10 @@ export const ServicesPage = () => {
                         Expert interpretation and translation services powered by certified professionals and enterprise-grade technology.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link to="/request" className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/30 hover:shadow-blue-600/40 transform hover:-translate-y-1 text-lg group whitespace-nowrap">
+                        <Link to="/request" className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/30 hover:shadow-blue-600/40 transform hover:-translate-y-1 text-lg group whitespace-nowrap flex items-center justify-center">
                             Get a Free Quote <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
                         </Link>
-                        <a href="#services" className="w-full sm:w-auto px-8 py-4 bg-white/5 text-white border border-white/10 font-bold rounded-full hover:bg-white/10 transition-all backdrop-blur-sm">
+                        <a href="#services" className="w-full sm:w-auto px-8 py-4 bg-white/5 text-white border border-white/10 font-bold rounded-full hover:bg-white/10 transition-all backdrop-blur-sm flex items-center justify-center">
                             Explore Services
                         </a>
                     </div>
@@ -123,7 +123,7 @@ export const ServicesPage = () => {
                                 <li className="flex items-center text-sm text-slate-500"><CheckCircle2 size={16} className="text-green-500 mr-2" /> Fast Turnaround</li>
                                 <li className="flex items-center text-sm text-slate-500"><CheckCircle2 size={16} className="text-green-500 mr-2" /> Technical Accuracy</li>
                             </ul>
-                            <Link to="/request" className="inline-flex items-center text-purple-600 font-bold hover:text-purple-700">
+                            <Link to="/request?service=translation" className="inline-flex items-center text-purple-600 font-bold hover:text-purple-700">
                                 Get Quote <ChevronRight size={16} className="ml-1" />
                             </Link>
                         </div>
@@ -183,7 +183,7 @@ export const ServicesPage = () => {
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">language barrier?</span>
                             </h2>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                                <Link to="/request" className="w-full sm:w-auto px-10 py-4 bg-white text-slate-900 font-bold rounded-full hover:bg-blue-50 transition-all shadow-xl shadow-black/20 transform hover:scale-105 group">
+                                <Link to="/request" className="w-full sm:w-auto px-10 py-4 bg-white text-slate-900 font-bold rounded-full hover:bg-blue-50 transition-all shadow-xl shadow-black/20 transform hover:scale-105 group flex items-center justify-center">
                                     Book a Service Now
                                 </Link>
                                 <button className="w-full sm:w-auto px-10 py-4 border-2 border-white/10 text-white font-bold rounded-full hover:bg-white/10 transition-all">

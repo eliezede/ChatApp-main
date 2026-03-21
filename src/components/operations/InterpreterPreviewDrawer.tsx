@@ -13,6 +13,7 @@ import { InterpreterService, BookingService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { unassignInterpreterAction, createDependencies } from '../../ui/actions';
 import { useAuth } from '../../context/AuthContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 interface InterpreterPreviewDrawerProps {
     isOpen: boolean;
@@ -32,6 +33,7 @@ export const InterpreterPreviewDrawer: React.FC<InterpreterPreviewDrawerProps> =
     const navigate = useNavigate();
     const { user } = useAuth();
     const { showToast } = useToast();
+    const { confirm } = useConfirm();
     const [interpreter, setInterpreter] = useState<Interpreter | null>(null);
     const [upcomingJobs, setUpcomingJobs] = useState<Booking[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +67,13 @@ export const InterpreterPreviewDrawer: React.FC<InterpreterPreviewDrawerProps> =
 
     const handleUnassign = async () => {
         if (!jobId) return;
-        if (confirm("Are you sure you want to unassign this interpreter from this job?")) {
+        const ok = await confirm({
+            title: 'Unassign Interpreter',
+            message: 'Are you sure you want to unassign this interpreter from this job? The assignment will be cleared.',
+            confirmLabel: 'Unassign',
+            variant: 'warning'
+        });
+        if (ok) {
             setIsUnassigning(true);
             try {
                 await unassignInterpreterAction(jobId, actionsDeps);
@@ -133,7 +141,7 @@ export const InterpreterPreviewDrawer: React.FC<InterpreterPreviewDrawerProps> =
                                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Compliance Status</h4>
                                     <div className="flex items-center text-sm font-bold text-green-600">
                                         <ShieldCheck size={16} className="mr-2" />
-                                        DBS Valid until {new Date(interpreter.dbsExpiry).toLocaleDateString()}
+                                        DBS Valid until {interpreter.dbsExpiry ? new Date(interpreter.dbsExpiry).toLocaleDateString() : 'N/A'}
                                     </div>
                                 </div>
                                 <div>

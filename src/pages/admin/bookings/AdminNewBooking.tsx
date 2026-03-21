@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { ClientService, InterpreterService, BookingService } from '../../../services/api';
 import { Client, Interpreter, ServiceType, BookingStatus } from '../../../types';
+import { useClients } from '../../../context/ClientContext';
 import { useToast } from '../../../context/ToastContext';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
@@ -17,9 +18,10 @@ export const AdminNewBooking = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { showToast } = useToast();
+    const { clientsMap } = useClients();
 
     const [loading, setLoading] = useState(false);
-    const [clients, setClients] = useState<Client[]>([]);
+    const clients = Object.values(clientsMap);
     const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
     const [searchingInterpreter, setSearchingInterpreter] = useState('');
     const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
@@ -47,8 +49,16 @@ export const AdminNewBooking = () => {
         organization: '',
         contactName: '',
         contactEmail: '',
-        contactPhone: ''
+        contactPhone: '',
+        // Translation-specific fields
+        translationFormat: 'Only Word',
+        translationFormatOther: '',
+        quoteRequested: false,
+        sourceFiles: [] as string[],
+        deliveryEmail: ''
     });
+
+    const isTranslation = formData.serviceType === ServiceType.TRANSLATION;
 
     useEffect(() => {
         loadInitialData();
@@ -56,11 +66,7 @@ export const AdminNewBooking = () => {
 
     const loadInitialData = async () => {
         try {
-            const [c, i] = await Promise.all([
-                ClientService.getAll(),
-                InterpreterService.getAll()
-            ]);
-            setClients(c);
+            const i = await InterpreterService.getAll();
             const activeInts = i.filter(int => int.status === 'ACTIVE');
             setInterpreters(activeInts);
 
@@ -100,7 +106,13 @@ export const AdminNewBooking = () => {
                 requestedByUserId: user?.id || 'admin',
                 bookingRef: `LL-${Math.floor(1000 + Math.random() * 9000)}`,
                 createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                // Translation-specific fields
+                translationFormat: formData.translationFormat,
+                translationFormatOther: formData.translationFormatOther,
+                quoteRequested: formData.quoteRequested,
+                sourceFiles: formData.sourceFiles,
+                deliveryEmail: formData.deliveryEmail || formData.contactEmail
             };
 
             if (clientSource === 'EXISTING' && selectedClient) {
@@ -372,13 +384,13 @@ export const AdminNewBooking = () => {
                                 </div>
                             </div>
 
-                            <div>
+                             <div className={isTranslation ? 'hidden' : ''}>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className={labelClasses}>Time</label>
                                         <input
                                             type="time"
-                                            required
+                                            required={!isTranslation}
                                             className={inputClasses}
                                             value={formData.startTime}
                                             onChange={e => setFormData({ ...formData, startTime: e.target.value })}
@@ -388,7 +400,7 @@ export const AdminNewBooking = () => {
                                         <label className={labelClasses}>Dur. (min)</label>
                                         <input
                                             type="number"
-                                            required
+                                            required={!isTranslation}
                                             className={inputClasses}
                                             value={formData.durationMinutes}
                                             onChange={e => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })}
@@ -397,7 +409,7 @@ export const AdminNewBooking = () => {
                                 </div>
                             </div>
 
-                            <div>
+                            <div className={isTranslation ? 'hidden' : ''}>
                                 <label className={labelClasses}>Interpreter Gender Preference</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {['None', 'Male', 'Female'].map(gender => (
@@ -414,63 +426,126 @@ export const AdminNewBooking = () => {
                             </div>
                         </div>
 
-                        <div className="mt-8 pt-8 border-t border-slate-50 dark:border-slate-800">
-                            <label className={labelClasses}>Meeting Method</label>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, locationType: 'ONSITE' })}
-                                    className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONSITE' ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'}`}
-                                >
-                                    <MapPin size={24} className="mb-2" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Face to Face</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, locationType: 'ONLINE' })}
-                                    className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONLINE' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'}`}
-                                >
-                                    <Video size={24} className="mb-2" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Remote / Video</span>
-                                </button>
-                            </div>
+                        {!isTranslation && (
+                            <div className="mt-8 pt-8 border-t border-slate-50 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
+                                <label className={labelClasses}>Meeting Method</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, locationType: 'ONSITE' })}
+                                        className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONSITE' ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'}`}
+                                    >
+                                        <MapPin size={24} className="mb-2" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Face to Face</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, locationType: 'ONLINE' })}
+                                        className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all ${formData.locationType === 'ONLINE' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'}`}
+                                    >
+                                        <Video size={24} className="mb-2" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Remote / Video</span>
+                                    </button>
+                                </div>
 
-                            {formData.locationType === 'ONSITE' ? (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 animate-in fade-in slide-in-from-top-2">
-                                    <div className="md:col-span-2">
-                                        <label className={labelClasses}>Full Address</label>
+                                {formData.locationType === 'ONSITE' ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 animate-in fade-in slide-in-from-top-2">
+                                        <div className="md:col-span-2">
+                                            <label className={labelClasses}>Full Address</label>
+                                            <input
+                                                type="text"
+                                                className={inputClasses}
+                                                placeholder="Street, Building name..."
+                                                value={formData.address}
+                                                onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={labelClasses}>Postcode</label>
+                                            <input
+                                                type="text"
+                                                className={inputClasses + " uppercase"}
+                                                placeholder="SW1A 1AA"
+                                                value={formData.postcode}
+                                                onChange={e => setFormData({ ...formData, postcode: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mt-6 animate-in fade-in slide-in-from-top-2">
+                                        <label className={labelClasses}>Meeting Link / Platform</label>
                                         <input
                                             type="text"
                                             className={inputClasses}
-                                            placeholder="Street, Building name..."
-                                            value={formData.address}
-                                            onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                            placeholder="e.g. MS Teams Link, Zoom ID, or 'TBC'"
+                                            value={formData.onlineLink}
+                                            onChange={e => setFormData({ ...formData, onlineLink: e.target.value })}
                                         />
                                     </div>
-                                    <div>
-                                        <label className={labelClasses}>Postcode</label>
+                                )}
+                            </div>
+                        )}
+
+                        {isTranslation && (
+                            <div className="mt-8 pt-8 border-t border-slate-50 dark:border-slate-800 space-y-8 animate-in fade-in slide-in-from-top-4">
+                                <div>
+                                    <label className={labelClasses}>Format of Translated Text</label>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {['Body of Email', 'Only Word', 'Only Pdf', 'Word+Pdf', 'Leaflet', 'Other'].map(format => (
+                                            <button
+                                                key={format}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, translationFormat: format })}
+                                                className={`py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${formData.translationFormat === format ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500'}`}
+                                            >
+                                                {format}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {formData.translationFormat === 'Other' && (
                                         <input
                                             type="text"
-                                            className={inputClasses + " uppercase"}
-                                            placeholder="SW1A 1AA"
-                                            value={formData.postcode}
-                                            onChange={e => setFormData({ ...formData, postcode: e.target.value })}
+                                            className={inputClasses + " mt-3"}
+                                            placeholder="Please specify format..."
+                                            value={formData.translationFormatOther}
+                                            onChange={e => setFormData({ ...formData, translationFormatOther: e.target.value })}
+                                        />
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <label className={labelClasses}>Standard Rates / Quote</label>
+                                        <div className="flex p-1 bg-slate-100 dark:bg-slate-800/50 rounded-2xl">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, quoteRequested: false })}
+                                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!formData.quoteRequested ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                            >
+                                                Standard Rates
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, quoteRequested: true })}
+                                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.quoteRequested ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                            >
+                                                Please Quote First
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className={labelClasses}>Delivery Email Address</label>
+                                        <input
+                                            type="email"
+                                            className={inputClasses}
+                                            placeholder="Where to send the translation..."
+                                            value={formData.deliveryEmail}
+                                            onChange={e => setFormData({ ...formData, deliveryEmail: e.target.value })}
                                         />
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="mt-6 animate-in fade-in slide-in-from-top-2">
-                                    <label className={labelClasses}>Meeting Link / Platform</label>
-                                    <input
-                                        type="text"
-                                        className={inputClasses}
-                                        placeholder="e.g. MS Teams Link, Zoom ID, or 'TBC'"
-                                        value={formData.onlineLink}
-                                        onChange={e => setFormData({ ...formData, onlineLink: e.target.value })}
-                                    />
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </Card>
                 </div>
 

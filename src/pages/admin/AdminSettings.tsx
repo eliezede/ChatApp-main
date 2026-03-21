@@ -372,7 +372,7 @@ export const AdminSettings = () => {
                        ...formData, 
                        masterData: {
                          ...formData.masterData, 
-                         priorityLanguages: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                         priorityLanguages: Array.from(new Set(e.target.value.split(',').map(s => s.trim()).filter(Boolean)))
                        }
                      })}
                    />

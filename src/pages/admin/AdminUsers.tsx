@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { useAuth } from '../../context/AuthContext';
 import { Table } from '../../components/ui/Table';
 import { BulkActionBar } from '../../components/ui/BulkActionBar';
@@ -29,6 +30,7 @@ export const AdminUsers = () => {
   const [newRoleSelection, setNewRoleSelection] = useState<UserRole | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { isSuperAdmin } = useAuth();
 
   useEffect(() => { loadData(); }, []);
@@ -60,8 +62,14 @@ export const AdminUsers = () => {
     setActionInProgress(null);
   };
 
-  const handleBulkDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} users?`)) return;
+   const handleBulkDelete = async () => {
+    const ok = await confirm({
+      title: 'Bulk Delete Users',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} users? This action cannot be undone.`,
+      confirmLabel: 'Delete Permanently',
+      variant: 'danger'
+    });
+    if (!ok) return;
     setActionInProgress('bulk-delete');
     let successCount = 0;
     await Promise.allSettled(selectedIds.map(async (id) => {
@@ -209,8 +217,14 @@ export const AdminUsers = () => {
     {
       label: 'Delete User',
       icon: <Trash2 size={14} className="text-red-500" />,
-      onClick: async () => {
-        if (confirm(`Delete ${user.displayName}?`)) {
+       onClick: async () => {
+        const ok = await confirm({
+          title: 'Delete User',
+          message: `Are you sure you want to delete ${user.displayName}? This action cannot be undone.`,
+          confirmLabel: 'Delete User',
+          variant: 'danger'
+        });
+        if (ok) {
           await UserService.delete(user.id);
           showToast('User deleted', 'success');
           loadData();

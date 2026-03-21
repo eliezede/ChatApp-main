@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ServiceType } from '../types';
+import { useToast } from '../context/ToastContext';
 
 export const CreateRequest = () => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     serviceType: ServiceType.FACE_TO_FACE,
     languageFrom: 'English',
@@ -14,7 +16,7 @@ export const CreateRequest = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert("This would submit to Firestore 'bookings' collection.");
+    showToast("This would submit to Firestore 'bookings' collection.", 'info');
   };
 
   return (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Clock, Building2, Globe2, MapPin, Video, Eye, Pencil, Trash2, CheckCircle2, UserPlus, UserCircle2 } from 'lucide-react';
 import { useBookings } from '../../../hooks/useBookings';
 import { useAuth } from '../../../context/AuthContext';
+import { useClients } from '../../../context/ClientContext';
 import { useBookingViews } from '../../../hooks/useBookingViews';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
@@ -23,6 +24,7 @@ import { Settings, Plus as PlusIcon } from 'lucide-react';
 export const JobsBoard = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { getClientCompany } = useClients();
     const { showToast } = useToast();
     const { bookings = [], loading, refresh } = useBookings();
     const { views, activeView, setActiveViewId } = useBookingViews(user?.id || '');
@@ -123,7 +125,7 @@ export const JobsBoard = () => {
                     </div>
                     <div className="flex flex-col">
                         <span className="font-bold text-slate-900 dark:text-white truncate max-w-[180px]">
-                            {job.guestContact?.organisation || job.clientName}
+                            {getClientCompany(job.clientId, job.guestContact?.organisation || job.clientName)}
                         </span>
                         <span className="text-[10px] text-slate-500 uppercase">{job.guestContact?.name || 'Contact'}</span>
                     </div>
@@ -418,7 +420,9 @@ export const JobsBoard = () => {
                                         <Building2 size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{selectedJob.clientName}</p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                                            {getClientCompany(selectedJob.clientId, selectedJob.clientName)}
+                                        </p>
                                         <p className="text-[11px] text-slate-500 mt-0.5 uppercase tracking-tighter font-medium underline underline-offset-2">
                                             {selectedJob.guestContact?.name || 'Authorized Contact'}
                                         </p>

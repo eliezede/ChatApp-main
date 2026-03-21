@@ -16,6 +16,7 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 import { Interpreter, Booking, BookingStatus, JobStatus, BookingColumnField, ALL_BOOKING_COLUMNS, ViewFilterRule, ViewSortRule, GroupableField, FilterableField, SortableField } from '../../types';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import {
   unassignInterpreterAction,
   updateJobStatusAction,
@@ -27,6 +28,7 @@ import { BulkActionBar } from '../../components/ui/BulkActionBar';
 export const AdminBookings = () => {
   const { user, isSuperAdmin } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { bookings = [], loading, error, refresh } = useBookings();
 
   // Scoped dependencies for UI actions
@@ -109,7 +111,13 @@ export const AdminBookings = () => {
 
   const handleUnassign = async (e: React.MouseEvent, bookingId: string) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to unassign this interpreter?")) return;
+    const ok = await confirm({
+      title: 'Unassign Interpreter',
+      message: 'Are you sure you want to unassign this interpreter? The booking will return to the assignment pool.',
+      confirmLabel: 'Unassign',
+      variant: 'warning'
+    });
+    if (!ok) return;
     setUnassigningId(bookingId);
     try {
       await unassignInterpreterAction(bookingId, actionsDeps);
@@ -143,7 +151,13 @@ export const AdminBookings = () => {
   };
 
   const handleBulkDelete = async (ids: string[]) => {
-    if (!confirm(`Delete ${ids.length} booking${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: 'Delete Bookings',
+      message: `Are you sure you want to delete ${ids.length} booking${ids.length > 1 ? 's' : ''}? This action cannot be undone and will remove all associated logs.`,
+      confirmLabel: 'Delete Permanently',
+      variant: 'danger'
+    });
+    if (!ok) return;
     setIsBulkLoading(true);
     const { BookingService } = await import('../../services/api');
     let successCount = 0;
@@ -441,9 +455,15 @@ export const AdminBookings = () => {
                     </button>
                     {!view.isSystem && (
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          if (confirm('Delete custom view?')) deleteCustomView(view.id);
+                          const ok = await confirm({
+                            title: 'Delete Custom View',
+                            message: `Are you sure you want to delete the "${view.name}" view?`,
+                            confirmLabel: 'Delete View',
+                            variant: 'danger'
+                          });
+                          if (ok) deleteCustomView(view.id);
                         }}
                         className="p-1 rounded-md hover:bg-red-200 text-red-500 transition-colors"
                         title="Delete View"

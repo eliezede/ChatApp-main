@@ -11,6 +11,7 @@ import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
+import { useClients } from '../../context/ClientContext';
 import {
   Search, Plus, Mail, Trash2, MapPin, Briefcase, Clock,
   ChevronRight, ExternalLink, User, MessageSquare, AlertCircle, LayoutGrid, List, Calendar, Phone,
@@ -21,6 +22,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/ui/Table';
 import { BulkActionBar } from '../../components/ui/BulkActionBar';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 interface ClientWithStats extends Client {
   totalBookings: number;
@@ -32,6 +34,8 @@ export const AdminClients = () => {
   const { user } = useAuth();
   const { openThread } = useChat();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
+  const { clientsMap } = useClients();
   const [clients, setClients] = useState<ClientWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
@@ -44,35 +48,36 @@ export const AdminClients = () => {
   const [clientJobs, setClientJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
+  // Update clients when clientsMap or bookings change
   useEffect(() => {
-    loadData();
-  }, []);
+    const calculateStats = async () => {
+      try {
+        const bookingsData = await BookingService.getAll();
+        const clientsWithStats = Object.values(clientsMap).map(client => {
+          const clientBookings = (bookingsData || []).filter(b => b.clientId === client.id);
+          return {
+            ...client,
+            totalBookings: clientBookings.length,
+            activeBookings: clientBookings.filter(b =>
+              ['INCOMING', 'PENDING_ASSIGNMENT', 'BOOKED'].includes(String(b.status))
+            ).length
+          };
+        });
+        setClients(clientsWithStats.sort((a, b) => a.companyName.localeCompare(b.companyName)));
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+        setLoading(false);
+      }
+    };
+
+    calculateStats();
+  }, [clientsMap]);
 
   const loadData = async () => {
+    // This now just triggers a re-calculation if needed, 
+    // but the useEffect handles it via clientsMap dependency.
     setLoading(true);
-    try {
-      const [clientsData, bookingsData] = await Promise.all([
-        ClientService.getAll(),
-        BookingService.getAll()
-      ]);
-
-      const clientsWithStats = clientsData.map(client => {
-        const clientBookings = (bookingsData || []).filter(b => b.clientId === client.id);
-        return {
-          ...client,
-          totalBookings: clientBookings.length,
-          activeBookings: clientBookings.filter(b =>
-            ['INCOMING', 'PENDING_ASSIGNMENT', 'BOOKED'].includes(String(b.status))
-          ).length
-        };
-      });
-
-      setClients(clientsWithStats.sort((a, b) => a.companyName.localeCompare(b.companyName)));
-    } catch (error) {
-      console.error('Failed to load clients data', error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const filteredClients = clients.filter(c => {
@@ -136,7 +141,13 @@ export const AdminClients = () => {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} clients?`)) return;
+    const ok = await confirm({
+      title: 'Bulk Delete Clients',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} clients? This will remove their company data and account access.`,
+      confirmLabel: 'Delete Permanently',
+      variant: 'danger'
+    });
+    if (!ok) return;
     let done = 0;
     for (const id of selectedIds) {
       try {

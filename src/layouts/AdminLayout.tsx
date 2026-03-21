@@ -60,13 +60,37 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [totalUnread, setTotalUnread] = useState(0);
+  const [onboardingBadge, setOnboardingBadge] = useState(0);
 
   useEffect(() => {
     if (!user) return;
-    return ChatService.subscribeToThreads(user.id, (threads) => {
+    
+    // Sync chat unread count
+    const unsubscribeChat = ChatService.subscribeToThreads(user.id, (threads) => {
       const count = threads.reduce((acc, t) => acc + (t.unreadCount[user.id] || 0), 0);
       setTotalUnread(count);
     });
+
+    // Fetch initial stats
+    const fetchStats = async () => {
+      try {
+        const stats = await import('../services/statsService').then(m => m.StatsService.getOnboardingStats());
+        const total = stats.pendingApplications + stats.pendingOnboardingDocs;
+        // Only update if changed to avoid any chance of redundant layout calc
+        setOnboardingBadge(prev => prev !== total ? total : prev);
+      } catch (e) {
+        console.error("Failed to fetch onboarding stats", e);
+      }
+    };
+    fetchStats();
+
+    // Set up polling for stats (every 30s)
+    const interval = setInterval(fetchStats, 30000);
+
+    return () => {
+      clearInterval(interval);
+      unsubscribeChat();
+    };
   }, [user]);
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
@@ -119,7 +143,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Network</div>}
           <NavItem isCollapsed={isCollapsed} to="/admin/interpreters" icon={Users} label="Interpreters" active={isActive('/admin/interpreters')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/clients" icon={Briefcase} label="Clients & Depts" active={isActive('/admin/clients')} onClick={closeSidebar} />
-          <NavItem isCollapsed={isCollapsed} to="/admin/applications" icon={UserPlus} label="Applications" active={isActive('/admin/applications')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/applications" icon={UserPlus} label="Applications" badge={onboardingBadge} active={isActive('/admin/applications')} onClick={closeSidebar} />
 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Finance</div>}
           <NavItem isCollapsed={isCollapsed} to="/admin/billing/client-invoices" icon={CreditCard} label="Client Invoices" active={isActive('/admin/billing/client-invoices')} onClick={closeSidebar} />

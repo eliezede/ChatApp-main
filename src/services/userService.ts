@@ -61,24 +61,11 @@ export const UserService = {
     }
   },
 
-  sendActivationEmail: async (email: string, displayName: string) => {
+  sendActivationEmail: async (email: string) => {
     try {
-      // In a production environment with proper Firebase setup, this would trigger an email.
-      // Front-end only can only trigger a password reset which serves as activation.
+      // In a production environment, this triggers a standard Firebase password reset.
+      // This will now only work if the user has already been provisioned by the backend.
       await sendPasswordResetEmail(auth, email);
-      
-      // Optional: Log the mail request if you have an extension installed
-      try {
-        await addDoc(collection(db, 'mail'), {
-          to: email,
-          message: {
-            subject: 'Welcome to Lingland - Access your Account',
-            html: `<h1>Hello, ${displayName}!</h1><p>Your account on Lingland Platform has been provisioned. Please follow the link to set your password and log in.</p>`,
-          },
-          timestamp: new Date().toISOString()
-        });
-      } catch (err) {}
-      
       return true;
     } catch (e) {
       console.error("Error sending activation email:", e);

@@ -7,6 +7,8 @@ import {
   Lock, Globe2, Activity, Database, CheckCircle, XCircle, AlertTriangle,
   ArrowRight, Mail, ShieldCheck
 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -20,6 +22,8 @@ export const LoginPage = () => {
   const [seedSuccess, setSeedSuccess] = useState(false);
 
   const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   useEffect(() => {
     // Check connection on mount
@@ -49,16 +53,22 @@ export const LoginPage = () => {
   };
 
   const handleSeed = async () => {
-    if (!window.confirm("Warning: This will add test data to your Firestore database. Continue?")) return;
+    const ok = await confirm({
+      title: 'Seed Test Data',
+      message: 'Warning: This will add test data to your Firestore database. Continue?',
+      confirmLabel: 'Seed Data',
+      variant: 'warning'
+    });
+    if (!ok) return;
 
     setSeeding(true);
     try {
       await SystemService.seedDatabase();
       setSeedSuccess(true);
-      alert('Database seeded successfully! You can now log in with demo credentials.');
+      showToast('Database seeded successfully! You can now log in with demo credentials.', 'success');
     } catch (e) {
       console.error(e);
-      alert('Failed to seed. Please check console for details.');
+      showToast('Failed to seed. Please check console for details.', 'error');
     } finally {
       setSeeding(false);
     }

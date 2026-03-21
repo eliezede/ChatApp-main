@@ -11,6 +11,7 @@ import { StatusBadge } from '../../../components/StatusBadge';
 import { Booking, Interpreter } from '../../../types';
 import { InterpreterService } from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 import { assignInterpreterAction, createDependencies } from '../../../ui/actions';
 import { BulkActionBar } from '../../../components/ui/BulkActionBar';
 import { InterpreterAllocationDrawer } from '../../../components/operations/InterpreterAllocationDrawer';
@@ -19,6 +20,7 @@ export const AssignmentCenter = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { showToast } = useToast();
+    const { confirm } = useConfirm();
     const { bookings = [], loading, refresh } = useBookings();
     const actionsDeps = createDependencies((user as any)?.organizationId || 'lingland-main');
 
@@ -41,8 +43,14 @@ export const AssignmentCenter = () => {
         setSelectedIds([]);
     };
 
-    const handleBulkCancel = (ids: string[]) => {
-        if (confirm(`Are you sure you want to cancel ${ids.length} jobs?`)) {
+    const handleBulkCancel = async (ids: string[]) => {
+        const ok = await confirm({
+            title: 'Cancel Jobs',
+            message: `Are you sure you want to cancel ${ids.length} selected jobs? This action cannot be undone.`,
+            confirmLabel: 'Cancel Jobs',
+            variant: 'danger'
+        });
+        if (ok) {
             showToast(`${ids.length} jobs cancelled`, 'success');
             setSelectedIds([]);
         }

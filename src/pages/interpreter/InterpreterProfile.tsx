@@ -288,17 +288,42 @@ export const InterpreterProfile = () => {
               {activeTab === 'PERSONAL' && (
                 <form onSubmit={handleSave} className="space-y-6 animate-in fade-in duration-500">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="md:col-span-2">
-                      <label className={labelClasses}>Full Professional Name</label>
-                      <input
-                        type="text" disabled={!isEditing}
-                        className={inputClasses}
-                        value={formData.name || ''}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      />
+                  <div className="md:col-span-2 grid grid-cols-2 gap-6">
+                      <div className="col-span-2">
+                        <label className={labelClasses}>Full Professional Name</label>
+                        <input
+                          type="text" disabled={!isEditing}
+                          className={inputClasses}
+                          value={formData.name || ''}
+                          onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClasses}>Short Name (for emails)</label>
+                        <input
+                          type="text" disabled={!isEditing}
+                          className={inputClasses}
+                          placeholder="e.g. Maria"
+                          value={formData.shortName || ''}
+                          onChange={e => setFormData({ ...formData, shortName: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClasses}>Gender</label>
+                        <select
+                          disabled={!isEditing}
+                          className={inputClasses}
+                          value={formData.gender || 'M'}
+                          onChange={e => setFormData({ ...formData, gender: e.target.value as any })}
+                        >
+                          <option value="M">Male</option>
+                          <option value="F">Female</option>
+                          <option value="O">Other / Prefer not to say</option>
+                        </select>
+                      </div>
                     </div>
                     <div>
-                      <label className={labelClasses}>Phone Number</label>
+                      <label className={labelClasses}>Mobile Phone</label>
                       <input
                         type="tel" disabled={!isEditing}
                         className={inputClasses}
@@ -307,21 +332,60 @@ export const InterpreterProfile = () => {
                       />
                     </div>
                     <div>
-                      <label className={labelClasses}>Postcode</label>
+                      <label className={labelClasses}>Home Phone</label>
                       <input
-                        type="text" disabled={!isEditing}
-                        className={inputClasses + " uppercase"}
-                        value={formData.postcode || ''}
-                        onChange={e => setFormData({ ...formData, postcode: e.target.value })}
+                        type="tel" disabled={!isEditing}
+                        className={inputClasses}
+                        placeholder="Optional"
+                        value={formData.homePhone || ''}
+                        onChange={e => setFormData({ ...formData, homePhone: e.target.value })}
                       />
                     </div>
-                    <div className="md:col-span-2">
-                      <label className={labelClasses}>Primary Address</label>
+                    <div>
+                      <label className={labelClasses}>Skype ID</label>
                       <input
                         type="text" disabled={!isEditing}
                         className={inputClasses}
-                        value={formData.addressLine1 || ''}
-                        onChange={e => setFormData({ ...formData, addressLine1: e.target.value })}
+                        placeholder="Your Skype username"
+                        value={formData.skypeId || ''}
+                        onChange={e => setFormData({ ...formData, skypeId: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClasses}>Postcode</label>
+                      <input
+                        type="text" disabled={!isEditing}
+                        className={inputClasses + ' uppercase'}
+                        value={formData.postcode || formData.address?.postcode || ''}
+                        onChange={e => setFormData({ ...formData, postcode: e.target.value, address: { ...formData.address!, postcode: e.target.value } })}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={labelClasses}>Street Address</label>
+                      <input
+                        type="text" disabled={!isEditing}
+                        className={inputClasses}
+                        placeholder="Street, Building"
+                        value={formData.address?.street || formData.addressLine1 || ''}
+                        onChange={e => setFormData({ ...formData, addressLine1: e.target.value, address: { ...formData.address!, street: e.target.value } })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClasses}>Town / City</label>
+                      <input
+                        type="text" disabled={!isEditing}
+                        className={inputClasses}
+                        value={formData.address?.town || ''}
+                        onChange={e => setFormData({ ...formData, address: { ...formData.address!, town: e.target.value } })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClasses}>County</label>
+                      <input
+                        type="text" disabled={!isEditing}
+                        className={inputClasses}
+                        value={formData.address?.county || ''}
+                        onChange={e => setFormData({ ...formData, address: { ...formData.address!, county: e.target.value } })}
                       />
                     </div>
                   </div>
@@ -341,7 +405,7 @@ export const InterpreterProfile = () => {
                 <div className="space-y-6 animate-in fade-in duration-500">
                   <label className={labelClasses}>Authorized Languages</label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {settings.masterData.priorityLanguages.map(lang => (
+                    {Array.from(new Set(settings.masterData.priorityLanguages)).map(lang => (
                       <label key={lang} className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer group ${formData.languages?.includes(lang)
                         ? 'bg-blue-50 border-blue-200 text-blue-900'
                         : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
@@ -372,11 +436,11 @@ export const InterpreterProfile = () => {
               {/* ---------------- COMPLIANCE ---------------- */}
               {activeTab === 'COMPLIANCE' && (
                 <div className="space-y-8 animate-in fade-in duration-500 max-w-2xl">
-                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-8">
+                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-4">
                     <Shield size={24} className="text-slate-400 shrink-0" />
                     <div>
                       <h4 className="text-sm font-black text-slate-900">Security Clearance (DBS)</h4>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Submit updated records for administration audit</p>
+                      <p className="text-xs font-medium text-slate-500 mt-1">Submit updated records for administration audit. Contact admin if any information is outdated.</p>
                     </div>
                   </div>
 
@@ -394,12 +458,12 @@ export const InterpreterProfile = () => {
                     <div className={`relative border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center transition-all min-h-[120px] ${formData.dbsDocumentUrl ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-300 hover:border-blue-400 bg-slate-50'}`}>
                       {formData.dbsDocumentUrl ? (
                         <div className="text-center w-full">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-3 flex items-center justify-center gap-1"><Check size={12} /> Verified Document</p>
+                          <p className="text-xs font-black uppercase tracking-widest text-emerald-700 mb-3 flex items-center justify-center gap-1"><Check size={12} /> Verified Document</p>
                           <div className="flex justify-center gap-2">
-                            <a href={formData.dbsDocumentUrl} target="_blank" rel="noreferrer" className="text-[9px] bg-white border border-slate-200 text-slate-900 px-3 py-1.5 rounded-lg font-black uppercase tracking-widest hover:bg-slate-50 transition-all">Inspect</a>
+                            <a href={formData.dbsDocumentUrl} target="_blank" rel="noreferrer" className="text-xs bg-white border border-slate-200 text-slate-900 px-3 py-1.5 rounded-lg font-bold hover:bg-slate-50 transition-all">Inspect</a>
                             {isEditing && (
                               <label className="cursor-pointer">
-                                <span className="text-[9px] bg-slate-900 text-white px-3 py-1.5 rounded-lg font-black uppercase tracking-widest hover:bg-black transition-all">Replace</span>
+                                <span className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-black transition-all">Replace</span>
                                 <input type="file" className="hidden" accept=".pdf,image/*" onChange={handleFileUpload} disabled={isUploading} />
                               </label>
                             )}
@@ -408,21 +472,45 @@ export const InterpreterProfile = () => {
                       ) : (
                         <label className={`flex flex-col items-center cursor-pointer group ${!isEditing && 'pointer-events-none opacity-50'}`}>
                           <Upload size={20} className="text-slate-400 mb-2 group-hover:text-blue-500 transition-colors" />
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-blue-600 transition-colors">Attach PDF / Scan</span>
+                          <span className="text-xs font-black uppercase tracking-widest text-slate-500 group-hover:text-blue-600 transition-colors">Attach PDF / Scan</span>
                           <input type="file" className="hidden" accept=".pdf,image/*" onChange={handleFileUpload} disabled={isUploading || !isEditing} />
                         </label>
                       )}
                       {isUploading && (
                         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl z-20">
                           <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
-                          <span className="text-[9px] font-black uppercase tracking-widest text-blue-700">Encrypting</span>
+                          <span className="text-xs font-black uppercase tracking-widest text-blue-700">Uploading...</span>
                         </div>
                       )}
                     </div>
                   </div>
 
+                  {/* Read-only Vetting Progress */}
+                  {(profile.workChecksCompleted?.length || 0) > 0 && (
+                    <div className="pt-6 border-t border-slate-100">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Info size={12} /> Onboarding Progress (read-only)
+                      </p>
+                      <div className="space-y-2">
+                        {['CV', 'Interviewed', 'Passport checked', 'Reference 1', 'Reference 2', 'Right to work UK'].map(check => {
+                          const done = (profile.workChecksCompleted || []).includes(check);
+                          return (
+                            <div key={check} className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-bold ${
+                              done ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-slate-50 border-slate-100 text-slate-400'
+                            }`}>
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+                                {done ? <Check size={10} className="text-white" strokeWidth={4} /> : <span className="text-slate-400 text-[8px] font-black">–</span>}
+                              </div>
+                              {check}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {isEditing && (
-                    <div className="pt-6 mt-6 border-t border-slate-100 flex justify-end">
+                    <div className="pt-6 mt-2 border-t border-slate-100 flex justify-end">
                       <Button onClick={() => handleSave()} disabled={isSaving} icon={Save} size="sm" className="bg-slate-900 text-white hover:bg-black uppercase tracking-widest text-[10px] px-8">
                         Save Document
                       </Button>

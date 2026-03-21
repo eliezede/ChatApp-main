@@ -465,14 +465,28 @@ export const Dashboard = () => {
             <div className="flex-1 p-4 overflow-y-auto">
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">System Alerts</h3>
               <div className="space-y-2">
-                <button onClick={() => navigate('/admin/applications')} className="w-full flex gap-3 p-2.5 hover:bg-slate-50 rounded-lg -mx-0 transition-colors text-left group">
-                  <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-blue-500 shrink-0"></div>
-                  <div>
-                    <p className="text-[11px] text-slate-700 font-semibold leading-tight">New Application</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">1 interpreter application awaiting review</p>
-                    <p className="text-[10px] text-blue-600 font-bold mt-1 group-hover:underline">Review Now →</p>
-                  </div>
-                </button>
+                {stats?.pendingApplications > 0 && (
+                  <button onClick={() => navigate('/admin/applications')} className="w-full flex gap-3 p-2.5 hover:bg-slate-50 rounded-lg -mx-0 transition-colors text-left group">
+                    <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-blue-500 shrink-0 animate-pulse"></div>
+                    <div>
+                      <p className="text-[11px] text-slate-700 font-semibold leading-tight">New Applications</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{stats.pendingApplications} interpreter application{stats.pendingApplications > 1 ? 's' : ''} awaiting review</p>
+                      <p className="text-[10px] text-blue-600 font-bold mt-1 group-hover:underline">Review Now →</p>
+                    </div>
+                  </button>
+                )}
+
+                {stats?.pendingOnboardingDocs > 0 && (
+                  <button onClick={() => navigate('/admin/applications?tab=ONBOARDING')} className="w-full flex gap-3 p-2.5 hover:bg-slate-50 rounded-lg transition-colors text-left group">
+                    <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse"></div>
+                    <div>
+                      <p className="text-[11px] text-slate-700 font-semibold leading-tight">Document Reviews</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{stats.pendingOnboardingDocs} interpreter{stats.pendingOnboardingDocs > 1 ? 's' : ''} uploaded new documents</p>
+                      <p className="text-[10px] text-amber-600 font-bold mt-1 group-hover:underline">Verify Docs →</p>
+                    </div>
+                  </button>
+                )}
+
                 {byStatus.incoming > 0 && (
                   <button onClick={() => navigate('/admin/bookings')} className="w-full flex gap-3 p-2.5 hover:bg-slate-50 rounded-lg transition-colors text-left group">
                     <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-red-500 shrink-0 animate-pulse"></div>
@@ -483,15 +497,14 @@ export const Dashboard = () => {
                     </div>
                   </button>
                 )}
-                {byStatus.invoicing > 0 && (
-                  <button onClick={() => navigate('/admin/timesheets')} className="w-full flex gap-3 p-2.5 hover:bg-slate-50 rounded-lg transition-colors text-left group">
-                    <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-violet-500 shrink-0"></div>
-                    <div>
-                      <p className="text-[11px] text-slate-700 font-semibold leading-tight">{byStatus.invoicing} Timesheets Pending</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">Ready for invoice generation</p>
-                      <p className="text-[10px] text-violet-600 font-bold mt-1 group-hover:underline">Process Now →</p>
+                
+                {stats?.pendingApplications === 0 && stats?.pendingOnboardingDocs === 0 && byStatus.incoming === 0 && (
+                  <div className="py-8 text-center">
+                    <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle2 size={20} className="text-slate-300" />
                     </div>
-                  </button>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">All clear</p>
+                  </div>
                 )}
               </div>
             </div>

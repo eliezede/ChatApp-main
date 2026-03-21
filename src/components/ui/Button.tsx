@@ -6,6 +6,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   icon?: React.ElementType;
+  iconPosition?: 'left' | 'right';
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -14,6 +15,7 @@ export const Button: React.FC<ButtonProps> = ({
   size = 'md',
   isLoading = false,
   icon: Icon,
+  iconPosition = 'left',
   className = '',
   disabled,
   ...props
@@ -34,6 +36,8 @@ export const Button: React.FC<ButtonProps> = ({
     lg: "px-8 py-4 text-base",
   };
 
+  const iconClasses = size === 'sm' ? 'w-3 h-3' : 'w-5 h-5';
+
   return (
     <button
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
@@ -41,8 +45,9 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {isLoading && <Spinner size="sm" className="mr-2 text-current" />}
-      {!isLoading && Icon && <Icon className={`mr-2 ${size === 'sm' ? 'w-3 h-3' : 'w-5 h-5'}`} />}
+      {!isLoading && Icon && iconPosition === 'left' && <Icon className={`${iconClasses} mr-2`} />}
       {children}
+      {!isLoading && Icon && iconPosition === 'right' && <Icon className={`${iconClasses} ml-2`} />}
     </button>
   );
 };

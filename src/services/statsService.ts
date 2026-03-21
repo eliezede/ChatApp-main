@@ -12,6 +12,8 @@ export const StatsService = {
       const bookingsSnap = await getDocs(query(collection(db, 'bookings'), where('status', '==', BookingStatus.INCOMING)));
       const interpretersSnap = await getDocs(query(collection(db, 'interpreters'), where('status', '==', 'ACTIVE')));
       const invoicesSnap = await getDocs(query(collection(db, 'clientInvoices'), where('status', '==', 'SENT')));
+      
+      const onboardingStats = await StatsService.getOnboardingStats();
 
       // Calculate revenue from confirmed/completed/paid bookings this month
       const now = new Date();
@@ -31,14 +33,45 @@ export const StatsService = {
         pendingRequests: bookingsSnap.size,
         activeInterpreters: interpretersSnap.size,
         unpaidInvoices: invoicesSnap.size,
-        revenueMonth: revenue || 0
+        revenueMonth: revenue || 0,
+        ...onboardingStats
       };
     }, {
       totalBookings: MOCK_BOOKINGS.length,
       pendingRequests: MOCK_BOOKINGS.filter(b => b.status === BookingStatus.INCOMING).length,
       activeInterpreters: MOCK_INTERPRETERS.length,
       unpaidInvoices: 3,
-      revenueMonth: 12500
+      revenueMonth: 12500,
+      pendingApplications: 1,
+      pendingOnboardingDocs: 2,
+      totalOnboarding: 3
+    });
+  },
+
+  getOnboardingStats: async () => {
+    return safeFetch(async () => {
+      const appsSnap = await getDocs(query(collection(db, 'applications'), where('status', '==', 'PENDING')));
+      const onboardingInterpsSnap = await getDocs(query(collection(db, 'interpreters'), where('status', '==', 'ONBOARDING')));
+      
+      let pendingDocs = 0;
+      onboardingInterpsSnap.forEach(doc => {
+        const i = doc.data();
+        const ob = i.onboarding;
+        if (ob) {
+          const hasPending = [ob.dbs, ob.idCheck, ob.certifications, ob.rightToWork].some(d => d?.status === 'IN_REVIEW');
+          if (hasPending) pendingDocs++;
+        }
+      });
+
+      return {
+        pendingApplications: appsSnap.size,
+        pendingOnboardingDocs: pendingDocs,
+        totalOnboarding: onboardingInterpsSnap.size
+      };
+    }, {
+      pendingApplications: 1,
+      pendingOnboardingDocs: 0,
+      totalOnboarding: 1
     });
   },
 

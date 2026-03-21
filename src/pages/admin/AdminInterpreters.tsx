@@ -17,9 +17,10 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/ui/Table';
 import { BulkActionBar } from '../../components/ui/BulkActionBar';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import {
   Search, MapPin, Languages, ShieldCheck, Check, MessageSquare,
-  AlertCircle, Trash2, Calendar, Mail, ExternalLink, UserCircle2, ChevronRight, Users, User
+  AlertCircle, Trash2, Calendar, Mail, ExternalLink, UserCircle2, ChevronRight, Users, User, Clock
 } from 'lucide-react';
 
 export const AdminInterpreters = () => {
@@ -28,6 +29,7 @@ export const AdminInterpreters = () => {
   const { openThread } = useChat();
   const { settings } = useSettings();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -115,7 +117,13 @@ export const AdminInterpreters = () => {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} interpreters?`)) return;
+    const ok = await confirm({
+      title: 'Bulk Delete Interpreters',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} interpreters? This will remove their profile data and account access.`,
+      confirmLabel: 'Delete Permanently',
+      variant: 'danger'
+    });
+    if (!ok) return;
     let done = 0;
     for (const id of selectedIds) {
       try {
@@ -166,9 +174,16 @@ export const AdminInterpreters = () => {
     {
       header: 'Status',
       accessor: (i: Interpreter) => (
-        <Badge variant={i.status === 'ACTIVE' ? 'success' : i.status === 'SUSPENDED' ? 'danger' : 'warning'}>
-          {i.status}
-        </Badge>
+        <div className="flex flex-col gap-1">
+          <Badge variant={i.status === 'ACTIVE' ? 'success' : i.status === 'SUSPENDED' ? 'danger' : 'warning'}>
+            {i.status}
+          </Badge>
+          {i.onboarding?.overallStatus === 'IN_REVIEW' && (
+            <span className="text-[10px] font-black text-blue-600 flex items-center gap-1 animate-pulse">
+              <Clock size={10} /> Docs in Review
+            </span>
+          )}
+        </div>
       )
     }
   ];

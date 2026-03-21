@@ -106,9 +106,13 @@ export const BookingService = {
 
   createGuestBooking: async (input: any): Promise<Booking> => {
     const bookingRef = `LL-${Math.floor(1000 + Math.random() * 9000)}`;
-    const start = new Date(`2000-01-01T${input.startTime}`);
-    const end = new Date(start.getTime() + input.durationMinutes * 60000);
-    const expectedEndTime = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    
+    let expectedEndTime = '';
+    if (input.startTime && input.durationMinutes) {
+      const start = new Date(`2000-01-01T${input.startTime}`);
+      const end = new Date(start.getTime() + input.durationMinutes * 60000);
+      expectedEndTime = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
 
     // 1. Handle Client Association
     let clientId = '';

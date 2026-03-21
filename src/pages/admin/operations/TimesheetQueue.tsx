@@ -10,9 +10,11 @@ import { StatusBadge } from '../../../components/StatusBadge';
 import { BulkActionBar } from '../../../components/ui/BulkActionBar';
 import { Booking, BookingStatus, Timesheet } from '../../../types';
 import { BookingService, BillingService } from '../../../services/api';
+import { useToast } from '../../../context/ToastContext';
 
 export const TimesheetQueue = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const { bookings = [], loading, refresh } = useBookings();
 
     // Filter jobs that have submitted timesheets but aren't verified yet
@@ -47,7 +49,7 @@ export const TimesheetQueue = () => {
             setIsAuditModalOpen(false);
             refresh();
         } catch (e) {
-            alert("Failed to verify timesheet");
+            showToast("Failed to verify timesheet", "error");
         }
     };
 

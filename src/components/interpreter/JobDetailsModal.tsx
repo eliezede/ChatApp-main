@@ -5,7 +5,7 @@ import { StatusBadge } from '../StatusBadge';
 import { Booking, BookingStatus } from '../../types';
 import {
     Calendar, Clock, MapPin, Video, Globe2,
-    MessageSquare, CheckCircle2, XCircle, Info, ExternalLink, ShieldCheck
+    MessageSquare, CheckCircle2, XCircle, Info, ExternalLink, ShieldCheck, User
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -161,6 +161,14 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                                 {job.serviceType}
                             </div>
                         </div>
+
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Patient / Client</label>
+                            <div className="flex items-center text-xs font-medium text-slate-700 bg-white p-2.5 rounded border border-slate-200">
+                                <User size={14} className="text-blue-500 mr-2" />
+                                {job.patientName || 'N/A'}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-4">
@@ -180,6 +188,16 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                                 )}
                             </div>
                         </div>
+
+                        {job.professionalName && (
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Name of Professional</label>
+                                <div className="flex items-center text-xs font-medium text-slate-700 bg-white p-2.5 rounded border border-slate-200">
+                                    <User size={14} className="text-blue-500 mr-2" />
+                                    {job.professionalName}
+                                </div>
+                            </div>
+                        )}
 
                         {job.notes && (
                             <div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StatsService } from '../../services/statsService';
 import { useAuth } from '../../context/AuthContext';
-import { BookingService, BillingService } from '../../services/api';
+import { BookingService, BillingService, InterpreterService } from '../../services/api';
 import { Booking, BookingStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,12 +12,14 @@ import {
 } from 'lucide-react';
 import { JobDetailsModal } from '../../components/interpreter/JobDetailsModal';
 import { NotificationCenter } from '../../components/notifications/NotificationCenter';
+import { OnboardingWidget } from '../../components/interpreter/OnboardingWidget';
 import { useToast } from '../../context/ToastContext';
 import { useChat } from '../../context/ChatContext';
 import { ChatService } from '../../services/chatService';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Interpreter } from '../../types';
 
 // --- Sub-components matching Admin Dashboard ---
 
@@ -116,6 +118,8 @@ export const InterpreterDashboard = () => {
   const [upcomingJobs, setUpcomingJobs] = useState<any[]>([]);
   const [pendingTimesheets, setPendingTimesheets] = useState<Booking[]>([]);
   const [offers, setOffers] = useState<Booking[]>([]);
+  const [interpreterStatus, setInterpreterStatus] = useState<string>('ACTIVE');
+  const [interpreter, setInterpreter] = useState<Interpreter | null>(null);
   const [stats, setStats] = useState({
     completedBookings: 0,
     liveOffers: 0,
@@ -197,6 +201,13 @@ export const InterpreterDashboard = () => {
         hoursWorked: '84.5h', // Mock for design
         nextPayout: `£${totalEarnings.toLocaleString('en-GB') || '0.00'}`
       });
+
+      // Fetch full interpreter profile to check status
+      const profile = await InterpreterService.getById(interpreterId);
+      if (profile) {
+        setInterpreterStatus(profile.status);
+        setInterpreter(profile as Interpreter);
+      }
     } catch (error) {
       console.error("Failed to load dashboard data", error);
     } finally {
@@ -265,7 +276,44 @@ export const InterpreterDashboard = () => {
         <Button onClick={() => navigate('/interpreter/jobs')} variant="secondary" icon={Briefcase} size="sm">Browse Jobs</Button>
       </PageHeader>
 
-      {/* Metrics Ribbon */}
+      {/* Conditional Rendering: Onboarding Flow */}
+      {/* Case 1: New Applicant - Must complete profile wizard first */}
+      {interpreterStatus === 'APPLICANT' && interpreter && (
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-[2.5rem] p-8 text-center shadow-xl shadow-slate-200/50">
+            <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <User size={40} />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 mb-2">Welcome aboard!</h2>
+            <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+              We've provisioned your account. To start receiving job offers, we first need to complete your professional profile.
+            </p>
+            <Button 
+              onClick={() => navigate('/interpreter/onboarding')} 
+              className="w-full bg-slate-900 py-4 rounded-2xl"
+              icon={ChevronRight}
+              iconPosition="right"
+            >
+              Start Profile Wizard
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Case 2: Onboarding - Documents Review Hub */}
+      {interpreterStatus === 'ONBOARDING' && interpreter && (
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-8">
+           <OnboardingWidget 
+             interpreter={interpreter} 
+             onUpdate={() => user?.profileId && loadDashboardData(user.profileId)} 
+           />
+        </div>
+      )}
+
+      {/* Primary Dashboard Content (Hidden if Onboarding) */}
+      {!(interpreterStatus === 'ONBOARDING' || interpreterStatus === 'APPLICANT') && (
+        <>
+          {/* Metrics Ribbon */}
       <div className="bg-white border border-slate-200 rounded-3xl px-8 py-5 flex flex-wrap items-center gap-x-12 gap-y-4 mb-8 shadow-sm mx-4 sm:mx-0">
         {loading ? (
           Array(3).fill(0).map((_, i) => <MetricSkeleton key={i} />)
@@ -369,6 +417,7 @@ export const InterpreterDashboard = () => {
           </div>
         </aside>
       </div>
+    </>)}
 
       {/* Shared Job Details Modal */}
       <JobDetailsModal

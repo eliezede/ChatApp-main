@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useClientBookings } from '../../../hooks/useClientHooks';
 import { StatusBadge } from '../../../components/StatusBadge';
-import { Search, Filter, Clock, MapPin, Video } from 'lucide-react';
+import { Search, Filter, Clock, MapPin, Video, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ServiceType } from '../../../types';
 
 export const ClientBookingsList = () => {
   const { user } = useAuth();
@@ -64,14 +65,14 @@ export const ClientBookingsList = () => {
                 )}
                 {filteredBookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{booking.date}</span>
-                        <div className="flex items-center text-xs text-gray-500 mt-0.5">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                      {booking.date}
+                      {booking.serviceType !== ServiceType.TRANSLATION && (
+                        <div className="flex items-center text-xs text-gray-500 font-normal mt-0.5">
                           <Clock size={12} className="mr-1" />
                           {booking.startTime} ({booking.durationMinutes}m)
                         </div>
-                      </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
@@ -80,7 +81,11 @@ export const ClientBookingsList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center text-sm text-gray-600">
-                         {booking.locationType === 'ONSITE' ? <MapPin size={16} className="mr-2 text-red-500" /> : <Video size={16} className="mr-2 text-blue-500" />}
+                         {booking.serviceType === ServiceType.TRANSLATION ? (
+                           <FileText size={16} className="mr-2 text-blue-500" />
+                         ) : (
+                           booking.locationType === 'ONSITE' ? <MapPin size={16} className="mr-2 text-red-500" /> : <Video size={16} className="mr-2 text-blue-500" />
+                         )}
                          {booking.serviceType}
                       </div>
                     </td>

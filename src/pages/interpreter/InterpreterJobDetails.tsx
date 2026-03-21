@@ -156,6 +156,17 @@ export const InterpreterJobDetails = () => {
                   <p className="font-semibold text-sm text-slate-900 truncate" title={job.clientName}>{job.clientName || 'Confidential'}</p>
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">Patient / Client Name</p>
+                  <p className="font-bold text-slate-700">{job.patientName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">Professional Name</p>
+                  <p className="font-bold text-slate-700">{job.professionalName || 'N/A'}</p>
+                </div>
+              </div>
             </div>
           </div>
 

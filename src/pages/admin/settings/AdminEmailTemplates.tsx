@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Edit2, Save, X, Plus } from 'lucide-react';
+import { Mail, Edit2, Save, X, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
@@ -11,6 +11,7 @@ import { EmailService } from '../../../services/emailService';
 export const AdminEmailTemplates: React.FC = () => {
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [loading, setLoading] = useState(true);
+    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({'BOOKINGS': true});
     const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
     const [testRecipient, setTestRecipient] = useState('');
     const [sendingTest, setSendingTest] = useState(false);
@@ -90,42 +91,74 @@ export const AdminEmailTemplates: React.FC = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Email Templates</h1>
-                    <p className="text-slate-500 mt-1">Manage automated communications sent to clients and interpreters.</p>
+                    <p className="text-slate-500 mt-1">Manage automated communications sent to clients, interpreters, and applicants.</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {templates.map(template => (
-                    <Card key={template.id} className="p-6 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col hover:border-blue-500 transition-colors cursor-pointer" onClick={() => handleEdit(template)}>
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
-                                    <Mail size={20} />
+            <div className="space-y-10">
+                {Object.entries(
+                    templates.reduce((acc, template) => {
+                        const cat = template.category || 'UNCATEGORIZED';
+                        if (!acc[cat]) acc[cat] = [];
+                        acc[cat].push(template);
+                        return acc;
+                    }, {} as Record<string, EmailTemplate[]>)
+                ).map(([category, catTemplates]) => {
+                    const isExpanded = expandedCategories[category];
+                    return (
+                        <div key={category} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                            <button 
+                                onClick={() => setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }))}
+                                className="w-full flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 capitalize">
+                                    {category.toLowerCase()} Templates
+                                </h2>
+                                <div className="text-slate-400">
+                                    {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 dark:text-white">{template.name}</h3>
-                                    <div className="text-xs font-semibold text-slate-500 mt-0.5">Triggers on: {template.triggerStatus}</div>
-                                </div>
-                            </div>
-                        </div>
+                            </button>
+                            
+                            {isExpanded && (
+                                <div className="p-6 bg-white dark:bg-slate-900">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {catTemplates.map(template => (
+                                            <Card key={template.id} className="p-6 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col hover:border-blue-500 transition-colors cursor-pointer" onClick={() => handleEdit(template)}>
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
+                                                            <Mail size={20} />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-bold text-slate-900 dark:text-white">{template.name}</h3>
+                                                            <div className="text-xs font-semibold text-slate-500 mt-0.5">Triggers on: {template.triggerStatus}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
-                        <div className="mt-auto space-y-3">
-                            <div className="flex items-center space-x-2">
-                                <Badge variant={template.recipientType === 'CLIENT' ? 'info' : 'warning'}>
-                                    TO: {template.recipientType}
-                                </Badge>
-                                {template.isActive ? (
-                                    <Badge variant="success">Active</Badge>
-                                ) : (
-                                    <Badge variant="neutral">Disabled</Badge>
-                                )}
-                            </div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
-                                <strong>Subj:</strong> {template.subject}
-                            </p>
+                                                <div className="mt-auto space-y-3">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Badge variant={template.recipientType === 'CLIENT' ? 'info' : template.recipientType === 'INTERPRETER' ? 'warning' : 'neutral'}>
+                                                            TO: {template.recipientType}
+                                                        </Badge>
+                                                        {template.isActive ? (
+                                                            <Badge variant="success">Active</Badge>
+                                                        ) : (
+                                                            <Badge variant="neutral">Disabled</Badge>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
+                                                        <strong>Subj:</strong> {template.subject}
+                                                    </p>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </Card>
-                ))}
+                    );
+                })}
             </div>
 
             {editingTemplate && (
@@ -155,6 +188,39 @@ export const AdminEmailTemplates: React.FC = () => {
                                     onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
                                     className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        Category <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        value={editingTemplate.category || 'BOOKINGS'}
+                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, category: e.target.value as any })}
+                                        className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option value="BOOKINGS">Bookings</option>
+                                        <option value="APPLICATIONS">Applications</option>
+                                        <option value="INVOICING">Invoicing</option>
+                                        <option value="SYSTEM">System</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        Recipient Type <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        value={editingTemplate.recipientType}
+                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, recipientType: e.target.value as any })}
+                                        className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option value="CLIENT">Client</option>
+                                        <option value="INTERPRETER">Interpreter</option>
+                                        <option value="APPLICANT">Applicant</option>
+                                        <option value="ADMIN">Admin</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div>

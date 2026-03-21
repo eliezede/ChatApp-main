@@ -33,7 +33,15 @@ export const StatusBadge: React.FC<{ status: BookingStatus | JobStatus | string 
       case BookingStatus.CANCELLED:
       case 'CANCELLED':
       case 'SUSPENDED':
+      case 'BLOCKED':
+      case 'UNRELIABLE':
         return 'bg-red-100 text-red-800 border-red-200';
+      case 'APPLICANT':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'ONLY_TRANSL':
+        return 'bg-cyan-100 text-cyan-800 border-cyan-200';
+      case 'ON_LEAVE':
+        return 'bg-slate-100 text-slate-800 border-slate-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
