@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { auth, db } from '../services/firebaseConfig';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { MOCK_USERS } from '../services/mockData';
 
 interface AuthContextType {
@@ -30,7 +30,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            /* Fixed: Added missing required status property to User object */
             setUser({
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
@@ -40,8 +39,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               status: userData.status || 'ACTIVE'
             });
           } else {
-            // User authenticated but no profile doc exists
-            // Check mock data as fallback before creating default
+            // BACKUP: Fetch by email if UID document doesn't exist
+            // (Handles legacy mismatch or transition periods)
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('email', '==', firebaseUser.email));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+              const userData = querySnapshot.docs[0].data();
+              console.log("Auth: Found user by email fallback.", userData);
+              setUser({
+                id: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                displayName: userData.displayName || firebaseUser.email,
+                role: userData.role as UserRole,
+                profileId: userData.profileId,
+                status: userData.status || 'ACTIVE'
+              });
+              
+              // Note: Ideally we'd trigger a migration here too, but the Cloud Function handles it now.
+            } else {
+              // No profile doc exists at all
+              // Check mock data as fallback before creating default
             const mockUser = MOCK_USERS.find(u => u.email === firebaseUser.email);
 
             /* Fixed: Added missing required status property to User object */
@@ -54,8 +73,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               status: mockUser?.status || 'ACTIVE'
             });
           }
-        } catch (error) {
-          console.warn("Auth: Firestore unreachable (Offline Mode). Using Mock Data fallback.");
+        }
+      } catch (error) {
+        console.warn("Auth: Firestore unreachable (Offline Mode). Using Mock Data fallback.");
 
           // OFFLINE FALLBACK: Match email to Mock Data
           const mockUser = MOCK_USERS.find(u => u.email === firebaseUser.email);

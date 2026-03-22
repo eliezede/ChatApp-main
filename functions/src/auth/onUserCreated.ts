@@ -36,14 +36,31 @@ export const onUserCreated = functions.runWith({
                 }
             }
 
-            // 3. Generate Link (Set password / reset password)
+            const authUid = userRecord.uid;
+            
+            // 3. IMPORTANT: ID ALIGNMENT
+            // If the current Firestore document ID is NOT the Auth UID, we must migrate it.
+            // This ensures AuthContext.tsx can fetch the user by UID upon login.
+            if (authUid !== context.params.userId) {
+                console.log(`[onUserCreated] ID Mismatch Detected. Migrating ${context.params.userId} to ${authUid}...`);
+                await admin.firestore().collection('users').doc(authUid).set({
+                    ...userData,
+                    id: authUid // Update ID within the document
+                }, { merge: true });
+                
+                // Delete the temporary (random ID) document
+                await admin.firestore().collection('users').doc(context.params.userId).delete();
+                console.log(`[onUserCreated] ID Alignment complete for ${email}.`);
+            }
+
+            // 4. Generate Activation Link
             console.log(`[onUserCreated] Generating activation link for ${email}...`);
             const actionCodeSettings = {
-                url: 'https://lingland-platform.web.app/login', // Redirect after password set
+                url: 'https://lingland-platform.web.app/login',
             };
             const link = await admin.auth().generatePasswordResetLink(email, actionCodeSettings);
 
-            // 4. Send the activation email (via 'mail' collection trigger)
+            // 5. Send Activation Email
             console.log(`[onUserCreated] Queueing activation email for ${email}`);
             await admin.firestore().collection('mail').add({
                 to: [email],
@@ -58,11 +75,7 @@ export const onUserCreated = functions.runWith({
                             <div style="margin: 30px 0;">
                                 <a href="${link}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Set My Password</a>
                             </div>
-                            <p style="font-size: 12px; color: #64748b;">If the button doesn't work, copy and paste this link into your browser:</p>
-                            <p style="font-size: 11px; word-break: break-all; color: #3b82f6;">${link}</p>
-                            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
-                            <p style="font-size: 14px;">Once your password is set, you can log in at <a href="https://lingland-platform.web.app">lingland-platform.web.app</a> using your email: <strong>${email}</strong></p>
-                            <p>We look forward to working with you!</p>
+                            <p style="font-size: 14px;">Once your password is set, you can log in using your email: <strong>${email}</strong></p>
                             <p>Best regards,<br>The Lingland Team</p>
                         </div>
                     `,
