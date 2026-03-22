@@ -42,4 +42,5 @@ __exportStar(require("./billing/onTimesheetAdminApproved"), exports);
 __exportStar(require("./billing/generateClientInvoice"), exports);
 __exportStar(require("./billing/generateInterpreterInvoices"), exports);
 __exportStar(require("./mail/onEmailCreated"), exports);
+__exportStar(require("./auth/onUserCreated"), exports);
 //# sourceMappingURL=index.js.map
