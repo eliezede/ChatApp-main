@@ -83,7 +83,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                     <div className="hidden md:flex items-center space-x-4">
                         {user ? (
                             <Link
-                                to={user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
+                                to={(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
                                 className={`px-6 py-2.5 text-sm font-bold rounded-full transition-all shadow-lg hover:-translate-y-0.5 ${scrolled
                                         ? (isDarkTheme ? 'bg-white text-blue-900 hover:bg-blue-50' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20')
                                         : (isDarkTheme ? 'bg-white text-blue-900 hover:bg-blue-50' : (transparent ? 'bg-white text-blue-900 hover:bg-blue-50 shadow-black/10' : 'bg-slate-900 text-white hover:bg-slate-800'))
@@ -132,7 +132,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                         <div className={`pt-4 border-t flex flex-col gap-3 ${isDarkTheme ? 'border-white/5' : 'border-slate-100'}`}>
                             {user ? (
                                 <Link
-                                    to={user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
+                                    to={(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') ? '/admin/dashboard' : user.role === 'CLIENT' ? '/client/dashboard' : '/interpreter/dashboard'}
                                     className={`w-full py-4 text-center font-bold rounded-2xl shadow-lg ${isDarkTheme ? 'text-blue-900 bg-white' : 'text-white bg-slate-900'}`}
                                     onClick={() => setMobileMenuOpen(false)}
                                 >

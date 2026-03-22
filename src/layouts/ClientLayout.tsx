@@ -4,7 +4,7 @@ import {
   LayoutDashboard, CalendarDays, PlusCircle, User,
   LogOut, Globe2, Menu, CreditCard, X, ChevronRight
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 interface NavItemProps {
@@ -36,6 +36,12 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/', { replace: true });
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans">
@@ -103,7 +109,7 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
           <div className={`flex ${isCollapsed ? 'flex-col' : 'items-center'} gap-2 mt-2`}>
             <ThemeToggle className={`flex-1 justify-center ${isCollapsed ? 'p-2' : ''}`} />
             <button
-              onClick={logout}
+              onClick={handleLogout}
               title="Sign Out"
               className={`flex items-center justify-center p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-red-100 dark:border-red-900/30 ${isCollapsed ? '' : 'flex-1 text-xs font-bold uppercase tracking-widest'}`}
             >

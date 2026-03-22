@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Search, Command, Zap, Users, Briefcase, FileText, Settings, ArrowRight,
-    CalendarDays, UserCheck, Clock, UserPlus, PoundSterling, BarChart3, Shield, Globe
+    CalendarDays, UserCheck, Clock, UserPlus, PoundSterling, BarChart3, Shield, Globe, Database
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -39,10 +39,14 @@ export const CommandPalette = () => {
         // Finance
         { id: 'client-invoices', title: 'Client Invoices', subtitle: 'Manage client billing', icon: PoundSterling, category: 'Finance', keywords: ['invoices', 'billing', 'clients'], onSelect: () => navigate('/admin/billing/client-invoices') },
         { id: 'interpreter-payments', title: 'Interpreter Payments', subtitle: 'Manage remittances and payroll', icon: PoundSterling, category: 'Finance', keywords: ['payments', 'remittance', 'payroll', 'interpreters'], onSelect: () => navigate('/admin/billing/interpreter-invoices') },
+        { id: 'payroll', title: 'Payroll Center', subtitle: 'Process interpreter payroll batches', icon: PoundSterling, category: 'Finance', keywords: ['payroll', 'payout', 'remittance'], onSelect: () => navigate('/admin/finance/payroll') },
+        { id: 'statements', title: 'Financial Statements', subtitle: 'Auditing and transaction history', icon: FileText, category: 'Finance', keywords: ['statements', 'audit', 'history'], onSelect: () => navigate('/admin/finance/statements') },
+        { id: 'document-center', title: 'Document Center', subtitle: 'Financial document workspace', icon: FileText, category: 'Finance', keywords: ['documents', 'invoices', 'sheets'], onSelect: () => navigate('/admin/finance/documents') },
         { id: 'financial-reports', title: 'Financial Reports', subtitle: 'Revenue analytics and reports', icon: BarChart3, category: 'Finance', keywords: ['reports', 'analytics', 'revenue', 'finance'], onSelect: () => navigate('/admin/finance/reports') },
         // Admin
         { id: 'settings', title: 'System Config', subtitle: 'Platform settings and configuration', icon: Settings, category: 'Admin', keywords: ['settings', 'config', 'system'], onSelect: () => navigate('/admin/settings') },
         { id: 'users', title: 'Users & Roles', subtitle: 'Manage user accounts and permissions', icon: Shield, category: 'Admin', keywords: ['users', 'roles', 'permissions', 'accounts'], onSelect: () => navigate('/admin/users') },
+        { id: 'data-center', title: 'Data Orchestration', subtitle: 'Infrastructure and bulk operations', icon: Database, category: 'Admin', keywords: ['data', 'database', 'import', 'export', 'system'], onSelect: () => navigate('/admin/administration/data') },
         { id: 'audit-log', title: 'Audit Logs', subtitle: 'System audit trail and history', icon: FileText, category: 'Admin', keywords: ['audit', 'logs', 'history', 'trail'], onSelect: () => navigate('/admin/system/audit-log') },
     ];
 

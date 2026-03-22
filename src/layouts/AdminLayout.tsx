@@ -149,6 +149,9 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           <NavItem isCollapsed={isCollapsed} to="/admin/billing" icon={PoundSterling} label="Finance Hub" active={location.pathname === '/admin/billing'} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/billing/client-invoices" icon={CreditCard} label="Client Invoices" active={isActive('/admin/billing/client-invoices')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/billing/interpreter-invoices" icon={PoundSterling} label="Interpreter Payments" active={isActive('/admin/billing/interpreter-invoices')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/finance/statements" icon={FileText} label="Statements" active={isActive('/admin/finance/statements')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/finance/payroll" icon={PoundSterling} label="Payroll" active={isActive('/admin/finance/payroll')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/finance/documents" icon={FileText} label="Document Center" active={isActive('/admin/finance/documents')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/finance/reports" icon={BarChart3} label="Financial Reports" active={isActive('/admin/finance/reports')} onClick={closeSidebar} />
 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Communications</div>}
@@ -161,6 +164,9 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             <React.Fragment>
               <NavItem isCollapsed={isCollapsed} to="/admin/settings" icon={Settings} label="System Config" active={location.pathname === '/admin/settings'} onClick={closeSidebar} />
               <NavItem isCollapsed={isCollapsed} to="/admin/system/audit-log" icon={ClipboardList} label="Audit Logs" active={isActive('/admin/system/audit-log')} onClick={closeSidebar} />
+              {user?.role === UserRole.SUPER_ADMIN && (
+                <NavItem isCollapsed={isCollapsed} to="/admin/administration/data" icon={Globe2} label="Data Orchestration" active={isActive('/admin/administration/data')} onClick={closeSidebar} />
+              )}
             </React.Fragment>
           )}
         </nav>
