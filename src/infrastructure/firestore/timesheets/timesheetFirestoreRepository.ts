@@ -11,7 +11,8 @@ export const createTimesheetFirestoreRepository = (tenantId: string): TimesheetR
             if (snap.exists()) {
                 const data = snap.data() as Timesheet;
                 if (data.organizationId !== tenantId) return null; // Guardrail
-                return { id: snap.id, ...data };
+                const { id: _, ...rest } = data;
+                return { id: snap.id, ...rest, organizationId: tenantId } as Timesheet;
             }
         } catch { /* mock fallback */ }
         const mock = MOCK_TIMESHEETS.find((t: any) => t.id === id) as any;

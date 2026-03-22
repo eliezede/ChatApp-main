@@ -1,4 +1,4 @@
-import { Booking, BookingStatus, Client, Interpreter, ServiceType, User, UserRole, BookingAssignment, AssignmentStatus, Timesheet, Rate, ClientInvoice, InterpreterInvoice, SystemSettings } from '../types';
+import { Booking, BookingStatus, Client, Interpreter, ServiceType, User, UserRole, BookingAssignment, AssignmentStatus, Timesheet, Rate, ClientInvoice, InterpreterInvoice, SystemSettings, ServiceCategory, SessionMode } from '../types';
 
 // === HELPERS ===
 const today = new Date();
@@ -63,6 +63,7 @@ const DEFAULT_INTERPRETERS: Interpreter[] = [
     },
     keyInterpreter: false,
     documentUrls: [],
+    regions: [],
     organizationId: 'org1',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -86,6 +87,7 @@ const DEFAULT_INTERPRETERS: Interpreter[] = [
     badge: { idStatus: 'Not made yet' },
     keyInterpreter: true,
     documentUrls: [],
+    regions: [],
     workFormsSigned: [],
     otherPaperwork: [],
     inductionsCompleted: [],
@@ -100,6 +102,7 @@ const DEFAULT_INTERPRETERS: Interpreter[] = [
 const DEFAULT_BOOKINGS: Booking[] = [
   {
     id: 'b1', clientId: 'c1', clientName: 'NHS Trust North', requestedByUserId: 'u2',
+    organizationId: 'org1', serviceCategory: ServiceCategory.INTERPRETATION,
     serviceType: ServiceType.FACE_TO_FACE, languageFrom: 'English', languageTo: 'Arabic',
     date: getDate(1), startTime: '10:00', durationMinutes: 90,
     locationType: 'ONSITE', address: 'Ward 4, North Hospital', postcode: 'NW1 2BU',
@@ -108,6 +111,7 @@ const DEFAULT_BOOKINGS: Booking[] = [
   },
   {
     id: 'b2', clientId: 'c2', clientName: 'Smith & Co Solicitors', requestedByUserId: 'u_temp',
+    organizationId: 'org1', serviceCategory: ServiceCategory.INTERPRETATION,
     serviceType: ServiceType.VIDEO, languageFrom: 'English', languageTo: 'Spanish',
     date: getDate(-1), startTime: '14:00', durationMinutes: 60,
     locationType: 'ONLINE', onlineLink: 'https://zoom.us/j/123',

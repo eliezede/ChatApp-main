@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BookingService, InterpreterService, BillingService, PdfService } from '../../../services/api';
 import { ChatService } from '../../../services/chatService';
-import { Booking, BookingAssignment, Interpreter, BookingStatus, AssignmentStatus, ServiceType, Timesheet } from '../../../types';
+import { Booking, BookingAssignment, Interpreter, BookingStatus, AssignmentStatus, ServiceType, Timesheet, ServiceCategory } from '../../../types';
 import { LANGUAGES } from '../../../constants/languages';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { Button } from '../../../components/ui/Button';
@@ -38,7 +38,6 @@ const AdminBookingDetails = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [suggestedInterpreters, setSuggestedInterpreters] = useState<Interpreter[]>([]);
   const [allInterpreters, setAllInterpreters] = useState<Interpreter[]>([]);
-  const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [interpretersMap, setInterpretersMap] = useState<Record<string, Interpreter>>({});
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -65,11 +64,10 @@ const AdminBookingDetails = () => {
   const loadBookingData = async (bookingId: string) => {
     setLoading(true);
     try {
-      const [bookingData, assignmentsData, interpretersList, bookingsList, eventsData, timesheetData] = await Promise.all([
+      const [bookingData, assignmentsData, interpretersList, eventsData, timesheetData] = await Promise.all([
         BookingService.getById(bookingId),
         BookingService.getAssignmentsByBookingId(bookingId),
         InterpreterService.getAll(),
-        BookingService.getAll(),
         BookingService.getJobEvents(bookingId),
         BillingService.getTimesheetByBookingId(bookingId)
       ]);
@@ -79,7 +77,6 @@ const AdminBookingDetails = () => {
       setAssignments(assignmentsData);
       setEvents(eventsData);
       setAllInterpreters(interpretersList);
-      setAllBookings(bookingsList);
 
       const map: Record<string, Interpreter> = {};
       interpretersList.forEach(i => map[i.id] = i);
@@ -221,26 +218,15 @@ const AdminBookingDetails = () => {
     }
   };
 
+  // TODO: Implement proper backend endpoints for workload and schedule
+  // These functions currently return empty/0 to prevent the massive data explosion 
+  // of downloading all platform bookings to the client device.
   const getInterpreterWorkload = (interpreterId: string) => {
-    if (!booking) return 0;
-    const bookingDate = new Date(booking.date);
-    const startOfWeek = new Date(bookingDate);
-    startOfWeek.setDate(bookingDate.getDate() - bookingDate.getDay());
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-    return allBookings.filter(b =>
-      b.interpreterId === interpreterId &&
-      ['BOOKED', 'TIMESHEET_SUBMITTED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(b.status)) &&
-      new Date(b.date) >= startOfWeek && new Date(b.date) <= endOfWeek
-    ).length;
+    return 0;
   };
 
   const getInterpreterSchedule = (interpreterId: string) => {
-    return allBookings.filter((b: Booking) =>
-      b.interpreterId === interpreterId &&
-      ['BOOKED', 'TIMESHEET_SUBMITTED', 'INVOICING', 'INVOICED', 'PAID'].includes(String(b.status))
-    ).sort((a: Booking, b: Booking) => a.date.localeCompare(b.date));
+    return [];
   };
 
   const handleOpenAllocation = () => {
@@ -283,6 +269,15 @@ const AdminBookingDetails = () => {
           <Button
             variant="secondary"
             size="sm"
+            onClick={() => handleUpdateStatus('ADMIN' as BookingStatus)}
+            className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            disabled={processing || booking.status === 'ADMIN'}
+          >
+            Admin Hold
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => handleUpdateStatus('CANCELLED' as BookingStatus)}
             className="text-amber-600 border-amber-200 hover:bg-amber-50"
             disabled={processing || booking.status === 'CANCELLED'}
@@ -320,28 +315,39 @@ const AdminBookingDetails = () => {
             let message = '';
             let actionBtn = null;
 
+            const isTranslation = booking.serviceCategory === ServiceCategory.TRANSLATION;
+
             if (status === 'INCOMING') {
               actionType = 'action';
-              message = 'Next Step: Find and assign an interpreter.';
-              actionBtn = <Button size="sm" onClick={handleOpenAllocation} icon={UserPlus}>Find Interpreter</Button>;
+              message = isTranslation ? 'Next Step: Find and assign a translator.' : 'Next Step: Find and assign an interpreter.';
+              actionBtn = <Button size="sm" onClick={handleOpenAllocation} icon={UserPlus}>{isTranslation ? 'Find Translator' : 'Find Interpreter'}</Button>;
             } else if (status === 'PENDING_ASSIGNMENT') {
               actionType = 'warning';
-              message = 'Next Step: Wait for the interpreter to accept the offer or assign one directly.';
+              message = isTranslation 
+                ? 'Next Step: Wait for the translator to accept the offer or assign one directly.' 
+                : 'Next Step: Wait for the interpreter to accept the offer or assign one directly.';
             } else if (status === 'BOOKED') {
               actionType = 'info';
-              message = `Next Step: Session takes place on ${new Date(booking.date).toLocaleDateString()}.`;
+              message = isTranslation 
+                ? `Next Step: Delivery deadline is ${new Date(booking.date).toLocaleDateString()}.`
+                : `Next Step: Session takes place on ${new Date(booking.date).toLocaleDateString()}.`;
             } else if (status === 'TIMESHEET_SUBMITTED') {
               actionType = 'action';
-              message = 'Next Step: Interpreter submitted their timesheet. Please verify it.';
-              // Using existing navigate logic (needs actual route)
-              actionBtn = <Button size="sm" onClick={() => navigate(`/admin/operations/timesheets?jobId=${booking.id}`)}>Review Timesheet</Button>;
-            } else if (status === 'INVOICING') {
+              message = isTranslation 
+                ? 'Next Step: Translator submitted their delivery. Please verify it.'
+                : 'Next Step: Interpreter submitted their timesheet. Please verify it.';
+              actionBtn = <Button size="sm" onClick={() => navigate(`/admin/operations/timesheets?jobId=${booking.id}`)}>
+                {isTranslation ? 'Review Delivery' : 'Review Timesheet'}
+              </Button>;
+            } else if (status === BookingStatus.READY_FOR_INVOICE) {
               actionType = 'action';
-              message = 'Next Step: Timesheet verified. You can now generate the invoice.';
+              message = isTranslation
+                ? 'Next Step: Delivery verified. You can now generate the invoice.'
+                : 'Next Step: Timesheet verified. You can now generate the invoice.';
               actionBtn = <Button size="sm" onClick={() => navigate(`/admin/billing/client-invoices?clientId=${booking.clientId}&start=${booking.date}&end=${booking.date}`)} icon={Plus}>Generate Invoice</Button>;
-            } else if (status === 'INVOICING' || status === 'INVOICED') {
+            } else if (status === BookingStatus.INVOICED) {
               actionType = 'info';
-              message = 'Next Step: Waiting for client payment.';
+              message = 'Next Step: Invoice sent. Waiting for client payment.';
             } else if (status === 'PAID') {
               actionType = 'success';
               message = 'Job is fully completed and paid.';
@@ -565,7 +571,7 @@ const AdminBookingDetails = () => {
           </Card>
 
           {/* Financial Impact Section */}
-          {(['INVOICING', 'INVOICED', 'PAID'].includes(String(booking.status)) && timesheet) && (
+          {([BookingStatus.READY_FOR_INVOICE, BookingStatus.INVOICED, BookingStatus.PAID].map(String).includes(String(booking.status)) && timesheet) && (
             <Card className="bg-emerald-50 border-emerald-100 shadow-sm">
               <div className="flex items-center justify-between mb-4 border-b border-emerald-100 pb-2">
                 <h3 className="font-bold text-emerald-900 flex items-center gap-2"><TrendingUp size={16} /> Financial Impact</h3>
@@ -583,54 +589,79 @@ const AdminBookingDetails = () => {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-emerald-200 flex justify-between items-center">
-                  <div>
-                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-0.5">Gross Profit</p>
-                    <p className="text-2xl font-black text-emerald-700 leading-none">
-                      £{((timesheet.clientAmountCalculated || 0) - (timesheet.interpreterAmountCalculated || 0)).toFixed(2)}
-                    </p>
+                <div className="pt-3 border-t border-emerald-200 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-emerald-800/60 uppercase">
+                    <span>Session</span>
+                    <span className="text-right">£{timesheet.interpreterAmountCalculated?.toFixed(2)}</span>
                   </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                      onClick={() => PdfService.generateClientInvoice({
-                        id: `INV-${booking.id.substring(0, 6)}`,
-                        clientName: booking.clientName,
-                        reference: booking.bookingRef || booking.id,
-                        issueDate: new Date().toISOString(),
-                        totalAmount: timesheet.clientAmountCalculated,
-                        items: [{
-                          description: `Interpreting Services: ${booking.languageFrom} to ${booking.languageTo} (${new Date(booking.date).toLocaleDateString()})`,
-                          rate: timesheet.clientAmountCalculated,
-                          units: 1,
-                          total: timesheet.clientAmountCalculated
-                        }]
-                      } as any)}
-                      icon={CreditCard}
-                    >
-                      Download Invoice
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 border-emerald-100 border"
-                      onClick={() => PdfService.generateRemittance({
-                        id: `REM-${booking.id.substring(0, 6)}`,
-                        interpreterName: booking.interpreterName || 'Interpreter',
-                        totalAmount: timesheet.interpreterAmountCalculated,
-                        items: [{
-                          jobRef: booking.bookingRef || booking.id.substring(0, 6),
-                          date: booking.date,
-                          description: `Payment for ${booking.languageTo} service`,
-                          total: timesheet.interpreterAmountCalculated
-                        }]
-                      })}
-                      icon={Receipt}
-                    >
-                      Remittance Advice
-                    </Button>
+                  {(timesheet.travelFees || 0) > 0 && (
+                    <div className="grid grid-cols-2 gap-2 text-[10px] font-medium text-slate-500 uppercase">
+                      <span>Travel ({timesheet.travelTimeMinutes}m)</span>
+                      <span className="text-right">£{timesheet.travelFees?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(timesheet.mileageFees || 0) > 0 && (
+                    <div className="grid grid-cols-2 gap-2 text-[10px] font-medium text-slate-500 uppercase">
+                      <span>Mileage ({timesheet.mileage}m)</span>
+                      <span className="text-right">£{timesheet.mileageFees?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {((timesheet.parking || 0) + (timesheet.transport || 0)) > 0 && (
+                    <div className="grid grid-cols-2 gap-2 text-[10px] font-medium text-slate-500 uppercase">
+                      <span>Expenses</span>
+                      <span className="text-right">£{((timesheet.parking || 0) + (timesheet.transport || 0)).toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="pt-2 border-t border-emerald-200 flex justify-between items-center">
+                    <div>
+                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-0.5">Gross Profit</p>
+                      <p className="text-2xl font-black text-emerald-700 leading-none">
+                        £{((timesheet.clientAmountCalculated || 0) - (timesheet.interpreterAmountCalculated || 0)).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                        onClick={() => PdfService.generateClientInvoice({
+                          id: `INV-${booking.id.substring(0, 6)}`,
+                          clientName: booking.clientName,
+                          reference: booking.bookingRef || booking.id,
+                          issueDate: new Date().toISOString(),
+                          totalAmount: timesheet.clientAmountCalculated,
+                          items: [{
+                            description: `Interpreting Services: ${booking.languageFrom} to ${booking.languageTo} (${new Date(booking.date).toLocaleDateString()})`,
+                            rate: timesheet.clientAmountCalculated,
+                            units: 1,
+                            total: timesheet.clientAmountCalculated
+                          }]
+                        } as any)}
+                        icon={CreditCard}
+                      >
+                        Download Invoice
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 border-emerald-100 border"
+                        onClick={() => PdfService.generateRemittance({
+                          id: `REM-${booking.id.substring(0, 6)}`,
+                          interpreterName: booking.interpreterName || 'Interpreter',
+                          totalAmount: timesheet.interpreterAmountCalculated,
+                          items: [{
+                            jobRef: booking.bookingRef || booking.id.substring(0, 6),
+                            date: booking.date,
+                            description: `Payment for ${booking.languageTo} service`,
+                            total: timesheet.interpreterAmountCalculated
+                          }]
+                        })}
+                        icon={Receipt}
+                      >
+                        Remittance Advice
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -713,6 +744,35 @@ const AdminBookingDetails = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Service Category</label>
+                <select 
+                  className="w-full p-2 border rounded-lg text-sm bg-white" 
+                  value={editFormData.serviceCategory || ''} 
+                  onChange={e => setEditFormData({ ...editFormData, serviceCategory: e.target.value as any })}
+                >
+                  <option value="">Default (Linguist)</option>
+                  <option value="Linguist">Linguist</option>
+                  <option value="Solicitor">Solicitor</option>
+                  <option value="Standard">Standard</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Session Mode</label>
+                <select 
+                  className="w-full p-2 border rounded-lg text-sm bg-white" 
+                  value={editFormData.sessionMode || ''} 
+                  onChange={e => setEditFormData({ ...editFormData, sessionMode: e.target.value as any })}
+                >
+                  <option value="">Select Mode</option>
+                  <option value="Face-to-Face">Face-to-Face</option>
+                  <option value="Videocall">Videocall</option>
+                  <option value="Telephone">Telephone</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Service Type</label>
                 <select 
                   className="w-full p-2 border rounded-lg text-sm bg-white" 
@@ -722,16 +782,22 @@ const AdminBookingDetails = () => {
                   {Object.values(ServiceType).map(st => <option key={st} value={st}>{st}</option>)}
                 </select>
               </div>
-              {editFormData.serviceType !== ServiceType.TRANSLATION && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gender Pref.</label>
-                  <select className="w-full p-2 border rounded-lg text-sm bg-white" value={editFormData.genderPreference} onChange={e => setEditFormData({ ...editFormData, genderPreference: e.target.value as any })}>
-                    <option value="None">None</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
+              <div className="flex items-center gap-6 mt-4 md:mt-0">
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="editIsOOH" checked={editFormData.isOOH} onChange={e => setEditFormData({ ...editFormData, isOOH: e.target.checked })} />
+                  <label htmlFor="editIsOOH" className="text-sm font-medium">Out of Hours (OOH)</label>
                 </div>
-              )}
+                {editFormData.serviceType !== ServiceType.TRANSLATION && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gender Pref.</label>
+                    <select className="w-full p-2 border rounded-lg text-sm bg-white" value={editFormData.genderPreference} onChange={e => setEditFormData({ ...editFormData, genderPreference: e.target.value as any })}>
+                      <option value="None">None</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
 
             {editFormData.serviceType === ServiceType.TRANSLATION && (

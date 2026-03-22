@@ -8,7 +8,7 @@ import {
   MapPin, Clock, CheckCircle2,
   Calendar, PoundSterling, Star, MessageSquare,
   ChevronRight, AlertCircle, Award, ShieldCheck,
-  Video, Globe2, Briefcase
+  Video, Globe2, Briefcase, User
 } from 'lucide-react';
 import { JobDetailsModal } from '../../components/interpreter/JobDetailsModal';
 import { NotificationCenter } from '../../components/notifications/NotificationCenter';
@@ -77,7 +77,7 @@ const HighDensityActivityTable = ({ title, data, loading, onRowClick }: { title:
               </td>
               <td className="px-4 py-3 whitespace-nowrap">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
-                  ${item.raw.status === BookingStatus.INVOICING || item.raw.status === BookingStatus.BOOKED ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                  ${item.raw.status === BookingStatus.READY_FOR_INVOICE || item.raw.status === BookingStatus.BOOKED ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
                     item.raw.status === BookingStatus.OPENED ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                       'bg-slate-50 text-slate-700 border border-slate-100'}`}>
                   {item.raw.status === BookingStatus.BOOKED ? 'CONFIRMED' : item.raw.status}
@@ -356,7 +356,7 @@ export const InterpreterDashboard = () => {
                 )}
                 {offers.length > 0 && (
                   <button
-                    onClick={() => navigate('/interpreter/jobs', { state: { tab: 'OFFERS' } })}
+                    onClick={() => navigate('/interpreter/offers')}
                     className="flex items-center gap-2 px-3 py-2 bg-white border border-blue-200 hover:border-blue-400 rounded-lg text-left transition-all shadow-sm group"
                   >
                     <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm">{offers.length}</div>

@@ -1,5 +1,5 @@
 
-import { collection, doc, getDoc, getDocs, updateDoc, addDoc, deleteDoc, setDoc, query, where, limit } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, addDoc, deleteDoc, setDoc, query, where, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { Client, GuestContact } from '../types';
 import { MOCK_CLIENTS, saveMockData } from './mockData';
@@ -75,7 +75,10 @@ export const ClientService = {
       status: 'GUEST',
       billingAddress: 'Address Pending Update',
       paymentTermsDays: 30,
-      defaultCostCodeType: 'PO'
+      defaultCostCodeType: 'PO',
+      organizationId: 'org1', // Default system org
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     MOCK_CLIENTS.push(newClient);
@@ -84,5 +87,30 @@ export const ClientService = {
     try { await setDoc(doc(db, 'clients', newClient.id), newClient); } catch (e) { }
 
     return newClient;
+  },
+
+  linkUserToClient: async (email: string, clientId: string): Promise<void> => {
+    try {
+      const q = query(collection(db, 'users'), where('email', '==', email), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        await updateDoc(snap.docs[0].ref, { profileId: clientId });
+        console.log(`Linked user ${email} to client ${clientId}`);
+      }
+    } catch (e) {
+      console.warn('Failed to link user to client', e);
+    }
+  },
+
+  convertToMember: async (clientId: string): Promise<void> => {
+    try {
+      await updateDoc(doc(db, 'clients', clientId), {
+        status: 'ACTIVE',
+        updatedAt: serverTimestamp()
+      } as any);
+      console.log(`Client ${clientId} converted to ACTIVE member.`);
+    } catch (e) {
+      console.error('Failed to convert client to member', e);
+    }
   }
 };

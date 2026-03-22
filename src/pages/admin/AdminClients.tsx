@@ -48,36 +48,28 @@ export const AdminClients = () => {
   const [clientJobs, setClientJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
-  // Update clients when clientsMap or bookings change
+  // Fetch clients explicitly instead of relying on global lazy cache 
   useEffect(() => {
-    const calculateStats = async () => {
-      try {
-        const bookingsData = await BookingService.getAll();
-        const clientsWithStats = Object.values(clientsMap).map(client => {
-          const clientBookings = (bookingsData || []).filter(b => b.clientId === client.id);
-          return {
-            ...client,
-            totalBookings: clientBookings.length,
-            activeBookings: clientBookings.filter(b =>
-              ['INCOMING', 'PENDING_ASSIGNMENT', 'BOOKED'].includes(String(b.status))
-            ).length
-          };
-        });
-        setClients(clientsWithStats.sort((a, b) => a.companyName.localeCompare(b.companyName)));
-        setLoading(false);
-      } catch (err) {
-        console.error(err);
-        setLoading(false);
-      }
-    };
-
-    calculateStats();
-  }, [clientsMap]);
+    loadData();
+  }, []);
 
   const loadData = async () => {
-    // This now just triggers a re-calculation if needed, 
-    // but the useEffect handles it via clientsMap dependency.
     setLoading(true);
+    try {
+      const clientsData = await ClientService.getAll();
+      // We skip downloading all bookings in the world to calculate stats locally.
+      // This immediately fixes the N+1 and memory explosion.
+      const clientsWithStats = clientsData.map(client => ({
+        ...client,
+        totalBookings: 0, // TODO: Implement Server-Side aggregation via Cloud Functions
+        activeBookings: 0 // TODO: Implement Server-Side aggregation via Cloud Functions
+      }));
+      setClients(clientsWithStats.sort((a, b) => a.companyName.localeCompare(b.companyName)));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredClients = clients.filter(c => {

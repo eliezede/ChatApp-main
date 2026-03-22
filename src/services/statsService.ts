@@ -20,7 +20,7 @@ export const StatsService = {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const paidBookingsSnapshot = await getDocs(query(
         collection(db, 'bookings'),
-        where('status', 'in', [BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID])
+        where('status', 'in', [BookingStatus.BOOKED, BookingStatus.READY_FOR_INVOICE, BookingStatus.INVOICED, BookingStatus.PAID])
       ));
 
       const revenue = paidBookingsSnapshot.docs
@@ -90,7 +90,7 @@ export const StatsService = {
       return {
         totalBookings: snap.size,
         upcomingBookings: bookings.filter(b => b.status === BookingStatus.BOOKED).length,
-        completedBookings: bookings.filter(b => [BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length,
+        completedBookings: bookings.filter(b => [BookingStatus.READY_FOR_INVOICE, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length,
         unpaidInvoices: invoicesSnap.size
       };
     }, {
@@ -116,7 +116,7 @@ export const StatsService = {
       return {
         totalBookings: snap.size,
         upcomingBookings: bookings.filter(b => b.status === BookingStatus.BOOKED).length,
-        completedBookings: bookings.filter(b => [BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length,
+        completedBookings: bookings.filter(b => [BookingStatus.READY_FOR_INVOICE, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length,
         liveOffers: offersSnap.size
       };
     }, {

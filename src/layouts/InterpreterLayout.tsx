@@ -110,6 +110,7 @@ export const InterpreterLayout: React.FC<{ children: React.ReactNode }> = ({ chi
           <NavItem isCollapsed={isCollapsed} to="/interpreter/messages" icon={MessageSquare} label="Messages" badge={totalUnread} active={isActive('/interpreter/messages')} onClick={closeSidebar} />
 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Work</div>}
+          <NavItem isCollapsed={isCollapsed} to="/interpreter/offers" icon={Bell} label="Offers" active={isActive('/interpreter/offers')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/interpreter/jobs" icon={Briefcase} label="Jobs" active={isActive('/interpreter/jobs')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/interpreter/timesheets" icon={FileText} label="Timesheets" active={isActive('/interpreter/timesheets')} onClick={closeSidebar} />
 

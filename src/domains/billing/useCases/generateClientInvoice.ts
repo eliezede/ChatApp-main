@@ -28,7 +28,10 @@ export const generateClientInvoice = async (clientId: string, periodStart?: stri
             periodEnd: periodEnd || new Date().toISOString(),
             totalAmount: 150.00,
             currency: 'GBP',
-            items: []
+            items: [],
+            organizationId: 'SYSTEM',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         } as ClientInvoice;
         MOCK_CLIENT_INVOICES.push(newInvoice);
         saveMockData();

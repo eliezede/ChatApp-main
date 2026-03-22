@@ -111,7 +111,7 @@ export const AdminBillingDashboard = () => {
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight mb-1">Workflow</p>
             <p className="text-lg font-black text-slate-700">Audit in progress</p>
           </div>
-          <Link to="/admin/timesheets" className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl text-emerald-900 text-xs font-black uppercase tracking-widest hover:bg-emerald-900 hover:text-white transition-colors">
+          <Link to="/admin/operations/timesheets" className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl text-emerald-900 text-xs font-black uppercase tracking-widest hover:bg-emerald-900 hover:text-white transition-colors">
             <span>Audit Timesheets</span>
             <span className="text-lg">&rarr;</span>
           </Link>

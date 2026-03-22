@@ -1,5 +1,5 @@
 import { ServiceType } from '../../shared/types/common';
-import { InvoiceStatus } from '../../../types'; // Still using legacy for now, or redefine
+import { InvoiceStatus } from '@/types'; // Still using legacy for now, or redefine
 
 export interface Rate {
     id: string;

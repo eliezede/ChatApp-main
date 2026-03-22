@@ -1,4 +1,4 @@
-import { InvoiceStatus, ClientInvoice, InterpreterInvoice } from '../../../types';
+import { InvoiceStatus, ClientInvoice, InterpreterInvoice } from '@/types';
 
 export interface BillingRepository {
     getClientInvoices(statusFilter?: InvoiceStatus): Promise<ClientInvoice[]>;

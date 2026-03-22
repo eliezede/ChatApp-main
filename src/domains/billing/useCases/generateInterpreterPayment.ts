@@ -25,7 +25,10 @@ export const generateInterpreterPayment = async (
         totalAmount: amount,
         issueDate: new Date().toISOString(),
         items: [],
-        currency: 'GBP'
+        currency: 'GBP',
+        organizationId: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     };
 
     timesheets.forEach(ts => {

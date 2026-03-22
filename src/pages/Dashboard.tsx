@@ -302,7 +302,7 @@ export const Dashboard = () => {
                   { label: 'Incoming', count: byStatus.incoming, color: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500', path: '/admin/bookings' },
                   { label: 'Opened', count: byStatus.opened, color: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', path: '/admin/bookings' },
                   { label: 'Booked', count: byStatus.booked, color: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', path: '/admin/bookings' },
-                  { label: 'Invoicing', count: byStatus.invoicing, color: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', path: '/admin/timesheets' },
+                  { label: 'Invoicing', count: byStatus.invoicing, color: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', path: '/admin/operations/timesheets' },
                   { label: 'Invoiced', count: byStatus.invoiced, color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', path: '/admin/client-invoices' },
                   { label: 'Paid', count: byStatus.paid, color: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-400', path: '/admin/client-invoices' },
                 ].map((stage, i) => (
@@ -428,7 +428,7 @@ export const Dashboard = () => {
                 {[
                   { label: 'Revenue MTD', value: stats ? `£${(stats.revenueMonth || 0).toLocaleString()}` : '£---', path: '/admin/client-invoices', color: 'text-emerald-700' },
                   { label: 'Invoices Unpaid', value: stats ? `${stats.unpaidInvoices || 0} pending` : '---', path: '/admin/client-invoices', color: (stats?.unpaidInvoices || 0) > 0 ? 'text-amber-700' : 'text-slate-600' },
-                  { label: 'Active Timesheets', value: `${byStatus.invoicing} awaiting`, path: '/admin/timesheets', color: byStatus.invoicing > 0 ? 'text-violet-700' : 'text-slate-600' },
+                  { label: 'Active Timesheets', value: `${byStatus.invoicing} awaiting`, path: '/admin/operations/timesheets', color: byStatus.invoicing > 0 ? 'text-violet-700' : 'text-slate-600' },
                 ].map((row, i) => (
                   <button key={i} onClick={() => navigate(row.path)} className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-slate-50 rounded-lg transition-colors text-left">
                     <span className="text-xs text-slate-600 font-medium">{row.label}</span>
@@ -446,7 +446,7 @@ export const Dashboard = () => {
                   { label: 'Manage Bookings', icon: Briefcase, path: '/admin/bookings', color: 'text-blue-600' },
                   { label: 'Interpreters Matrix', icon: Users, path: '/admin/interpreters', color: 'text-indigo-600' },
                   { label: 'Client Database', icon: FileText, path: '/admin/clients', color: 'text-violet-600' },
-                  { label: 'Review Timesheets', icon: Clock, path: '/admin/timesheets', color: 'text-emerald-600' },
+                  { label: 'Review Timesheets', icon: Clock, path: '/admin/operations/timesheets', color: 'text-emerald-600' },
                   { label: 'Applications', icon: UserPlus, path: '/admin/applications', color: 'text-amber-600' },
                   { label: 'System Settings', icon: Settings, path: '/admin/settings', color: 'text-slate-600' },
                 ].map((item, i) => (

@@ -138,7 +138,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Operations</div>}
           <NavItem isCollapsed={isCollapsed} to="/admin/bookings" icon={CalendarDays} label="Jobs Board" active={isActive('/admin/bookings')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/operations/assignments" icon={UserCheck} label="Assignments" active={isActive('/admin/operations/assignments')} onClick={closeSidebar} />
-          <NavItem isCollapsed={isCollapsed} to="/admin/timesheets" icon={FileText} label="Timesheet Review" active={isActive('/admin/timesheets')} onClick={closeSidebar} />
+          <NavItem isCollapsed={isCollapsed} to="/admin/operations/timesheets" icon={FileText} label="Timesheet Review" active={isActive('/admin/operations/timesheets')} onClick={closeSidebar} />
 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Network</div>}
           <NavItem isCollapsed={isCollapsed} to="/admin/interpreters" icon={Users} label="Interpreters" active={isActive('/admin/interpreters')} onClick={closeSidebar} />
@@ -146,6 +146,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           <NavItem isCollapsed={isCollapsed} to="/admin/applications" icon={UserPlus} label="Applications" badge={onboardingBadge} active={isActive('/admin/applications')} onClick={closeSidebar} />
 
           {!isCollapsed && <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-3 mt-4">Finance</div>}
+          <NavItem isCollapsed={isCollapsed} to="/admin/billing" icon={PoundSterling} label="Finance Hub" active={location.pathname === '/admin/billing'} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/billing/client-invoices" icon={CreditCard} label="Client Invoices" active={isActive('/admin/billing/client-invoices')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/billing/interpreter-invoices" icon={PoundSterling} label="Interpreter Payments" active={isActive('/admin/billing/interpreter-invoices')} onClick={closeSidebar} />
           <NavItem isCollapsed={isCollapsed} to="/admin/finance/reports" icon={BarChart3} label="Financial Reports" active={isActive('/admin/finance/reports')} onClick={closeSidebar} />

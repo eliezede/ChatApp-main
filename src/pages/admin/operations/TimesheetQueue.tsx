@@ -8,7 +8,7 @@ import { Table } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { BulkActionBar } from '../../../components/ui/BulkActionBar';
-import { Booking, BookingStatus, Timesheet } from '../../../types';
+import { Booking, BookingStatus, Timesheet, ServiceCategory } from '../../../types';
 import { BookingService, BillingService } from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
 
@@ -20,7 +20,7 @@ export const TimesheetQueue = () => {
     // Filter jobs that have submitted timesheets but aren't verified yet
     const pendingTimesheets = bookings.filter(b =>
         (b.status as any) === BookingStatus.TIMESHEET_SUBMITTED ||
-        (b.status as any) === BookingStatus.INVOICING ||
+        (b.status as any) === BookingStatus.READY_FOR_INVOICE ||
         (b.status as any) === 'TIMESHEET_SUBMITTED' // String literal for safety
     );
 
@@ -89,11 +89,20 @@ export const TimesheetQueue = () => {
             )
         },
         {
-            header: 'Claimed Duration',
+            header: 'Claimed Vol.',
             accessor: (job: Booking) => (
                 <div className="flex items-center text-sm font-bold text-slate-900 dark:text-white">
-                    <Clock size={14} className="mr-2 text-blue-500" />
-                    {job.durationMinutes} min
+                    {job.serviceCategory === ServiceCategory.TRANSLATION ? (
+                        <>
+                            <FileCheck size={14} className="mr-2 text-indigo-500" />
+                            {job.durationMinutes === 0 ? 'TBD' : `${job.durationMinutes} Units`}
+                        </>
+                    ) : (
+                        <>
+                            <Clock size={14} className="mr-2 text-blue-500" />
+                            {job.durationMinutes} min
+                        </>
+                    )}
                 </div>
             )
         },
@@ -189,8 +198,12 @@ export const TimesheetQueue = () => {
                                         <p className="text-lg font-black text-slate-700 dark:text-slate-300">{selectedJob.startTime}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Allocated Duration</p>
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedJob.durationMinutes} minutes</p>
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">
+                                            {selectedJob.serviceCategory === ServiceCategory.TRANSLATION ? 'Target Volume' : 'Allocated Duration'}
+                                        </p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                            {selectedJob.serviceCategory === ServiceCategory.TRANSLATION ? 'As per source' : `${selectedJob.durationMinutes} minutes`}
+                                        </p>
                                     </div>
                                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
                                         <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Service Type</p>
@@ -209,8 +222,34 @@ export const TimesheetQueue = () => {
                                         <p className="text-lg font-black text-blue-700 dark:text-blue-100">{selectedJob.startTime}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] text-blue-500 uppercase font-bold">Total Units Claimed</p>
-                                        <p className="text-sm font-bold text-blue-900 dark:text-blue-200">{selectedJob.durationMinutes} minutes</p>
+                                        <p className="text-[10px] text-blue-500 uppercase font-bold">
+                                            {selectedJob.serviceCategory === ServiceCategory.TRANSLATION ? 'Delivery Volume' : 'Session Mode'}
+                                        </p>
+                                        <p className="text-sm font-bold text-blue-900 dark:text-blue-200">
+                                            {selectedJob.serviceCategory === ServiceCategory.TRANSLATION 
+                                                ? `${selectedTimesheet?.wordCount || 0} ${selectedTimesheet?.units || 'words'}`
+                                                : (selectedTimesheet?.sessionMode || 'Standard')}
+                                        </p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <p className="text-[10px] text-blue-500 uppercase font-bold">Travel</p>
+                                            <p className="text-sm font-bold text-blue-900 dark:text-blue-200">{selectedTimesheet?.travelTimeMinutes || 0}m (£{selectedTimesheet?.travelFees || 0})</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-blue-500 uppercase font-bold">Mileage</p>
+                                            <p className="text-sm font-bold text-blue-900 dark:text-blue-200">{selectedTimesheet?.mileage || 0}m (£{selectedTimesheet?.mileageFees || 0})</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                         <div>
+                                            <p className="text-[10px] text-blue-500 uppercase font-bold">Parking/Transport</p>
+                                            <p className="text-sm font-bold text-blue-900 dark:text-blue-200">£{(selectedTimesheet?.parking || 0) + (selectedTimesheet?.transport || 0)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-blue-500 uppercase font-bold text-right">Total Claim</p>
+                                            <p className="text-lg font-black text-blue-700 dark:text-blue-100 text-right">£{selectedTimesheet?.totalToPay?.toFixed(2) || '0.00'}</p>
+                                        </div>
                                     </div>
                                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-blue-200 dark:border-blue-800">
                                         <p className="text-[10px] text-green-600 uppercase font-black mb-1">Comparison Result</p>

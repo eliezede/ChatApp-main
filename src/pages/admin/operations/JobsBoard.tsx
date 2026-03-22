@@ -76,7 +76,7 @@ export const JobsBoard = () => {
         try {
             await BillingService.approveTimesheetByBookingId(job.id);
             refresh();
-            if (selectedJob?.id === job.id) setSelectedJob({ ...job, status: BookingStatus.INVOICING });
+            if (selectedJob?.id === job.id) setSelectedJob({ ...job, status: BookingStatus.READY_FOR_INVOICE });
             showToast('Timesheet verified and job moved to invoicing', 'success');
         } catch {
             showToast('Failed to verify timesheet', 'error');
@@ -99,7 +99,7 @@ export const JobsBoard = () => {
         { label: 'View Details', icon: Eye, onClick: () => navigate(`/admin/bookings/${job.id}`) },
         { label: 'Edit Job', icon: Pencil, onClick: () => navigate(`/admin/bookings/edit/${job.id}`) },
         { divider: true },
-        { label: 'Mark as Verified', icon: CheckCircle2, onClick: () => handleQuickStatusChange(job, BookingStatus.INVOICING) },
+        { label: 'Mark as Verified', icon: CheckCircle2, onClick: () => handleQuickStatusChange(job, BookingStatus.READY_FOR_INVOICE) },
         { label: 'Cancel Job', icon: Trash2, variant: 'danger' as const, onClick: () => handleQuickStatusChange(job, BookingStatus.CANCELLED) },
     ];
 
@@ -316,13 +316,13 @@ export const JobsBoard = () => {
                                     <Button size="sm" className="bg-amber-600 text-white !text-[10px] py-1" onClick={(e) => handleAssignClick(e, selectedJob)}>Assign Professional</Button>
                                 )}
                                 {selectedJob.status === BookingStatus.BOOKED && (
-                                    <Button variant="outline" size="sm" className="bg-white dark:bg-slate-900 !text-[10px] py-1" onClick={() => handleQuickStatusChange(selectedJob, BookingStatus.INVOICING)}>Manual Verification</Button>
+                                    <Button variant="outline" size="sm" className="bg-white dark:bg-slate-900 !text-[10px] py-1" onClick={() => handleQuickStatusChange(selectedJob, BookingStatus.READY_FOR_INVOICE)}>Manual Verification</Button>
                                 )}
                                 {(selectedJob.status === BookingStatus.TIMESHEET_SUBMITTED || (selectedJob.status as string) === 'TIMESHEET_SUBMITTED') && (
                                     <Button size="sm" className="bg-emerald-600 text-white !text-[10px] py-1 col-span-2" onClick={() => handleVerifyTimesheet(selectedJob)}>Verify Timesheet</Button>
                                 )}
-                                {selectedJob.status === BookingStatus.INVOICING && (
-                                    <Button size="sm" className="bg-indigo-600 text-white !text-[10px] py-1 col-span-2" onClick={() => navigate('/admin/timesheets')}>Invoicing Review</Button>
+                                {selectedJob.status === BookingStatus.READY_FOR_INVOICE && (
+                                    <Button size="sm" className="bg-indigo-600 text-white !text-[10px] py-1 col-span-2" onClick={() => navigate('/admin/operations/timesheets')}>Invoicing Review</Button>
                                 )}
                                 {selectedJob.status === BookingStatus.PAID && (
                                     <p className="text-[10px] text-green-600 font-bold uppercase col-span-2 bg-green-50 p-2 rounded-lg text-center">Process Completed & Paid</p>

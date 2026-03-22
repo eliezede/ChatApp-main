@@ -1,55 +1,49 @@
 
-import React, { useEffect, useState } from 'react';
-import { BookingService } from '../../services/api';
-import { BookingAssignment } from '../../types';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { MapPin, Clock, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { useInterpreterJobOffers } from '../../hooks/useInterpreterJobOffers';
+import { Spinner } from '../../components/ui/Spinner';
 
 export const InterpreterOffers = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [processing, setProcessing] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [offers, setOffers] = useState<BookingAssignment[]>([]);
+  
+  const { offers, loading, acceptOffer, declineOffer } = useInterpreterJobOffers(user?.profileId);
 
-  useEffect(() => {
-    if (user?.profileId) {
-      BookingService.getInterpreterOffers(user.profileId).then(setOffers);
-    }
-  }, [user]);
-
-  const handleAccept = async (id: string) => {
-    if (!user?.profileId) return;
-    setProcessing(id);
+  const handleAccept = async (offer: any) => {
+    setProcessing(offer.id);
     try {
-      await BookingService.acceptOffer(id);
-      showToast("Job Accepted! Waiting for admin final confirmation.", "success");
-      const updated = await BookingService.getInterpreterOffers(user.profileId);
-      setOffers(updated);
-    } catch (err: any) {
-      showToast(err.message || "Failed to accept offer", "error");
-      const updated = await BookingService.getInterpreterOffers(user.profileId);
-      setOffers(updated);
+      const success = await acceptOffer(offer.id, offer._isDirect, offer._assignmentId);
+      if (success) {
+        showToast("Job Accepted! Waiting for admin final confirmation.", "success");
+      } else {
+        showToast("Failed to accept offer", "error");
+      }
     } finally {
       setProcessing(null);
     }
   };
 
-  const handleDecline = async (id: string) => {
-    if (!user?.profileId) return;
-    setProcessing(id);
+  const handleDecline = async (offer: any) => {
+    setProcessing(offer.id);
     try {
-      await BookingService.declineOffer(id);
-      showToast("Job offer declined", "info");
-      const updated = await BookingService.getInterpreterOffers(user.profileId);
-      setOffers(updated);
-    } catch (err) {
-      showToast("Failed to decline offer", "error");
+      const success = await declineOffer(offer.id, offer._isDirect, offer._assignmentId);
+      if (success) {
+        showToast("Job offer declined", "info");
+      } else {
+        showToast("Failed to decline offer", "error");
+      }
     } finally {
       setProcessing(null);
     }
   };
+
+  if (loading) {
+    return <div className="flex justify-center p-12"><Spinner /></div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -64,48 +58,50 @@ export const InterpreterOffers = () => {
           {offers.map((offer) => (
             <div key={offer.id} className="bg-white rounded-xl shadow-sm border border-blue-100 p-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg font-bold">
-                NEW OFFER
+                {offer._isDirect ? 'DIRECT OFFER' : 'NEW OFFER'}
               </div>
 
               <div className="mb-4">
                 <h3 className="text-lg font-bold text-gray-900">
-                  {offer.bookingSnapshot?.languageTo} Interpreting
+                  {offer.languageTo || offer.bookingSnapshot?.languageTo} Interpreting
                 </h3>
                 <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold mt-1">
-                  {offer.bookingSnapshot?.locationType}
+                  {offer.locationType || offer.bookingSnapshot?.locationType}
                 </p>
               </div>
 
               <div className="space-y-3 text-sm text-gray-600 mb-6">
                 <div className="flex items-center">
                   <Calendar size={16} className="mr-2 text-blue-600" />
-                  {offer.bookingSnapshot?.date}
+                  {offer.date || offer.bookingSnapshot?.date}
                 </div>
                 <div className="flex items-center">
                   <Clock size={16} className="mr-2 text-blue-600" />
-                  {offer.bookingSnapshot?.startTime}
+                  {offer.startTime || offer.bookingSnapshot?.startTime}
                 </div>
-                {offer.bookingSnapshot?.locationType === 'ONSITE' && (
+                {(offer.locationType === 'ONSITE' || offer.bookingSnapshot?.locationType === 'ONSITE') && (
                   <div className="flex items-center">
                     <MapPin size={16} className="mr-2 text-blue-600" />
-                    {offer.bookingSnapshot?.postcode}
+                    {offer.postcode || offer.bookingSnapshot?.postcode}
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => handleDecline(offer.id)}
-                  className="flex items-center justify-center py-2 px-4 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 font-medium transition-colors"
+                  disabled={processing === offer.id}
+                  onClick={() => handleDecline(offer)}
+                  className="flex items-center justify-center py-2 px-4 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 font-medium transition-colors disabled:opacity-50"
                 >
                   <XCircle size={18} className="mr-2" />
                   Decline
                 </button>
                 <button
-                  onClick={() => handleAccept(offer.id)}
-                  className="flex items-center justify-center py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-colors"
+                  disabled={processing === offer.id}
+                  onClick={() => handleAccept(offer)}
+                  className="flex items-center justify-center py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-colors disabled:opacity-50"
                 >
-                  <CheckCircle size={18} className="mr-2" />
+                  {processing === offer.id ? <Spinner size="sm" /> : <CheckCircle size={18} className="mr-2" />}
                   Accept
                 </button>
               </div>

@@ -40,6 +40,7 @@ import { Statements } from './pages/admin/finance/Statements';
 import { Payroll } from './pages/admin/finance/Payroll';
 import { ReportsCenter } from './pages/admin/finance/ReportsCenter';
 import { DataCenter } from './pages/admin/administration/DataCenter';
+import { AuditLog } from './pages/admin/system/AuditLog';
 import { AdminBillingDashboard } from './pages/admin/billing/AdminBillingDashboard';
 import { AdminClientInvoicesPage } from './pages/admin/billing/AdminClientInvoicesPage';
 import { AdminClientInvoiceDetailsPage } from './pages/admin/billing/AdminClientInvoiceDetailsPage';
@@ -66,6 +67,7 @@ import { InterpreterPayments } from './pages/interpreter/InterpreterPayments';
 import { InterpreterProfile } from './pages/interpreter/InterpreterProfile';
 import { InterpreterMessages } from './pages/interpreter/InterpreterMessages';
 import { InterpreterOnboarding } from './pages/interpreter/InterpreterOnboarding';
+import { InterpreterOffers } from './pages/interpreter/InterpreterOffers';
 
 // Client Pages
 import { ClientDashboard } from './pages/client/ClientDashboard';
@@ -129,6 +131,7 @@ const App = () => {
                               <Route path="profile" element={<InterpreterProfile />} />
                               <Route path="onboarding" element={<InterpreterOnboarding />} />
                               <Route path="messages" element={<InterpreterMessages />} />
+                              <Route path="offers" element={<InterpreterOffers />} />
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </InterpreterLayout>
@@ -162,7 +165,7 @@ const App = () => {
                               <Route path="messages" element={<AdminMessages />} />
                               <Route path="bookings" element={<JobsBoard />} />
                               <Route path="operations/assignments" element={<AssignmentCenter />} />
-                              <Route path="timesheets" element={<TimesheetQueue />} />
+                              <Route path="operations/timesheets" element={<TimesheetQueue />} />
                               <Route path="bookings/new" element={<AdminNewBooking />} />
                               <Route path="bookings/:id" element={<AdminBookingDetails />} />
                               <Route path="applications" element={<AdminApplications />} />
@@ -179,6 +182,7 @@ const App = () => {
                               <Route path="finance/reports" element={<ReportsCenter />} />
                               <Route path="administration/data" element={<DataCenter />} />
                               <Route path="billing" element={<AdminBillingDashboard />} />
+                              <Route path="system/audit-log" element={<AuditLog />} />
                               <Route path="billing/client-invoices" element={<AdminClientInvoicesPage />} />
                               <Route path="billing/client-invoices/:id" element={<AdminClientInvoiceDetailsPage />} />
                               <Route path="billing/interpreter-invoices" element={<AdminInterpreterInvoicesPage />} />

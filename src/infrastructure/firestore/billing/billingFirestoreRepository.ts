@@ -26,7 +26,8 @@ export const createBillingFirestoreRepository = (tenantId: string): BillingRepos
             if (snap.exists()) {
                 const data = snap.data() as ClientInvoice;
                 if (data.organizationId !== tenantId) return null; // Guardrail
-                return { id: snap.id, ...data };
+                const { id: _, ...rest } = data;
+                return { id: snap.id, ...rest } as ClientInvoice;
             }
         } catch { /* mock fallback */ }
         const mock = MOCK_CLIENT_INVOICES.find(i => i.id === id);
@@ -68,7 +69,8 @@ export const createBillingFirestoreRepository = (tenantId: string): BillingRepos
             if (snap.exists()) {
                 const data = snap.data() as InterpreterInvoice;
                 if (data.organizationId !== tenantId) return null; // Guardrail
-                return { id: snap.id, ...data };
+                const { id: _, ...rest } = data;
+                return { id: snap.id, ...rest } as InterpreterInvoice;
             }
         } catch { /* mock fallback */ }
         const mock = MOCK_INTERPRETER_INVOICES.find(i => i.id === id);

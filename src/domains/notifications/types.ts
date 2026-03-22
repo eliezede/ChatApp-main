@@ -1,4 +1,5 @@
-import { JobStatus, Job } from '../../jobs/types';
+import { JobStatus } from '../jobs/status';
+import { Job } from '../jobs/types';
 
 export type NotificationRecipientType = 'CLIENT' | 'INTERPRETER' | 'ADMIN';
 

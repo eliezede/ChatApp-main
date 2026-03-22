@@ -39,6 +39,29 @@ export interface User {
   profileId?: string;
 }
 
+export enum ServiceCategory {
+  INTERPRETATION = 'INTERPRETATION',
+  TRANSLATION = 'TRANSLATION'
+}
+
+export enum SessionMode {
+  F2F = 'Face-to-Face',
+  VIDEO = 'Videocall',
+  PHONE = 'Over the Phone',
+  CANCELLATION = 'cancellation fees'
+}
+
+export enum SageCode {
+  I001 = 'I001', // Standard F2F
+  I002 = 'I002', // Standard Video
+  I003 = 'I003', // Standard Phone
+  I007 = 'I007', // OOH F2F
+  I008 = 'I008', // OOH Video
+  I009 = 'I009', // OOH Phone
+  I010 = 'I010', // Special
+  I013 = 'I013', // Travel Time
+  I014 = 'I014'  // Mileage
+}
 
 export enum BookingStatus {
   INCOMING = 'INCOMING', // Initial state
@@ -47,7 +70,7 @@ export enum BookingStatus {
   ADMIN = 'ADMIN', // Manual standby by admin
   CANCELLED = 'CANCELLED',
   TIMESHEET_SUBMITTED = 'TIMESHEET_SUBMITTED', // Job done, timesheet submitted, awaiting admin verification
-  INVOICING = 'INVOICING', // Verified, ready for invoicing
+  READY_FOR_INVOICE = 'READY_FOR_INVOICE', // Verified, ready for invoicing
   INVOICED = 'INVOICED', // Invoice generated
   PAID = 'PAID' // Invoice paid
 }
@@ -58,7 +81,9 @@ export interface Booking {
   clientId: string;
   clientName: string;
   requestedByUserId: string;
-  serviceType: ServiceType;
+  organizationId: string;
+  serviceCategory: ServiceCategory;
+  serviceType: string; // e.g. "Legal", "Medical"
   languageFrom: string;
   languageTo: string;
   date: string;
@@ -97,6 +122,9 @@ export interface Booking {
   agreedToTerms?: boolean;
   professionalName?: string;
   patientName?: string;
+  isOOH?: boolean;
+  sageCode?: SageCode;
+  sessionMode?: SessionMode;
 }
 
 export interface BookingAssignment {
@@ -252,9 +280,27 @@ export interface Timesheet extends TenantScopedEntity {
   interpreterId: string;
   clientId: string;
   submittedAt: string;
+  sessionMode: SessionMode;
   actualStart: string;
   actualEnd: string;
+  sessionDurationMinutes: number;
+  sessionFees: number;
+  travelTimeMinutes?: number;
+  travelFees?: number;
+  mileage?: number;
+  mileageFees?: number;
+  parking?: number;
+  transport?: number;
+  totalToPay: number;
   breakDurationMinutes: number;
+  
+  // Translation-specific billing fields
+  wordCount?: number;
+  unitPrice?: number;
+  units?: 'words' | 'pages' | 'documents' | 'hours';
+  interpreterAmountCalculated?: number;
+  clientAmountCalculated?: number;
+
   adminApproved: boolean;
   adminApprovedAt?: string;
   status: 'SUBMITTED' | 'APPROVED' | 'INVOICING' | 'INVOICED';
@@ -262,10 +308,6 @@ export interface Timesheet extends TenantScopedEntity {
   readyForInterpreterInvoice: boolean;
   unitsBillableToClient: number;
   unitsPayableToInterpreter: number;
-  totalClientAmount?: number;
-  totalInterpreterAmount?: number;
-  clientAmountCalculated: number;
-  interpreterAmountCalculated: number;
   clientInvoiceId?: string;
   interpreterInvoiceId?: string;
   supportingDocumentUrl?: string;

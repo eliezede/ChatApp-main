@@ -31,7 +31,7 @@ export const CommandPalette = () => {
         // Navigation
         { id: 'jobs-board', title: 'Jobs Board', subtitle: 'View all bookings and statuses', icon: CalendarDays, category: 'Navigation', keywords: ['bookings', 'jobs', 'board'], onSelect: () => navigate('/admin/bookings') },
         { id: 'assignments', title: 'Assignment Center', subtitle: 'Allocate interpreters to jobs', icon: UserCheck, category: 'Navigation', keywords: ['assign', 'allocate', 'interpreters', 'operations'], onSelect: () => navigate('/admin/operations/assignments') },
-        { id: 'timesheets', title: 'Timesheet Review', subtitle: 'Review and approve timesheets', icon: Clock, category: 'Navigation', keywords: ['timesheets', 'hours', 'review'], onSelect: () => navigate('/admin/timesheets') },
+        { id: 'timesheets', title: 'Timesheet Review', subtitle: 'Review and approve timesheets', icon: FileText, category: 'Navigation', keywords: ['timesheets', 'hours', 'review'], onSelect: () => navigate('/admin/operations/timesheets') },
         { id: 'interpreters', title: 'Interpreters', subtitle: 'Browse interpreter profiles', icon: Users, category: 'Navigation', keywords: ['interpreters', 'linguists', 'freelancers'], onSelect: () => navigate('/admin/interpreters') },
         { id: 'clients', title: 'Clients & Departments', subtitle: 'Manage client accounts', icon: Briefcase, category: 'Navigation', keywords: ['clients', 'departments', 'organisations'], onSelect: () => navigate('/admin/clients') },
         { id: 'applications', title: 'Applications', subtitle: 'Review interpreter applications', icon: UserPlus, category: 'Navigation', keywords: ['applications', 'onboard', 'new interpreter'], onSelect: () => navigate('/admin/applications') },

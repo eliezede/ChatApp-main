@@ -1,6 +1,6 @@
 import { collection, doc, getDocs, getDoc, setDoc, query, where, addDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { Booking, BookingStatus, EmailTemplate, EMAIL_VARIABLES, UserRole, ServiceType, InterpreterApplication, ApplicationStatus } from '../types';
+import { Booking, BookingStatus, EmailTemplate, EMAIL_VARIABLES, UserRole, ServiceType, InterpreterApplication, ApplicationStatus, User, ServiceCategory } from '../types';
 
 export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     {
@@ -141,6 +141,20 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
         subject: 'Document Verified: {{documentName}}',
         body: `Dear {{applicantName}},<br><br>Good news! Our administrative team has reviewed and verified your <strong>{{documentName}}</strong>.<br><br>You can check your progress by logging into your dashboard.<br><br>Thank you,<br>Lingland Administrative Team`,
         allowedVariables: [...EMAIL_VARIABLES.APPLICANT, '{{documentName}}'],
+        isActive: true
+    },
+    {
+        id: 'ADMIN_HOLD_CLIENT',
+        organizationId: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        category: 'BOOKINGS',
+        triggerStatus: BookingStatus.ADMIN,
+        recipientType: 'CLIENT',
+        name: 'Booking on Admin Hold',
+        subject: 'Update Regarding Your Booking: {{bookingRef}}',
+        body: `Dear {{clientName}},<br><br>We are writing to inform you that your booking (Ref: {{bookingRef}}) for {{languageTo}} on {{date}} has been placed on <strong>Administrative Hold</strong>.<br><br>Our team is currently performing a manual review of the requirements or assignment details. We will contact you shortly with further updates.<br><br>No further action is required from your side at this time.<br><br>Kind regards,<br>The Lingland Team`,
+        allowedVariables: EMAIL_VARIABLES.CLIENT,
         isActive: true
     },
     {
@@ -361,6 +375,8 @@ export const EmailService = {
             bookingRef: 'REF-TEST',
             clientName: 'Test Client',
             requestedByUserId: 'system',
+            organizationId: 'TEST-ORG',
+            serviceCategory: ServiceCategory.INTERPRETATION,
             date: new Date().toISOString().split('T')[0],
             startTime: '10:00',
             durationMinutes: 60,

@@ -27,6 +27,18 @@ const getInterpreterUser = async (interpreterId: string): Promise<{ id: string; 
   return MOCK_USERS.find(u => u.profileId === interpreterId) as any;
 };
 
+// Helper: Get all users with ADMIN or SUPER_ADMIN role for notifications
+const getAdminUsers = async (): Promise<{ id: string; email: string }[]> => {
+  try {
+    const q = query(collection(db, 'users'), where('role', 'in', ['ADMIN', 'SUPER_ADMIN']));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+  } catch (error) {
+    console.error("Failed to fetch admin users for notification", error);
+    return MOCK_USERS.filter(u => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN') as any;
+  }
+};
+
 export const BookingService = {
   getAll: async (): Promise<Booking[]> => {
     try {
@@ -87,7 +99,7 @@ export const BookingService = {
       const docRef = await addDoc(collection(db, COLLECTION_NAME), newBooking);
 
       // Notify Admin
-      const admins = MOCK_USERS.filter(u => u.role === 'ADMIN');
+      const admins = await getAdminUsers();
       admins.forEach(admin => {
         NotificationService.notify(admin.id, 'New Booking Request', `Client ${bookingData.clientName} requested a ${bookingData.languageTo} interpreter for ${bookingData.date}.`, NotificationType.INFO, `/admin/bookings/${docRef.id}`);
       });
@@ -141,7 +153,7 @@ export const BookingService = {
       const docRef = await addDoc(collection(db, COLLECTION_NAME), newBooking);
 
       // Notify Admin
-      const admins = MOCK_USERS.filter(u => u.role === 'ADMIN');
+      const admins = await getAdminUsers();
       admins.forEach(admin => {
         NotificationService.notify(admin.id, 'New Guest Booking', `Reference ${bookingRef}: New request for ${input.languageTo}.`, NotificationType.URGENT, `/admin/bookings/${docRef.id}`);
       });
@@ -473,9 +485,9 @@ export const BookingService = {
       const q = query(collection(db, COLLECTION_NAME), where('interpreterId', '==', interpreterId));
       const snap = await getDocs(q);
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
-      return all.filter(b => [BookingStatus.OPENED, 'PENDING_ASSIGNMENT' as any, BookingStatus.BOOKED, BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).sort((a, b) => a.date.localeCompare(b.date));
+      return all.filter(b => [BookingStatus.OPENED, 'PENDING_ASSIGNMENT' as any, BookingStatus.BOOKED, BookingStatus.READY_FOR_INVOICE, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).sort((a, b) => a.date.localeCompare(b.date));
     } catch (error) {
-      return MOCK_BOOKINGS.filter(b => b.interpreterId === interpreterId && (b.status === BookingStatus.OPENED || (b.status as any) === 'PENDING_ASSIGNMENT' || b.status === BookingStatus.BOOKED || b.status === BookingStatus.INVOICING || b.status === BookingStatus.INVOICED || b.status === BookingStatus.PAID));
+      return MOCK_BOOKINGS.filter(b => b.interpreterId === interpreterId && (b.status === BookingStatus.OPENED || (b.status as any) === 'PENDING_ASSIGNMENT' || b.status === BookingStatus.BOOKED || b.status === BookingStatus.READY_FOR_INVOICE || b.status === BookingStatus.INVOICED || b.status === BookingStatus.PAID));
     }
   },
 

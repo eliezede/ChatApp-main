@@ -189,7 +189,9 @@ export const InterpreterJobDetails = () => {
                   <Calendar size={16} />
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase text-slate-400 tracking-wider mb-0.5">Scheduled Date</p>
+                  <p className="text-[9px] font-bold uppercase text-slate-400 tracking-wider mb-0.5">
+                    {job.serviceType === 'TRANSLATION' ? 'Deadline Date' : 'Scheduled Date'}
+                  </p>
                   <p className="font-semibold text-sm text-slate-900">
                     {new Date(job.date).toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
                   </p>
@@ -200,8 +202,10 @@ export const InterpreterJobDetails = () => {
                   <Clock size={16} />
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase text-slate-400 tracking-wider mb-0.5">Time & Duration</p>
-                  <p className="font-semibold text-sm text-slate-900">{job.startTime} ({job.durationMinutes} mins)</p>
+                  <p className="text-[9px] font-bold uppercase text-slate-400 tracking-wider mb-0.5">
+                    {job.serviceType === 'TRANSLATION' ? 'Delivery Time' : 'Time & Duration'}
+                  </p>
+                  <p className="font-semibold text-sm text-slate-900">{job.startTime}{job.serviceType !== 'TRANSLATION' && ` (${job.durationMinutes} mins)`}</p>
                 </div>
               </div>
             </div>
@@ -260,12 +264,12 @@ export const InterpreterJobDetails = () => {
                 <CheckCircle2 size={16} className="mr-2" /> Accept Job
               </button>
             </div>
-          ) : job.status === BookingStatus.BOOKED && new Date(job.date) < new Date() ? (
+          ) : job.status === BookingStatus.BOOKED && (job.serviceType === 'TRANSLATION' ? true : new Date(job.date) < new Date()) ? (
             <button
               onClick={() => navigate(`/interpreter/timesheets/new/${job.id}`)}
               className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center text-sm tracking-tight"
             >
-              <FileText className="mr-2" size={16} /> Submit Timesheet
+              <FileText className="mr-2" size={16} /> {job.serviceType === 'TRANSLATION' ? 'Submit Work / Delivery' : 'Submit Timesheet'}
             </button>
           ) : (
             null

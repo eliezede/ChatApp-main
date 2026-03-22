@@ -14,7 +14,18 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "./firebaseConfig";
-import { ClientInvoice, InterpreterInvoice, Timesheet, InvoiceStatus, BookingStatus, NotificationType } from "../types";
+import { 
+  ClientInvoice, 
+  InterpreterInvoice, 
+  Timesheet, 
+  InvoiceStatus, 
+  BookingStatus, 
+  NotificationType, 
+  ServiceCategory, 
+  SessionMode, 
+  SageCode,
+  Booking
+} from "../types";
 import { MOCK_TIMESHEETS, MOCK_CLIENT_INVOICES, MOCK_INTERPRETER_INVOICES, saveMockData, MOCK_BOOKINGS, MOCK_RATES, MOCK_USERS } from "./mockData";
 import { convertDoc, safeFetch } from './utils';
 import { NotificationService } from "./notificationService";
@@ -257,7 +268,7 @@ export const BillingService = {
 
       if (ts.bookingId) {
         batch.update(doc(db, 'bookings', ts.bookingId), {
-          status: BookingStatus.INVOICING,
+          status: BookingStatus.READY_FOR_INVOICE,
           updatedAt: serverTimestamp()
         });
       }
@@ -291,7 +302,7 @@ export const BillingService = {
         ts.readyForInterpreterInvoice = true;
 
         const b = MOCK_BOOKINGS.find(book => book.id === ts.bookingId);
-        if (b) b.status = BookingStatus.INVOICING;
+        if (b) b.status = BookingStatus.READY_FOR_INVOICE;
 
         saveMockData();
       }
@@ -306,7 +317,7 @@ export const BillingService = {
         await BillingService.approveTimesheet(snap.docs[0].id);
       } else {
         await updateDoc(doc(db, 'bookings', bookingId), {
-          status: BookingStatus.INVOICING,
+          status: BookingStatus.READY_FOR_INVOICE,
           updatedAt: serverTimestamp()
         });
       }
@@ -316,7 +327,7 @@ export const BillingService = {
       if (ts) await BillingService.approveTimesheet(ts.id);
       else {
         const b = MOCK_BOOKINGS.find(book => book.id === bookingId);
-        if (b) { b.status = BookingStatus.INVOICING; saveMockData(); }
+        if (b) { b.status = BookingStatus.READY_FOR_INVOICE; saveMockData(); }
       }
     }
   },
@@ -363,17 +374,31 @@ export const BillingService = {
       interpreterId: data.interpreterId!,
       clientId: data.clientId!,
       submittedAt: new Date().toISOString(),
-      actualStart: data.actualStart!,
-      actualEnd: data.actualEnd!,
+      sessionMode: data.sessionMode || SessionMode.F2F,
+      actualStart: data.actualStart || new Date().toISOString(),
+      actualEnd: data.actualEnd || new Date().toISOString(),
+      sessionDurationMinutes: data.sessionDurationMinutes || 0,
+      sessionFees: data.sessionFees || 0,
+      travelTimeMinutes: data.travelTimeMinutes || 0,
+      travelFees: data.travelFees || 0,
+      mileage: data.mileage || 0,
+      mileageFees: data.mileageFees || 0,
+      parking: data.parking || 0,
+      transport: data.transport || 0,
+      totalToPay: data.totalToPay || 0,
       breakDurationMinutes: data.breakDurationMinutes || 0,
+      // Translation-specific fields
+      wordCount: data.wordCount || 0,
+      unitPrice: data.unitPrice || 0,
+      units: data.units || 'hours',
+      interpreterAmountCalculated: data.interpreterAmountCalculated || 0,
+      clientAmountCalculated: data.clientAmountCalculated || 0,
       adminApproved: false,
       status: 'SUBMITTED' as const,
       readyForClientInvoice: false,
       readyForInterpreterInvoice: false,
       unitsBillableToClient: 0,
       unitsPayableToInterpreter: 0,
-      clientAmountCalculated: 0,
-      interpreterAmountCalculated: 0,
       supportingDocumentUrl: data.supportingDocumentUrl
     };
     try {
@@ -400,17 +425,53 @@ export const BillingService = {
 
   calculateBookingTotal: async (bookingId: string): Promise<number> => {
     try {
-      const booking = await getDoc(doc(db, 'bookings', bookingId));
-      if (!booking.exists()) return 0;
-      const data = booking.data();
-      // Simple logic: duration * rate
+      const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+      if (!bookingDoc.exists()) return 0;
+      const data = bookingDoc.data();
+      
+      // Markup logic from Airtable: interpreterCost + margin
+      // margin is £21 for OOH, £17 for standard
+      const margin = data.isOOH ? 21 : 17;
+      
+      // Calculate based on duration (h) * interpreterRate + margin
       const durationHours = (data.durationMinutes || 60) / 60;
-      const rate = 45; // Default standard rate
-      return durationHours * rate;
+      const interpreterRate = 25; // Default mock; in reality fetch from interpreter/rates
+      
+      const subtotal = (durationHours * interpreterRate) + margin;
+      const vat = subtotal * 0.20;
+      
+      return Number((subtotal + vat).toFixed(2));
     } catch {
       const b = MOCK_BOOKINGS.find(book => book.id === bookingId);
       if (!b) return 0;
-      return (b.durationMinutes / 60) * 45;
+      const margin = b.isOOH ? 21 : 17;
+      const subtotal = (b.durationMinutes / 60 * 25) + margin;
+      return Number((subtotal * 1.20).toFixed(2));
     }
+  },
+
+  calculateBookingTotalSync: (booking: Booking): number => {
+    if (!booking) return 0;
+    // Markup logic from Airtable: interpreterCost + margin
+    const margin = booking.isOOH ? 21 : 17;
+    
+    // Calculate based on duration (h) * interpreterRate + margin
+    const durationHours = (booking.durationMinutes || 60) / 60;
+    const interpreterRate = 25; // Default mock; in reality fetch from interpreter/rates
+    
+    const subtotal = (durationHours * interpreterRate) + margin;
+    const vat = subtotal * 0.20;
+    
+    return Number((subtotal + vat).toFixed(2));
+  },
+
+  getSageCode: (category: ServiceCategory, mode: SessionMode, isOOH: boolean): SageCode => {
+    if (category === ServiceCategory.TRANSLATION) return SageCode.I010;
+    
+    if (mode === SessionMode.VIDEO) return isOOH ? SageCode.I008 : SageCode.I002;
+    if (mode === SessionMode.PHONE) return isOOH ? SageCode.I009 : SageCode.I003;
+    
+    // Default F2F
+    return isOOH ? SageCode.I007 : SageCode.I001;
   }
 };

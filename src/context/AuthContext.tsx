@@ -57,7 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 status: userData.status || 'ACTIVE'
               });
               
-              // Note: Ideally we'd trigger a migration here too, but the Cloud Function handles it now.
+              // MIGRATION: Auto-align document ID with UID
+              const { setDoc, deleteDoc } = await import('firebase/firestore');
+              await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+              await deleteDoc(querySnapshot.docs[0].ref);
+              console.log("Auth: ID migration successful.");
             } else {
               // No profile doc exists at all
               // Check mock data as fallback before creating default
@@ -87,13 +91,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           } else {
             // Fallback for unknown users in offline mode
-            /* Fixed: Added missing required status property to User object */
             setUser({
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || 'Offline User',
-              role: UserRole.CLIENT,
-              status: 'ACTIVE'
+              role: UserRole.INTERPRETER,
+              status: 'PENDING'
             });
           }
         }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useInterpreterInvoices } from '../../hooks/useInterpreterInvoices';
@@ -59,7 +60,7 @@ export const InterpreterPayments = () => {
   return (
     <div className="flex-1 flex flex-col h-full min-h-[calc(100vh-4rem)] bg-slate-50 animate-in fade-in duration-700">
       <PageHeader
-        title="Financial Statements"
+        title="Earnings"
         subtitle="Manage pending payables, combine sessions into invoices, and track settlements."
       >
         <Button onClick={() => window.print()} variant="secondary" icon={FileText} size="sm">Export Data</Button>
@@ -199,9 +200,9 @@ export const InterpreterPayments = () => {
                   </div>
                   <div className="flex justify-between items-end border-t border-slate-50 pt-3">
                     <span className="text-xs font-black text-slate-900">£{inv.totalAmount.toFixed(2)}</span>
-                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 cursor-pointer hover:underline">
+                    <Link to={`/interpreter/billing/invoice/${inv.id}`} className="text-[10px] font-black text-blue-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 hover:underline">
                       Details <ExternalLink size={10} />
-                    </span>
+                    </Link>
                   </div>
                 </div>
               ))}

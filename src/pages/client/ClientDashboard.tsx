@@ -46,7 +46,7 @@ export const ClientDashboard = () => {
   useEffect(() => {
     if (!bookingsLoading && !invoicesLoading) {
       const upcoming = bookings.filter(b => new Date(b.date) >= new Date() && b.status !== BookingStatus.CANCELLED).length;
-      const completed = bookings.filter(b => [BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length;
+      const completed = bookings.filter(b => [BookingStatus.READY_FOR_INVOICE, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status)).length;
       const unpaidInv = invoices.filter(i => i.status !== 'PAID');
 
       setStats({
@@ -56,16 +56,19 @@ export const ClientDashboard = () => {
         unpaidAmount: unpaidInv.reduce((acc, curr) => acc + curr.totalAmount, 0)
       });
 
-      // Calculate estimated costs for completed bookings without invoices
+      // Calculate estimated costs for completed bookings without invoices synchronously
       const completedWithoutInvoices = bookings.filter(b =>
-        [BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status) &&
+        [BookingStatus.READY_FOR_INVOICE, BookingStatus.INVOICED, BookingStatus.PAID].includes(b.status) &&
         !invoices.some(inv => inv.items?.some((item: any) => item.bookingId === b.id))
       );
 
-      completedWithoutInvoices.forEach(async (b) => {
-        const cost = await BillingService.calculateBookingTotal(b.id);
-        setEstimatedCosts(prev => ({ ...prev, [b.id]: cost }));
-      });
+      if (completedWithoutInvoices.length > 0) {
+        const newEstimatedCosts: Record<string, number> = {};
+        completedWithoutInvoices.forEach(b => {
+          newEstimatedCosts[b.id] = BillingService.calculateBookingTotalSync(b);
+        });
+        setEstimatedCosts(prev => ({ ...prev, ...newEstimatedCosts }));
+      }
     }
   }, [bookings, invoices, bookingsLoading, invoicesLoading]);
 
@@ -160,7 +163,7 @@ export const ClientDashboard = () => {
                       ${booking.status === BookingStatus.BOOKED ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
                     {booking.status}
                   </span>
-                  {[BookingStatus.INVOICING, BookingStatus.INVOICED, BookingStatus.PAID].includes(booking.status) && estimatedCosts[booking.id] && (
+                  {[BookingStatus.READY_FOR_INVOICE, BookingStatus.INVOICED, BookingStatus.PAID].includes(booking.status) && estimatedCosts[booking.id] && (
                     <div className="mt-1 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
                       Est. Billing: £{estimatedCosts[booking.id].toFixed(2)}
                     </div>

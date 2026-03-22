@@ -27,7 +27,7 @@ export const StatusBadge: React.FC<{ status: BookingStatus | JobStatus | string 
       case BookingStatus.ADMIN:
       case 'ADMIN':
         return 'bg-purple-100 text-purple-800 border-purple-200';
-      case BookingStatus.INVOICING:
+      case BookingStatus.READY_FOR_INVOICE:
       case 'TIMESHEET_SUBMITTED':
         return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       case BookingStatus.CANCELLED:

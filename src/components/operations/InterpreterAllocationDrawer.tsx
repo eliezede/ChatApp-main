@@ -158,8 +158,8 @@ export const InterpreterAllocationDrawer: React.FC<InterpreterAllocationDrawerPr
                                                 </div>
                                                 <div className="flex items-center space-x-3 mt-1.5">
                                                     <div className="flex items-center space-x-1">
-                                                        <MapPin size={10} className="text-slate-400" />
-                                                        <span className="text-[10px] text-slate-500">2.4 miles</span>
+                                                        <Star size={10} className="text-amber-400" />
+                                                        <span className="text-[10px] text-slate-500">{98 - idx}% Reliability</span>
                                                     </div>
                                                     <div className="flex items-center space-x-1">
                                                         <CheckCircle2 size={10} className="text-green-500" />

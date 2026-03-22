@@ -94,7 +94,7 @@ export const AdminUsers = () => {
         role: inviteData.role,
         status: 'PENDING'
       });
-      await UserService.sendActivationEmail(inviteData.email, inviteData.name);
+      await UserService.sendActivationEmail(inviteData.email);
       showToast('Invitation sent successfully', 'success');
       setIsInviteModalOpen(false);
       setInviteData({ name: '', email: '', role: UserRole.ADMIN });
