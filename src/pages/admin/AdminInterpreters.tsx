@@ -141,12 +141,12 @@ export const AdminInterpreters = () => {
       header: 'Interpreter',
       accessor: (i: Interpreter) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm border border-slate-200">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center font-bold text-sm border border-slate-200 dark:border-slate-700">
             {i.name.charAt(0)}
           </div>
           <div>
-            <p className="font-bold text-slate-900">{i.name}</p>
-            <p className="text-xs text-slate-500">{i.email}</p>
+            <p className="font-bold text-slate-900 dark:text-white">{i.name}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{i.email}</p>
           </div>
         </div>
       )
@@ -156,16 +156,16 @@ export const AdminInterpreters = () => {
       accessor: (i: Interpreter) => (
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {i.languages.slice(0, 3).map(l => (
-            <span key={l} className="bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600 border border-slate-200">{l}</span>
+            <span key={l} className="bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">{l}</span>
           ))}
-          {i.languages.length > 3 && <span className="text-[10px] text-slate-400 font-bold">+{i.languages.length - 3}</span>}
+          {i.languages.length > 3 && <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">+{i.languages.length - 3}</span>}
         </div>
       )
     },
     {
       header: 'Region',
       accessor: (i: Interpreter) => (
-        <div className="flex items-center gap-2 text-slate-500">
+        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
           <MapPin size={12} />
           <span className="text-xs truncate max-w-[120px]">{i.regions[0]}{i.regions.length > 1 ? ` +${i.regions.length - 1}` : ''}</span>
         </div>
@@ -196,40 +196,40 @@ export const AdminInterpreters = () => {
         stats={{ label: "Active Pool", value: interpreters.length }}
       />
 
-      <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-2">
+      <div className="bg-white dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row items-center gap-2 transition-colors">
         <div className="flex-1 relative w-full h-10">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
           <input
             type="text"
             placeholder="Search name or email..."
-            className="pl-10 pr-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900"
+            className="pl-10 pr-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
             value={textFilter}
             onChange={e => setTextFilter(e.target.value)}
           />
         </div>
-        <div className="w-full lg:w-64 h-10 border-t lg:border-t-0 lg:border-l border-slate-100">
+        <div className="w-full lg:w-64 h-10 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800">
           <input
             type="text"
             placeholder="Filter language..."
-            className="px-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900"
+            className="px-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
             value={langFilter}
             onChange={e => setLangFilter(e.target.value)}
           />
         </div>
-        <div className="w-full lg:w-48 relative h-10 border-t lg:border-t-0 lg:border-l border-slate-100">
+        <div className="w-full lg:w-48 relative h-10 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800">
           <select
-            className="px-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900 cursor-pointer appearance-none font-medium"
+            className="px-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900 dark:text-white cursor-pointer appearance-none font-medium"
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as any)}
           >
-            <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="ONBOARDING">Onboarding</option>
-            <option value="SUSPENDED">Suspended</option>
+            <option value="ALL" className="dark:bg-slate-900">All Statuses</option>
+            <option value="ACTIVE" className="dark:bg-slate-900">Active</option>
+            <option value="ONBOARDING" className="dark:bg-slate-900">Onboarding</option>
+            <option value="SUSPENDED" className="dark:bg-slate-900">Suspended</option>
           </select>
           <ChevronRight className="absolute right-3 top-1/2 -rotate-90 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
         </div>
-        <div className="border-t lg:border-t-0 lg:border-l border-slate-100 pl-2 lg:pl-2 w-full lg:w-auto flex justify-end">
+        <div className="border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 pl-2 lg:pl-2 w-full lg:w-auto flex justify-end">
           <ViewToggle view={viewMode} onChange={setViewMode} />
         </div>
       </div>
@@ -281,18 +281,18 @@ export const AdminInterpreters = () => {
       >
         {selectedInterpreter && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-slate-50 rounded-xl border border-slate-200 gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 gap-4">
               <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="w-16 h-16 bg-slate-700 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-sm border-2 border-slate-200">
+                <div className="w-16 h-16 bg-slate-700 dark:bg-slate-800 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-sm border-2 border-slate-200 dark:border-slate-700">
                   {selectedInterpreter.name.charAt(0)}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">{selectedInterpreter.name}</h2>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{selectedInterpreter.name}</h2>
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
                     <Badge variant={selectedInterpreter.status === 'ACTIVE' ? 'success' : 'warning'}>
                       {selectedInterpreter.status}
                     </Badge>
-                    <span className="flex items-center gap-1.5 text-slate-500 text-xs font-medium bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">
+                    <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs font-medium bg-white dark:bg-slate-800 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm">
                       <Mail size={12} className="text-slate-400" />
                       {selectedInterpreter.email}
                     </span>
@@ -311,52 +311,52 @@ export const AdminInterpreters = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <ShieldCheck size={14} className="text-slate-400" />
                   Capabilities
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg"><Languages size={16} /></div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg"><Languages size={16} /></div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Languages</p>
+                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-1">Languages</p>
                       <div className="flex flex-wrap gap-1">
                         {selectedInterpreter.languages.map(l => (
-                          <span key={l} className="bg-slate-50 px-2 py-0.5 rounded text-[10px] font-medium text-slate-600 border border-slate-200">{l}</span>
+                          <span key={l} className="bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded text-[10px] font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">{l}</span>
                         ))}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg"><MapPin size={16} /></div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg"><MapPin size={16} /></div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Service Regions</p>
-                      <p className="text-sm font-medium text-slate-700">{selectedInterpreter.regions.join(', ')}</p>
+                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-1">Service Regions</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{selectedInterpreter.regions.join(', ')}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-full">
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <Calendar size={14} className="text-slate-400" />
                   Recent Assignments
                 </h3>
                 {loadingJobs ? (
                   <div className="flex-1 flex items-center justify-center"><Spinner /></div>
                 ) : interpreterJobs.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 rounded-lg border border-dashed border-slate-200 p-4">
-                    <AlertCircle className="text-slate-300 mb-2" size={24} />
-                    <p className="text-xs font-medium text-slate-500">No assigned jobs</p>
+                  <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 p-4">
+                    <AlertCircle className="text-slate-300 dark:text-slate-600 mb-2" size={24} />
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">No assigned jobs</p>
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1 flex-1">
                     {interpreterJobs.slice(0, 5).map(job => (
-                      <div key={job.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 group hover:border-slate-300 transition-colors cursor-pointer" onClick={() => navigate(`/admin/bookings/${job.id}`)}>
+                      <div key={job.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200 dark:border-slate-800 group hover:border-slate-300 dark:hover:border-slate-700 transition-colors cursor-pointer" onClick={() => navigate(`/admin/bookings/${job.id}`)}>
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-bold text-slate-900">{job.bookingRef || `#${job.id.slice(-4)}`}</span>
-                          <span className="text-[10px] text-slate-500">{job.date} • {job.startTime}</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">{job.bookingRef || `#${job.id.slice(-4)}`}</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">{job.date} • {job.startTime}</span>
                         </div>
                         <Badge variant={job.status === 'COMPLETED' ? 'success' : 'info'} className="text-[10px] py-0 px-1.5 h-5">
                           {job.status}
@@ -364,7 +364,7 @@ export const AdminInterpreters = () => {
                       </div>
                     ))}
                     {interpreterJobs.length > 5 && (
-                      <p className="text-[10px] text-center font-medium text-slate-500 py-2 bg-slate-50 border border-slate-200 rounded-md mt-2">+{interpreterJobs.length - 5} More historical records</p>
+                      <p className="text-[10px] text-center font-medium text-slate-500 dark:text-slate-500 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-md mt-2">+{interpreterJobs.length - 5} More historical records</p>
                     )}
                   </div>
                 )}

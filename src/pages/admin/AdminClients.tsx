@@ -157,12 +157,14 @@ export const AdminClients = () => {
       header: 'Organization',
       accessor: (c: ClientWithStats) => (
         <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border shadow-sm ${c.status === 'GUEST' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border shadow-sm ${c.status === 'GUEST' 
+            ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/30' 
+            : 'bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/30'}`}>
             {c.companyName.charAt(0)}
           </div>
           <div>
-            <p className="font-bold text-slate-900">{c.companyName}</p>
-            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{c.status || 'Active'}</p>
+            <p className="font-bold text-slate-900 dark:text-white">{c.companyName}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">{c.status || 'Active'}</p>
           </div>
         </div>
       )
@@ -171,8 +173,8 @@ export const AdminClients = () => {
       header: 'Primary Contact',
       accessor: (c: ClientWithStats) => (
         <div>
-          <p className="font-medium text-slate-700">{c.contactPerson}</p>
-          <p className="text-xs text-slate-400">{c.email}</p>
+          <p className="font-medium text-slate-700 dark:text-slate-200">{c.contactPerson}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">{c.email}</p>
         </div>
       )
     },
@@ -181,14 +183,14 @@ export const AdminClients = () => {
       accessor: (c: ClientWithStats) => (
         <div className="flex items-center gap-3">
           <Badge variant="info" className="text-[10px] py-0 px-1.5">{c.activeBookings} Active</Badge>
-          <span className="text-xs text-slate-400">{c.totalBookings} Total</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">{c.totalBookings} Total</span>
         </div>
       )
     },
     {
       header: 'Location',
       accessor: (c: ClientWithStats) => (
-        <div className="flex items-center gap-2 text-slate-500">
+        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
           <MapPin size={12} />
           <span className="text-xs truncate max-w-[150px]">{c.billingAddress || 'N/A'}</span>
         </div>
@@ -212,31 +214,31 @@ export const AdminClients = () => {
         </Button>
       </PageHeader>
 
-      <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-2">
+      <div className="bg-white dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row items-center gap-2 transition-colors">
         <div className="flex-1 relative w-full h-10">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
           <input
             type="text"
             placeholder="Search company, contact or email..."
-            className="pl-10 pr-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900"
+            className="pl-10 pr-4 py-2 bg-transparent text-sm w-full h-full outline-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
             value={filter}
             onChange={e => setFilter(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 border-t lg:border-t-0 lg:border-l border-slate-100 pl-2 lg:pl-2 w-full lg:w-auto overflow-x-auto py-2 lg:py-0">
+        <div className="flex items-center gap-2 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 pl-2 lg:pl-2 w-full lg:w-auto overflow-x-auto py-2 lg:py-0">
           {(['ALL', 'ACTIVE', 'GUEST'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${statusFilter === s
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                ? 'bg-slate-900 dark:bg-slate-800 text-white shadow-md'
+                : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
             >
               {s}
             </button>
           ))}
-          <div className="mx-2 h-4 w-px bg-slate-200 hidden lg:block"></div>
+          <div className="mx-2 h-4 w-px bg-slate-200 dark:bg-slate-800 hidden lg:block"></div>
           <ViewToggle view={viewMode} onChange={setViewMode} />
         </div>
       </div>
@@ -288,19 +290,19 @@ export const AdminClients = () => {
       >
         {selectedClient && (
           <div className="space-y-6 py-2">
-            <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-slate-50 rounded-xl border border-slate-200 gap-4">
+            <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 gap-4">
               <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
-                <div className="w-16 h-16 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white">
+                <div className="w-16 h-16 bg-blue-600 dark:bg-blue-700 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white dark:border-slate-700">
                   {selectedClient.companyName.charAt(0)}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">{selectedClient.companyName}</h2>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{selectedClient.companyName}</h2>
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2">
-                    <span className="flex items-center gap-1.5 text-slate-500 text-xs font-medium bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                    <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs font-medium bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
                       <Mail size={12} className="text-blue-500" />
                       {selectedClient.email}
                     </span>
-                    <span className="flex items-center gap-1.5 text-slate-500 text-xs font-medium bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                    <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs font-medium bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
                       <User size={12} className="text-indigo-500" />
                       {selectedClient.contactPerson}
                     </span>
@@ -316,48 +318,48 @@ export const AdminClients = () => {
               >View Full Profile</Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <Briefcase size={14} className="text-blue-500" />
                   Contractual Data
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-start gap-4">
-                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg shadow-sm"><Clock size={16} /></div>
+                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg shadow-sm"><Clock size={16} /></div>
                     <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Standard Terms</p>
-                      <p className="font-bold text-slate-900 text-sm">{selectedClient.paymentTermsDays || 30} Days Net</p>
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest mb-1">Standard Terms</p>
+                      <p className="font-bold text-slate-900 dark:text-slate-200 text-sm">{selectedClient.paymentTermsDays || 30} Days Net</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg shadow-sm"><MapPin size={16} /></div>
+                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg shadow-sm"><MapPin size={16} /></div>
                     <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Billing Base</p>
-                      <p className="text-xs font-medium text-slate-700 leading-relaxed italic">{selectedClient.billingAddress || 'No primary address recorded'}</p>
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest mb-1.5">Billing Base</p>
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-400 leading-relaxed italic">{selectedClient.billingAddress || 'No primary address recorded'}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-full">
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <Calendar size={14} className="text-purple-500" />
                   Order Analytics
                 </h3>
                 {loadingJobs ? (
                   <div className="flex-1 flex items-center justify-center py-4"><Spinner /></div>
                 ) : clientJobs.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 rounded-lg border border-dashed border-slate-200 p-4 min-h-[100px]">
-                    <AlertCircle className="text-slate-300 mb-2" size={24} />
-                    <p className="text-xs font-bold text-slate-500">No service history found</p>
+                  <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 p-4 min-h-[100px]">
+                    <AlertCircle className="text-slate-300 dark:text-slate-600 mb-2" size={24} />
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">No service history found</p>
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar flex-1">
                     {clientJobs.slice(0, 5).map(job => (
-                      <div key={job.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 group hover:border-blue-200 transition-all cursor-pointer" onClick={() => navigate(`/admin/bookings/${job.id}`)}>
+                      <div key={job.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800 group hover:border-blue-200 dark:hover:border-blue-900/50 transition-all cursor-pointer" onClick={() => navigate(`/admin/bookings/${job.id}`)}>
                         <div className="flex flex-col gap-1">
-                          <span className="text-xs font-bold text-slate-900 uppercase tracking-tight">{job.bookingRef || `#${job.id.slice(-4)}`}</span>
-                          <span className="text-xs text-xs text-slate-500">{job.date}</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight">{job.bookingRef || `#${job.id.slice(-4)}`}</span>
+                          <span className="text-xs text-xs text-slate-500 dark:text-slate-400">{job.date}</span>
                         </div>
                         <Badge variant={job.status === 'COMPLETED' ? 'success' : 'info'} className="text-xs px-2">
                           {job.status}
@@ -365,7 +367,7 @@ export const AdminClients = () => {
                       </div>
                     ))}
                     {clientJobs.length > 5 && (
-                      <p className="text-xs text-center font-bold text-slate-500 pt-2 border-t border-slate-100 mt-2">Historical Volume: {clientJobs.length} Orders</p>
+                      <p className="text-xs text-center font-bold text-slate-500 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">Historical Volume: {clientJobs.length} Orders</p>
                     )}
                   </div>
                 )}

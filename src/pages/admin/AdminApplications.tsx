@@ -264,17 +264,17 @@ export const AdminApplications = () => {
       header: 'Candidate',
       accessor: (item: any) => (
         <div className="flex items-center space-x-3">
-          <div className={`w-8 h-8 rounded-lg ${item.itemType === 'ONBOARDING_INTERPRETER' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center font-bold`}>
+          <div className={`w-8 h-8 rounded-lg ${item.itemType === 'ONBOARDING_INTERPRETER' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-500' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500'} flex items-center justify-center font-bold`}>
             {item.name.charAt(0)}
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900 leading-none">{item.name}</span>
+              <span className="font-bold text-slate-900 dark:text-white leading-none">{item.name}</span>
               {item.itemType === 'ONBOARDING_INTERPRETER' && (
                 <span className="text-[8px] font-black bg-amber-500 text-white px-1 rounded uppercase tracking-tighter shadow-sm">Onboarding</span>
               )}
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 uppercase tracking-tighter">{item.email}</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-tighter">{item.email}</span>
           </div>
         </div>
       )
@@ -290,7 +290,7 @@ export const AdminApplications = () => {
               <Badge variant={hasPending ? 'warning' : 'info'}>
                 {hasPending ? 'DOCS PENDING' : 'ONBOARDING'}
               </Badge>
-              {hasPending && <span className="text-[9px] text-amber-600 font-bold uppercase animate-pulse italic">Action Required</span>}
+              {hasPending && <span className="text-[9px] text-amber-600 dark:text-amber-500 font-bold uppercase animate-pulse italic">Action Required</span>}
             </div>
           );
         }
@@ -302,7 +302,7 @@ export const AdminApplications = () => {
       accessor: (item: any) => (
         <div className="flex items-center space-x-2">
           {(item.languageProficiencies || []).filter((p: any) => p.l1 <= 1).map((p: any) => (
-            <span key={p.language} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-black uppercase">
+            <span key={p.language} className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded text-[10px] font-black uppercase">
               {p.language}
             </span>
           ))}
@@ -313,8 +313,8 @@ export const AdminApplications = () => {
       header: 'Qualifications',
       accessor: (item: any) => (
         <div className="flex flex-col gap-1">
-          {item.nrpsi?.registered && <span className="text-[9px] font-bold text-slate-500 flex items-center gap-1"><Check size={10} className="text-emerald-500" /> NRPSI</span>}
-          {item.dpsi && <span className="text-[9px] font-bold text-slate-500 flex items-center gap-1"><Check size={10} className="text-emerald-500" /> DPSI</span>}
+          {item.nrpsi?.registered && <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><Check size={10} className="text-emerald-500" /> NRPSI</span>}
+          {item.dpsi && <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><Check size={10} className="text-emerald-500" /> DPSI</span>}
         </div>
       )
     },
@@ -363,12 +363,12 @@ export const AdminApplications = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50">
+    <div className="flex-1 flex flex-col h-full bg-slate-50 dark:bg-slate-950 transition-colors">
       <PageHeader
         title="Onboarding Desk"
         subtitle="Manage new interpreter applications and active onboarding documents."
       >
-        <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-sm overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <div className="flex items-center bg-white dark:bg-slate-900/50 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto whitespace-nowrap scrollbar-hide transition-colors">
           {(['ALL', 'PENDING', 'ONBOARDING', 'APPROVED', 'REJECTED'] as TabType[]).map(tab => {
             const count = tab === 'ALL' ? items.length : 
                          tab === 'ONBOARDING' ? items.filter(i => i.itemType === 'ONBOARDING_INTERPRETER').length :
@@ -379,12 +379,12 @@ export const AdminApplications = () => {
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${activeTab === tab
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 group'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 group'
                   }`}
               >
                 {tab}
                 {count > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-600'}`}>
                     {count}
                   </span>
                 )}
@@ -401,7 +401,7 @@ export const AdminApplications = () => {
             <input
               type="text"
               placeholder="Search by name or email..."
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm font-medium"
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -417,7 +417,7 @@ export const AdminApplications = () => {
           />
         </div>
 
-        <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors">
           <Table
             columns={columns}
             data={filteredItems}
@@ -439,14 +439,14 @@ export const AdminApplications = () => {
       >
         {selectedApp && (
           <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-            <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 transition-colors shadow-sm">
               <div className="flex items-center">
                 <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-blue-600/20 mr-4">
                   {selectedApp.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900">{selectedApp.name}</h3>
-                  <div className="flex items-center text-xs text-slate-500 mt-1 uppercase font-black tracking-widest">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">{selectedApp.name}</h3>
+                  <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase font-black tracking-widest">
                     New Application
                   </div>
                 </div>
@@ -458,36 +458,36 @@ export const AdminApplications = () => {
 
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4 text-xs font-bold text-slate-700">
-                <div className="p-4 bg-white border border-slate-100 rounded-2xl">
-                  <p className="text-[10px] uppercase text-slate-400 font-black mb-1">Email</p>
+                <div className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-slate-300 transition-colors">
+                  <p className="text-[10px] uppercase text-slate-400 dark:text-slate-500 font-black mb-1">Email</p>
                   {selectedApp.email}
                 </div>
-                <div className="p-4 bg-white border border-slate-100 rounded-2xl">
-                  <p className="text-[10px] uppercase text-slate-400 font-black mb-1">Phone</p>
+                <div className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-slate-300 transition-colors">
+                  <p className="text-[10px] uppercase text-slate-400 dark:text-slate-500 font-black mb-1">Phone</p>
                   {selectedApp.phone}
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 rounded-2xl border border-dotted border-slate-200">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Language Matrix</h4>
+              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dotted border-slate-200 dark:border-slate-800 transition-colors">
+                <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Language Matrix</h4>
                 <div className="flex flex-wrap gap-2 text-xs">
                   {selectedApp.languages?.map((l: string) => (
-                    <span key={l} className="px-3 py-1 bg-white rounded-lg border border-slate-100 font-bold text-slate-600 uppercase">
+                    <span key={l} className="px-3 py-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-400 uppercase transition-colors">
                       {l}
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-100 flex items-start">
-                <Info size={18} className="text-blue-600 shrink-0 mt-0.5 mr-3" />
-                <p className="text-xs text-blue-800 leading-relaxed font-bold">
+              <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-900/30 flex items-start transition-colors">
+                <Info size={18} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 mr-3" />
+                <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed font-bold">
                   Approving this candidate will instantly create their professional profile and login credentials.
                 </p>
               </div>
 
               {selectedApp.status === 'PENDING' && (
-                <div className="pt-6 border-t border-slate-100 flex flex-col gap-3">
+                <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3 transition-colors">
                   <Button
                     variant="primary"
                     icon={UserPlus}
@@ -499,7 +499,7 @@ export const AdminApplications = () => {
                   </Button>
                   <button
                     onClick={() => handleReject(selectedApp)}
-                    className="w-full py-3 text-red-600 text-xs font-black uppercase tracking-widest hover:bg-red-50 rounded-xl transition-colors"
+                    className="w-full py-3 text-red-600 dark:text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
                   >
                     Reject Application
                   </button>
@@ -519,14 +519,14 @@ export const AdminApplications = () => {
       >
         {selectedInterp && (
           <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-            <div className="flex items-center justify-between bg-amber-50 p-5 rounded-3xl border border-amber-100 shadow-sm shadow-amber-500/5">
+            <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/20 p-5 rounded-3xl border border-amber-100 dark:border-amber-900/30 shadow-sm shadow-amber-500/5 transition-colors">
               <div className="flex items-center">
                 <div className="w-14 h-14 bg-amber-500 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-amber-500/20 mr-4">
                   {selectedInterp.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900 leading-tight">{selectedInterp.name}</h3>
-                  <div className="flex items-center text-[10px] text-amber-600 mt-1 uppercase font-black tracking-widest gap-2">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{selectedInterp.name}</h3>
+                  <div className="flex items-center text-[10px] text-amber-600 dark:text-amber-500 mt-1 uppercase font-black tracking-widest gap-2">
                     <Clock size={12} className="animate-spin-slow" />
                     Onboarding Verification
                   </div>
@@ -535,7 +535,7 @@ export const AdminApplications = () => {
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Compliance Documents</h4>
+              <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Compliance Documents</h4>
               
               {[
                 { id: 'dbs', label: 'DBS Certificate', data: selectedInterp.onboarding?.dbs },
@@ -543,14 +543,14 @@ export const AdminApplications = () => {
                 { id: 'certifications', label: 'Certifications', data: selectedInterp.onboarding?.certifications },
                 { id: 'rightToWork', label: 'Right to Work', data: selectedInterp.onboarding?.rightToWork }
               ].map(doc => (
-                <div key={doc.id} className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-blue-200 transition-colors group">
+                <div key={doc.id} className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm hover:border-blue-200 dark:hover:border-blue-900 transition-colors group">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${doc.data?.status === 'VERIFIED' ? 'bg-emerald-50 text-emerald-600' : doc.data?.status === 'IN_REVIEW' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400'}`}>
+                      <div className={`p-2 rounded-xl transition-colors ${doc.data?.status === 'VERIFIED' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : doc.data?.status === 'IN_REVIEW' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}>
                         <FileText size={18} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900 leading-none mb-1">{doc.label}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-none mb-1">{doc.label}</p>
                         <Badge variant={doc.data?.status === 'VERIFIED' ? 'success' : doc.data?.status === 'IN_REVIEW' ? 'warning' : 'info'}>
                           {doc.data?.status || 'MISSING'}
                         </Badge>
@@ -561,7 +561,7 @@ export const AdminApplications = () => {
                         href={doc.data.url} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                         title="View Document"
                       >
                         <ExternalLink size={16} />
@@ -569,14 +569,14 @@ export const AdminApplications = () => {
                     )}
                     {doc.data?.shareCode && (
                        <div className="flex flex-col items-end">
-                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Share Code</span>
-                         <span className="text-sm font-mono font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded leading-none">{doc.data.shareCode}</span>
+                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Share Code</span>
+                         <span className="text-sm font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded leading-none">{doc.data.shareCode}</span>
                        </div>
                     )}
                   </div>
 
                   {doc.data?.status === 'IN_REVIEW' && (
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-50">
+                    <div className="flex items-center gap-2 pt-3 border-t border-slate-50 dark:border-slate-800 transition-colors">
                       <Button
                         size="sm"
                         variant="primary"
@@ -603,8 +603,8 @@ export const AdminApplications = () => {
               ))}
             </div>
 
-            <div className="pt-8 border-t border-slate-100">
-              <div className="p-4 bg-slate-900 rounded-2xl shadow-xl shadow-slate-900/20 text-white flex flex-col gap-4">
+            <div className="pt-8 border-t border-slate-100 dark:border-slate-800 transition-colors">
+              <div className="p-4 bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-xl shadow-slate-900/20 text-white flex flex-col gap-4 border border-transparent dark:border-slate-800 transition-colors">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
                     <ShieldCheck size={20} />

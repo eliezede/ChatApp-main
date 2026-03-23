@@ -82,7 +82,7 @@ export const AdminClientInvoicesPage = () => {
       {showGenerator && (
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] space-y-6 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] pointer-events-none"></div>
-          <h3 className="font-black text-white text-[10px] uppercase tracking-[0.2em]">Account Settlement Generator</h3>
+          <h3 className="font-black text-white text-[10px] uppercase tracking-[0.2em] opacity-80">Account Settlement Generator</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
             <div>
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Client</label>
