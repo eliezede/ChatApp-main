@@ -1,19 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, ChevronLeft, Paperclip, FileIcon, Calendar, ExternalLink, Hash } from 'lucide-react';
+import { MessageCircle, X, Send, ChevronLeft, Paperclip, FileIcon, Calendar, ExternalLink, Hash, Users, User as UserIcon } from 'lucide-react';
 import { ChatService } from '../../services/chatService';
 import { BookingService, StorageService } from '../../services/api';
-import { ChatThread, ChatMessage, Booking } from '../../types';
+import { StaffService } from '../../services/staffService';
+import { ChatThread, ChatMessage, Booking, User, Department } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
 
 export const ChatSystem = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { isOpen, setIsOpen, activeThreadId, setActiveThreadId } = useChat();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
   const [inputText, setInputText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chats' | 'staff'>('chats');
+  const [staff, setStaff] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -21,6 +25,13 @@ export const ChatSystem = () => {
     if (!user) return;
     return ChatService.subscribeToThreads(user.id, setThreads);
   }, [user]);
+
+  useEffect(() => {
+    if (activeTab === 'staff' && isAdmin) {
+      StaffService.getAllAdminUsers().then(setStaff);
+      StaffService.getDepartments().then(setDepartments);
+    }
+  }, [activeTab, isAdmin]);
 
   useEffect(() => {
     if (!activeThreadId) {
@@ -106,10 +117,10 @@ export const ChatSystem = () => {
                 )}
                 <div>
                   <h3 className="font-black text-sm tracking-tight">
-                    {activeThreadId ? (activeThread?.participantNames[activeThread.participants.find(p => p !== user.id)!]) : 'Suporte Lingland'}
+                    {activeThreadId ? (activeThread?.participantNames[activeThread.participants.find(p => p !== user.id)!] || activeThread?.metadata?.name || 'Group Chat') : 'Lingland Communication'}
                   </h3>
-                  <p className="text-[10px] text-blue-100 font-black uppercase tracking-widest">
-                    {activeThreadId ? 'Conectado Agora' : 'Mensagens'}
+                  <p className="text-[10px] text-blue-100 font-extrabold uppercase tracking-widest">
+                    {activeThreadId ? 'Live Connection' : (activeTab === 'chats' ? 'Recent Messages' : 'Staff Directory')}
                   </p>
                 </div>
               </div>
@@ -117,6 +128,24 @@ export const ChatSystem = () => {
                 <X size={18} />
               </button>
             </div>
+
+            {/* Tab navigation */}
+            {!activeThreadId && (
+              <div className="flex gap-1 mt-2 p-1 bg-blue-700/50 rounded-xl">
+                <button 
+                  onClick={() => setActiveTab('chats')}
+                  className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${activeTab === 'chats' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-100 hover:bg-white/10'}`}
+                >
+                  Recents
+                </button>
+                <button 
+                  onClick={() => setActiveTab('staff')}
+                  className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${activeTab === 'staff' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-100 hover:bg-white/10'}`}
+                >
+                  Staff
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Contexto do Job Sticky */}
@@ -147,43 +176,103 @@ export const ChatSystem = () => {
           {/* Corpo das Mensagens */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 dark:bg-slate-950/20 scrollbar-hide">
             {!activeThreadId ? (
-              <div className="space-y-3">
-                {threads.length === 0 ? (
-                  <div className="py-24 text-center opacity-30">
-                    <MessageCircle size={48} className="mx-auto mb-4" />
-                    <p className="text-sm font-black uppercase tracking-widest">Sem conversas</p>
-                  </div>
-                ) : (
-                  threads.map(t => (
-                    <div
-                      key={t.id}
-                      onClick={() => {
-                        setActiveThreadId(t.id);
-                        ChatService.resetUnread(t.id, user.id);
-                      }}
-                      className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all flex items-center justify-between group"
-                    >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-slate-400 font-black">
-                          {t.participantNames[t.participants.find(p => p !== user.id)!]?.charAt(0) || '?'}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-                            {t.participantNames[t.participants.find(p => p !== user.id)!]}
-                          </p>
-                          {t.bookingId && <div className="text-[8px] font-black text-blue-500 uppercase flex items-center"><Hash size={8} className="mr-1" /> Job Ref</div>}
-                          <p className="text-xs text-slate-500 truncate group-hover:text-slate-700 dark:group-hover:text-slate-300 font-medium">{t.lastMessage || 'Nova conversa'}</p>
-                        </div>
-                      </div>
-                      {(t.unreadCount[user.id] || 0) > 0 && (
-                        <div className="w-6 h-6 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg shadow-red-500/40">
-                          {t.unreadCount[user.id]}
-                        </div>
-                      )}
+              activeTab === 'chats' ? (
+                <div className="space-y-3">
+                  {threads.length === 0 ? (
+                    <div className="py-24 text-center opacity-30">
+                      <MessageCircle size={48} className="mx-auto mb-4" />
+                      <p className="text-sm font-black uppercase tracking-widest">Sem conversas</p>
                     </div>
-                  ))
-                )}
-              </div>
+                  ) : (
+                    threads.map(t => (
+                      <div
+                        key={t.id}
+                        onClick={() => {
+                          setActiveThreadId(t.id);
+                          ChatService.resetUnread(t.id, user.id);
+                        }}
+                        className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-slate-400 font-black">
+                            {t.id.startsWith('dept-') ? <Hash size={20} /> : (t.participantNames[t.participants.find(p => p !== user.id)!]?.charAt(0) || '?')}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-black text-slate-900 dark:text-white truncate">
+                              {t.id.startsWith('dept-') ? t.metadata?.name : t.participantNames[t.participants.find(p => p !== user.id)!]}
+                            </p>
+                            {t.bookingId && <div className="text-[8px] font-black text-blue-500 uppercase flex items-center"><Hash size={8} className="mr-1" /> Job Ref</div>}
+                            <p className="text-xs text-slate-500 truncate group-hover:text-slate-700 dark:group-hover:text-slate-300 font-medium">{t.lastMessage || 'Nova conversa'}</p>
+                          </div>
+                        </div>
+                        {(t.unreadCount[user.id] || 0) > 0 && (
+                          <div className="w-6 h-6 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg shadow-red-500/40">
+                            {t.unreadCount[user.id]}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Departments Section */}
+                  <div>
+                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-1">Departments</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      {departments.map(dept => (
+                        <button
+                          key={dept.id}
+                          onClick={async () => {
+                            const tid = await ChatService.getOrCreateDepartmentThread(dept.id, dept.name, staff.map(s => s.id));
+                            setActiveThreadId(tid);
+                          }}
+                          className="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-blue-500 transition-all flex items-center justify-between group text-left w-full"
+                        >
+                           <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/40 text-blue-600 rounded-xl flex items-center justify-center">
+                               <Hash size={18} />
+                             </div>
+                             <div>
+                               <p className="text-sm font-black text-slate-900 dark:text-white">#{dept.name}</p>
+                               <p className="text-[10px] text-slate-500">Official Channel</p>
+                             </div>
+                           </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Staff Directory Section */}
+                  <div>
+                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-1">Internal Team</h4>
+                    <div className="space-y-2">
+                      {staff.filter(s => s.id !== user.id).map(s => (
+                        <div
+                          key={s.id}
+                          onClick={async () => {
+                            const names = { [user.id]: user.displayName || 'Me', [s.id]: s.displayName || 'Staff' };
+                            const tid = await ChatService.getOrCreateThread([user.id, s.id], names);
+                            setActiveThreadId(tid);
+                          }}
+                          className="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 cursor-pointer hover:border-blue-500 transition-all flex items-center gap-3"
+                        >
+                          <div className="relative">
+                            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center text-slate-500 font-bold text-sm">
+                              {s.displayName?.charAt(0)}
+                            </div>
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{s.displayName}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{s.role}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
             ) : (
               <div className="space-y-4">
                 {messages.map((m, idx) => {

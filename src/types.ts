@@ -37,6 +37,53 @@ export interface User {
   role: UserRole;
   status: 'ACTIVE' | 'SUSPENDED' | 'PENDING';
   profileId?: string;
+  staffProfileId?: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  description?: string;
+  managerId?: string;
+  createdAt: string;
+}
+
+export interface JobTitle {
+  id: string;
+  name: string;
+  departmentId: string;
+  level?: number;
+  createdAt: string;
+}
+
+export interface StaffProfile {
+  id: string;
+  userId: string;
+  jobTitleId: string;
+  departmentId: string;
+  phone?: string;
+  dob?: string;
+  niNumber?: string;
+  address?: {
+    street: string;
+    town: string;
+    county: string;
+    postcode: string;
+  };
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  preferences: {
+    theme: 'light' | 'dark' | 'system';
+    language: 'en' | 'pt';
+    notifications: boolean;
+    compactMode?: boolean;
+  };
+  onboardingCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export enum ServiceCategory {
@@ -179,7 +226,6 @@ export interface Interpreter extends TenantScopedEntity {
   // Personal Data
   email: string;
   phone: string;
-  homePhone?: string;
   gender: 'M' | 'F' | 'O';
   address: {
     street: string;
@@ -476,7 +522,10 @@ export interface ChatThread {
   lastMessage?: string;
   lastMessageAt?: string;
   bookingId?: string;
+  departmentId?: string;
+  type?: 'DIRECT' | 'BOOKING' | 'DEPARTMENT';
   unreadCount: Record<string, number>;
+  metadata?: any;
 }
 
 export interface ChatMessage {
@@ -564,3 +613,21 @@ export const EMAIL_VARIABLES = {
   ADMIN: ['{{clientName}}', '{{interpreterName}}', '{{bookingRef}}', '{{status}}'],
   APPLICANT: ['{{applicantName}}', '{{applicantEmail}}', '{{applicantPhone}}', '{{languages}}', '{{applicationDate}}', '{{applicationStatus}}']
 };
+
+export enum SystemModule {
+  DASHBOARD = 'DASHBOARD',
+  BOOKINGS = 'BOOKINGS',
+  INTERPRETERS = 'INTERPRETERS',
+  CLIENTS = 'CLIENTS',
+  FINANCE = 'FINANCE',
+  MESSAGES = 'MESSAGES',
+  RECRUITMENT = 'RECRUITMENT',
+  STAFF_MGMT = 'STAFF_MGMT',
+  SYSTEM_CONFIG = 'SYSTEM_CONFIG',
+  AUDIT_LOGS = 'AUDIT_LOGS'
+}
+
+export interface LevelPermission {
+  level: number;
+  modules: SystemModule[];
+}

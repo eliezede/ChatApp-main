@@ -35,6 +35,34 @@ export const ChatService = {
 
     return threadId;
   },
+  
+  getOrCreateDepartmentThread: async (departmentId: string, departmentName: string, staffIds: string[]) => {
+    const threadId = `dept-${departmentId}`;
+    const threadRef = doc(db, 'chatThreads', threadId);
+    const threadSnap = await getDoc(threadRef);
+
+    if (!threadSnap.exists()) {
+      const threadData: any = {
+        id: threadId,
+        type: 'DEPARTMENT',
+        departmentId,
+        participants: staffIds,
+        participantNames: { [threadId]: departmentName }, // Special case for group name
+        updatedAt: serverTimestamp(),
+        unreadCount: staffIds.reduce((acc, p) => ({ ...acc, [p]: 0 }), {}),
+        metadata: { name: departmentName }
+      };
+      await setDoc(threadRef, threadData);
+    } else {
+      // Update participants list if needed
+      await updateDoc(threadRef, {
+        participants: staffIds, // Sync with current staff
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    return threadId;
+  },
 
   sendMessage: async (
     threadId: string,

@@ -201,12 +201,12 @@ export const AdminUsers = () => {
   const renderContextMenu = (user: User) => [
     {
       label: 'Manage Role',
-      icon: <Shield size={14} />,
+      icon: Shield,
       onClick: () => openRoleModal(user)
     },
     {
       label: user.status === 'ACTIVE' ? 'Suspend' : 'Activate',
-      icon: user.status === 'ACTIVE' ? <ShieldOff size={14} /> : <ShieldCheck size={14} />,
+      icon: user.status === 'ACTIVE' ? ShieldOff : ShieldCheck,
       onClick: async () => {
         const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
         await UserService.update(user.id, { status: newStatus });
@@ -216,7 +216,7 @@ export const AdminUsers = () => {
     },
     {
       label: 'Delete User',
-      icon: <Trash2 size={14} className="text-red-500" />,
+      icon: Trash2,
        onClick: async () => {
         const ok = await confirm({
           title: 'Delete User',

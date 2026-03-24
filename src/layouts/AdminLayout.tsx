@@ -6,14 +6,16 @@ import {
   LogOut, Globe2, Menu, FileText, PoundSterling,
   CreditCard, UserCog, Settings, UserPlus, X, ChevronRight, MessageSquare, Mail,
   UserCheck, BarChart3, ClipboardList, PanelLeftOpen, PanelLeftClose, ChevronLeft, ChevronRight as ChevronRightIcon,
-  Search, ShieldCheck, Database, History, HelpCircle, Bell, User as UserIcon, Clock, ChevronDown
+  Search, ShieldCheck, Database, History, HelpCircle, Bell, User as UserIcon, Clock, ChevronDown, Building2
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { NotificationCenter } from '../components/notifications/NotificationCenter';
 import { ChatSystem } from '../components/chat/ChatSystem';
 import { ChatService } from '../services/chatService';
+import { StaffService } from '../services/staffService';
 import { CommandPalette } from '../components/ui/CommandPalette';
+import { SystemModule } from '../types';
 
 interface NavItemProps {
   to: string;
@@ -62,18 +64,20 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [totalUnread, setTotalUnread] = useState(0);
   const [onboardingBadge, setOnboardingBadge] = useState(0);
+  const [allowedModules, setAllowedModules] = useState<SystemModule[] | null>(null);
+  const [loadingPerms, setLoadingPerms] = useState(true);
 
   const [activeCategory, setActiveCategory] = useState<string>('CORE');
 
   const isWorkstation = location.pathname === '/admin/dashboard' || location.pathname === '/admin/terminal-one';
 
   const categories = [
-    { id: 'CORE', label: 'Home', icon: LayoutDashboard, rootPath: '/admin/dashboard' },
-    { id: 'OPS', label: 'Operations', icon: Briefcase, rootPath: '/admin/bookings' },
-    { id: 'NET', label: 'Network', icon: Users, rootPath: '/admin/interpreters' },
-    { id: 'FIN', label: 'Finance', icon: PoundSterling, rootPath: '/admin/billing' },
-    { id: 'COMMS', label: 'Comms', icon: MessageSquare, rootPath: '/admin/messages' },
-    { id: 'ADMIN', label: 'Administration', icon: Settings, rootPath: '/admin/users' },
+    { id: 'CORE', label: 'Home', icon: LayoutDashboard, rootPath: '/admin/dashboard', module: SystemModule.DASHBOARD },
+    { id: 'OPS', label: 'Operations', icon: Briefcase, rootPath: '/admin/bookings', module: SystemModule.BOOKINGS },
+    { id: 'NET', label: 'Network', icon: Users, rootPath: '/admin/interpreters', modules: [SystemModule.INTERPRETERS, SystemModule.CLIENTS, SystemModule.RECRUITMENT] },
+    { id: 'FIN', label: 'Finance', icon: PoundSterling, rootPath: '/admin/billing', module: SystemModule.FINANCE },
+    { id: 'COMMS', label: 'Comms', icon: MessageSquare, rootPath: '/admin/messages', modules: [SystemModule.MESSAGES] },
+    { id: 'ADMIN', label: 'Administration', icon: Settings, rootPath: '/admin/users', modules: [SystemModule.STAFF_MGMT, SystemModule.SYSTEM_CONFIG, SystemModule.AUDIT_LOGS] },
   ];
 
   // British English Date Format
@@ -123,7 +127,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       '/admin/users': 'ADMIN',
       '/admin/settings': 'ADMIN',
       '/admin/system': 'ADMIN',
-      '/admin/administration': 'ADMIN'
+      '/admin/administration': 'ADMIN',
+      '/admin/profile': 'ADMIN'
     };
 
     const currentPath = location.pathname;
@@ -148,7 +153,40 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error("Failed to fetch onboarding stats", e);
       }
     };
+
+    const fetchPermissions = async () => {
+      if (user.role === UserRole.SUPER_ADMIN) {
+        setAllowedModules(null); // All allowed
+        setLoadingPerms(false);
+        return;
+      }
+
+      try {
+        const staffProfile = await StaffService.getStaffProfileByUserId(user.id);
+        if (!staffProfile) {
+          setAllowedModules([]); // None for non-staff admins
+          setLoadingPerms(false);
+          return;
+        }
+
+        const jobTitles = await StaffService.getJobTitles();
+        const job = jobTitles.find(j => j.id === staffProfile.jobTitleId);
+        const level = job?.level || 1;
+
+        const allPerms = await StaffService.getLevelPermissions();
+        const levelPerm = allPerms.find(p => p.level === level);
+        
+        setAllowedModules(levelPerm?.modules || []);
+      } catch (error) {
+        console.error("Error loading permissions", error);
+        setAllowedModules([]);
+      } finally {
+        setLoadingPerms(false);
+      }
+    };
+
     fetchStats();
+    fetchPermissions();
     const interval = setInterval(fetchStats, 30000);
 
     return () => {
@@ -156,6 +194,13 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubscribeChat();
     };
   }, [user]);
+
+  const visibleCategories = categories.filter(cat => {
+    if (!allowedModules) return true; // SuperAdmin
+    if (cat.module) return allowedModules.includes(cat.module);
+    if (cat.modules) return cat.modules.some(m => allowedModules.includes(m));
+    return true;
+  });
 
   const isActive = (path: string) => location.pathname === path || (path !== '/admin/dashboard' && location.pathname.startsWith(path + '/'));
 
@@ -204,7 +249,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           </div>
 
           <div className="flex-1 w-full flex flex-col space-y-1.5 px-2 overflow-y-auto scrollbar-hide">
-            {categories.map((cat) => (
+            {visibleCategories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => {
@@ -250,7 +295,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
               {!isSecondarySlim ? (
                 <>
                   <h2 className="text-xs font-black text-slate-500 dark:text-slate-400 tracking-widest uppercase truncate">
-                    {categories.find(c => c.id === activeCategory)?.label}
+                    {visibleCategories.find(c => c.id === activeCategory)?.label}
                   </h2>
                   <button onClick={() => setIsSecondarySlim(true)} className="lg:hidden p-1 text-slate-400">
                     <X size={18} />
@@ -347,6 +392,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                     {!isSecondarySlim && <div className="sidebar-group-label !px-2">Users</div>}
                     <div className="space-y-1">
                       <NavItem to="/admin/users" icon={UserCog} label="Users & Roles" active={isActive('/admin/users')} isCollapsed={isSecondarySlim} />
+                       <NavItem to="/admin/administration/staff" icon={Users} label="Staff Directory" active={isActive('/admin/administration/staff')} isCollapsed={isSecondarySlim} />
+                       <NavItem to="/admin/administration/org-chart" icon={Building2} label="Organization Chart" active={isActive('/admin/administration/org-chart')} isCollapsed={isSecondarySlim} />
                     </div>
                   </div>
                   <div>
@@ -430,11 +477,17 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                       <span className="text-[10px] text-slate-400 truncate">{user?.email}</span>
                     </div>
                   </div>
-                  <button className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
-                    <UserIcon size={16} />
-                    <span>View Profile</span>
-                  </button>
-                  <button className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+<button 
+                    onClick={() => { navigate('/admin/profile'); setIsUserMenuOpen(false); }}
+                    className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                  >
+                     <UserIcon size={16} />
+                     <span>View Profile</span>
+                   </button>
+                  <button 
+                    onClick={() => { navigate('/admin/profile'); setIsUserMenuOpen(false); }}
+                    className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                  >
                     <Settings size={16} />
                     <span>Account Settings</span>
                   </button>

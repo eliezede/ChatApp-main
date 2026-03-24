@@ -40,6 +40,9 @@ import { Statements } from './pages/admin/finance/Statements';
 import { Payroll } from './pages/admin/finance/Payroll';
 import { ReportsCenter } from './pages/admin/finance/ReportsCenter';
 import { DataCenter } from './pages/admin/administration/DataCenter';
+import { AdminStaff } from './pages/admin/administration/AdminStaff';
+import { AdminOrgChart } from './pages/admin/administration/AdminOrgChart';
+import { AdminProfile } from './pages/admin/AdminProfile';
 import { AuditLog } from './pages/admin/system/AuditLog';
 import { AdminBillingDashboard } from './pages/admin/billing/AdminBillingDashboard';
 import { AdminClientInvoicesPage } from './pages/admin/billing/AdminClientInvoicesPage';
@@ -181,6 +184,9 @@ const App = () => {
                               <Route path="finance/payroll" element={<Payroll />} />
                               <Route path="finance/reports" element={<ReportsCenter />} />
                               <Route path="administration/data" element={<DataCenter />} />
+                               <Route path="administration/staff" element={<AdminStaff />} />
+                               <Route path="administration/org-chart" element={<AdminOrgChart />} />
+                               <Route path="profile" element={<AdminProfile />} />
                               <Route path="billing" element={<AdminBillingDashboard />} />
                               <Route path="system/audit-log" element={<AuditLog />} />
                               <Route path="billing/client-invoices" element={<AdminClientInvoicesPage />} />
