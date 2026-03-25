@@ -26,27 +26,47 @@ export const StaffSetup = () => {
 
   useEffect(() => {
     const verifyToken = async () => {
-      if (!token) {
+      // Robust token extraction for HashRouter
+      let cleanToken = token?.trim();
+      
+      if (!cleanToken) {
+        const hashParts = window.location.hash.split('?');
+        if (hashParts.length > 1) {
+          const params = new URLSearchParams(hashParts[1]);
+          cleanToken = params.get('token')?.trim();
+        }
+      }
+
+      if (!cleanToken) {
         setError('Invalid or missing invitation token.');
         setLoading(false);
         return;
       }
 
+      console.log('Verifying invitation token:', cleanToken);
+
       try {
-        const userDoc = await getDoc(doc(db, 'users', token));
+        const userDocRef = doc(db, 'users', cleanToken);
+        const userDoc = await getDoc(userDocRef);
+        
         if (userDoc.exists()) {
           const userData = userDoc.data();
           if (userData.status !== 'PENDING') {
             setError('This invitation has already been processed or is no longer valid.');
           } else {
-            setInvitedUser(userData);
+            setInvitedUser({ id: userDoc.id, ...userData });
           }
         } else {
-          setError('Invitation record not found.');
+          console.warn('Invitation record not found in Firestore:', cleanToken);
+          setError('Invitation record not found. Please verify the link or contact your administrator.');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Token verification error:', err);
-        setError('Error verifying invitation. Please try again later.');
+        if (err.code === 'permission-denied') {
+          setError('Access denied. This record might be restricted. Please contact your administrator.');
+        } else {
+          setError('Error verifying invitation. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
@@ -57,26 +77,45 @@ export const StaffSetup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email !== invitedUser.email) {
-      showToast('Email address does not match the invitation.', 'error');
-      return;
-    }
-    if (password.length < 6) {
-      showToast('Password must be at least 6 characters.', 'error');
-      return;
-    }
-    if (password !== confirmPassword) {
-      showToast('Passwords do not match.', 'error');
-      return;
-    }
-
+    
     setSubmitting(true);
     try {
+      let finalUser = invitedUser;
+
+      // Fallback: If invitedUser wasn't found by token, try finding by email
+      if (!finalUser) {
+        const { query, collection, where, getDocs, limit } = await import('firebase/firestore');
+        const q = query(collection(db, 'users'), where('email', '==', email.trim()), where('status', '==', 'PENDING'), limit(1));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          finalUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        }
+      }
+
+      if (!finalUser || finalUser.email !== email.trim()) {
+        showToast('No pending invitation found for this email address.', 'error');
+        setSubmitting(false);
+        return;
+      }
+
+      if (password.length < 6) {
+        showToast('Password must be at least 6 characters.', 'error');
+        setSubmitting(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        showToast('Passwords do not match.', 'error');
+        setSubmitting(false);
+        return;
+      }
+
       // Create Auth account
-      await createUserWithEmailAndPassword(auth, email, password);
+      await createUserWithEmailAndPassword(auth, email.trim(), password);
+      
+      // Update user status if needed? 
+      // Note: The Auth listener or Onboarding wizard should handle status update to ACTIVE
       
       showToast('Account created successfully! Welcome to the team.', 'success');
-      // Auth change listener in AuthContext will handle the user session
       navigate('/admin/onboarding'); 
     } catch (err: any) {
       console.error('Account creation error:', err);
@@ -90,6 +129,8 @@ export const StaffSetup = () => {
     }
   };
 
+  const [manualMode, setManualMode] = useState(false);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -98,25 +139,38 @@ export const StaffSetup = () => {
     );
   }
 
-  if (error) {
+  if (error && !manualMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-6">
         <div className="max-w-md w-full bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 text-center">
-          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+          <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Mail className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Invitation Error</h1>
+          <h1 className="text-2xl font-bold mb-2">Invitation Setup</h1>
           <p className="text-slate-500 dark:text-slate-400 mb-8">{error}</p>
-          <button 
-            onClick={() => navigate('/login')}
-            className="w-full py-3 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-          >
-            Go to Login
-          </button>
+          <div className="space-y-3">
+            <button 
+              onClick={() => { setError(null); setManualMode(true); }}
+              className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+            >
+              Verify with Email
+            </button>
+            <button 
+              onClick={() => navigate('/login')}
+              className="w-full py-3 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Go to Login
+            </button>
+          </div>
         </div>
       </div>
     );
   }
+
+  const PageTitle = manualMode ? "Find Your Invitation" : "Complete Your Setup";
+  const PageSubtitle = manualMode 
+    ? "Enter the email address where you received the invitation to continue."
+    : <>Hi <strong>{invitedUser?.displayName}</strong>, please verify your email and set a secure password.</>;
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-slate-950">
@@ -146,9 +200,9 @@ export const StaffSetup = () => {
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 lg:px-20 xl:px-32 py-12">
         <div className="max-w-md w-full mx-auto">
           <div className="lg:hidden mb-8 text-blue-600"><Globe2 size={40} /></div>
-          <h2 className="text-3xl font-black tracking-tight mb-2">Complete Your Setup</h2>
+          <h2 className="text-3xl font-black tracking-tight mb-2">{PageTitle}</h2>
           <p className="text-slate-500 dark:text-slate-400 mb-10">
-            Hi <strong>{invitedUser.displayName}</strong>, please verify your email and set a secure password.
+            {PageSubtitle}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
