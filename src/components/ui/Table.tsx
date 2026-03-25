@@ -149,7 +149,25 @@ export function Table<T extends { [key: string]: any }>({
                                         ))}
                                         <td className="px-6 py-4 text-right">
                                             <div className={`transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-                                                <button className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500">
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        // Dispatch contextmenu event on the row to trigger the ContextMenu component
+                                                        const row = e.currentTarget.closest('tr');
+                                                        if (row) {
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            const event = new MouseEvent('contextmenu', {
+                                                                bubbles: true,
+                                                                cancelable: true,
+                                                                view: window,
+                                                                clientX: rect.left,
+                                                                clientY: rect.bottom
+                                                            });
+                                                            row.dispatchEvent(event);
+                                                        }
+                                                    }}
+                                                    className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500"
+                                                >
                                                     <MoreHorizontal size={18} />
                                                 </button>
                                             </div>

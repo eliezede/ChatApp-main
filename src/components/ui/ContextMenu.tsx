@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ContextMenuItem {
     label: string;
@@ -19,7 +20,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ children, items }) => 
 
     const handleContextMenu = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
-        setPosition({ x: e.pageX, y: e.pageY });
+        setPosition({ x: e.clientX, y: e.clientY });
         setVisible(true);
     }, []);
 
@@ -44,7 +45,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ children, items }) => 
                 onContextMenu: handleContextMenu
             })}
 
-            {visible && (
+            {visible && createPortal(
                 <div
                     className="fixed z-[100] min-w-[180px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 p-1.5"
                     style={{ top: position.y, left: position.x }}
@@ -69,7 +70,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ children, items }) => 
                             </button>
                         </React.Fragment>
                     ))}
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StaffService } from '../../../services/staffService';
-import { User, Department, JobTitle, UserRole } from '../../../types';
+import { User, Department, JobTitle, UserRole, NotificationType } from '../../../types';
+import { NotificationService } from '../../../services/notificationService';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Table } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
@@ -19,11 +20,13 @@ export const AdminStaff = () => {
   
   const [selectedStaff, setSelectedStaff] = useState<User | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [manageForm, setManageForm] = useState({ departmentId: '', jobTitleId: '' });
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', departmentId: '', jobTitleId: '', role: UserRole.ADMIN });
   const [saving, setSaving] = useState(false);
 
   const { showToast } = useToast();
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, user } = useAuth();
 
   const loadData = async () => {
     setLoading(true);
@@ -67,11 +70,36 @@ export const AdminStaff = () => {
                 preferences: { theme: 'system', language: 'en', notifications: true }
             });
         }
-        showToast('Staff assignment updated', 'success');
+
+        // RIGOR: Notify user and refresh
+        if (selectedStaff.id === user?.id) {
+            showToast('Permissions updated. Please refresh to see changes.', 'success');
+        } else {
+            showToast('Staff assignment updated', 'success');
+            // Trigger notification
+            await NotificationService.notify(selectedStaff.id, 'Profile Updated', 'Your department or job title has been updated by an administrator.', NotificationType.INFO, '/admin/profile');
+        }
+
         setIsManageModalOpen(false);
         await loadData();
     } catch (err) {
         showToast('Error saving assignment', 'error');
+    } finally {
+        setSaving(false);
+    }
+  };
+
+  const handleInviteStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+        const result = await StaffService.inviteStaffMember(inviteForm);
+        showToast(`Invitation sent to ${inviteForm.email}`, 'success');
+        setIsInviteModalOpen(false);
+        setInviteForm({ name: '', email: '', departmentId: '', jobTitleId: '', role: UserRole.ADMIN });
+        await loadData();
+    } catch (err: any) {
+        showToast(err.message || 'Error inviting staff', 'error');
     } finally {
         setSaving(false);
     }
@@ -128,8 +156,8 @@ export const AdminStaff = () => {
     {
       header: 'Status',
       accessor: (user: User) => (
-        <Badge variant={user.status === 'ACTIVE' ? 'success' : 'neutral'}>
-          {user.status}
+        <Badge variant={user.status === 'ACTIVE' ? 'success' : user.status === 'PENDING' ? 'warning' : 'neutral'} className={user.status === 'PENDING' ? 'animate-pulse' : ''}>
+          {user.status === 'PENDING' ? 'INVITATION SENT' : user.status}
         </Badge>
       )
     }
@@ -183,19 +211,22 @@ export const AdminStaff = () => {
         title="Staff Directory" 
         subtitle="Manage internal team members and organizational roles"
       >
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl pointer-events-auto">
-            <button 
-                onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                <List size={18} />
-            </button>
-            <button 
-                onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                <LayoutGrid size={18} />
-            </button>
+        <div className="flex items-center gap-3">
+          <Button icon={Users} size="sm" onClick={() => setIsInviteModalOpen(true)}>Invite Member</Button>
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl pointer-events-auto">
+              <button 
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                  <List size={18} />
+              </button>
+              <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                  <LayoutGrid size={18} />
+              </button>
+          </div>
         </div>
       </PageHeader>
       
@@ -269,6 +300,92 @@ export const AdminStaff = () => {
           <div className="flex gap-3 mt-6">
             <Button variant="outline" className="flex-1" onClick={() => setIsManageModalOpen(false)}>Cancel</Button>
             <Button className="flex-1" type="submit" isLoading={saving}>Save Assignment</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal 
+        isOpen={isInviteModalOpen} 
+        onClose={() => setIsInviteModalOpen(false)} 
+        title="Invite New Staff Member"
+      >
+        <form onSubmit={handleInviteStaff} className="space-y-4">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-widest">Full Name</label>
+              <input 
+                required
+                type="text"
+                placeholder="e.g., John Smith"
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
+                value={inviteForm.name}
+                onChange={e => setInviteForm({ ...inviteForm, name: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-widest">Email Address</label>
+              <input 
+                required
+                type="email"
+                placeholder="john.smith@lingland.com"
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
+                value={inviteForm.email}
+                onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-widest">Department</label>
+                  <select 
+                    required
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
+                    value={inviteForm.departmentId}
+                    onChange={e => setInviteForm({ ...inviteForm, departmentId: e.target.value, jobTitleId: '' })}
+                  >
+                    <option value="">Select...</option>
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-widest">Job Title</label>
+                  <select 
+                    required
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
+                    value={inviteForm.jobTitleId}
+                    onChange={e => setInviteForm({ ...inviteForm, jobTitleId: e.target.value })}
+                    disabled={!inviteForm.departmentId}
+                  >
+                    <option value="">Select...</option>
+                    {jobTitles
+                        .filter(j => j.departmentId === inviteForm.departmentId)
+                        .map(j => <option key={j.id} value={j.id}>{j.name}</option>)
+                    }
+                  </select>
+                </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-widest">System Role</label>
+              <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setInviteForm({ ...inviteForm, role: UserRole.ADMIN })}
+                    className={`px-4 py-3 rounded-xl border font-bold text-xs transition-all ${inviteForm.role === UserRole.ADMIN ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+                  >
+                    Admin
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setInviteForm({ ...inviteForm, role: UserRole.SUPER_ADMIN })}
+                    className={`px-4 py-3 rounded-xl border font-bold text-xs transition-all ${inviteForm.role === UserRole.SUPER_ADMIN ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+                  >
+                    SuperAdmin
+                  </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="outline" className="flex-1" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>
+            <Button className="flex-1" type="submit" isLoading={saving}>Send Secure Invite</Button>
           </div>
         </form>
       </Modal>

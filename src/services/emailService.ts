@@ -184,6 +184,48 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
         body: `Dear {{applicantName}},<br><br>Congratulations! You have successfully completed all onboarding requirements.<br><br>Your profile is now marked as <strong>ACTIVE</strong>. You will start receiving assignments and can browse available jobs on our platform.<br><br>We look forward to working with you!<br><br>Kind regards,<br>Lingland Administrative Team`,
         allowedVariables: EMAIL_VARIABLES.APPLICANT,
         isActive: true
+    },
+    {
+        id: 'STAFF_INVITATION',
+        organizationId: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        category: 'SYSTEM',
+        triggerStatus: 'STAFF_INVITED',
+        recipientType: 'APPLICANT',
+        name: 'Staff Invitation',
+        subject: 'Welcome to Lingland - Secure Invitation',
+        body: `Dear {{applicantName}},<br><br>You have been invited to join the Lingland administrative platform as a member of the {{departmentName}} department.<br><br>**Job Title:** {{jobTitle}}<br>**System Role:** {{role}}<br><br>Please click the link below to set your password and begin your onboarding journey:<br><br><a href="{{inviteLink}}">Set My Password & Join Team</a><br><br>Welcome aboard!<br><br>Kind regards,<br>Lingland Administrative Team`,
+        allowedVariables: ['{{applicantName}}', '{{departmentName}}', '{{jobTitle}}', '{{role}}', '{{inviteLink}}'],
+        isActive: true
+    },
+    {
+        id: 'STAFF_ONBOARDING_DONE',
+        organizationId: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        category: 'SYSTEM',
+        triggerStatus: 'STAFF_ONBOARDING_COMPLETE',
+        recipientType: 'ADMIN',
+        name: 'Staff Onboarding Completed',
+        subject: 'Onboarding Completed: {{applicantName}}',
+        body: `Admin Alert,<br><br>A new staff member has successfully completed their mandatory onboarding form.<br><br>**Staff Member:** {{applicantName}}<br>**Department:** {{departmentName}}<br><br>You can now verify their details in the Staff Directory.`,
+        allowedVariables: ['{{applicantName}}', '{{departmentName}}'],
+        isActive: true
+    },
+    {
+        id: 'STAFF_ACCESS_UPDATED',
+        organizationId: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        category: 'SYSTEM',
+        triggerStatus: 'STAFF_ACCESS_CHANGE',
+        recipientType: 'APPLICANT',
+        name: 'Staff Access Updated',
+        subject: 'Security Notice: Your Platform Access has Changed',
+        body: `Dear {{applicantName}},<br><br>Please be advised that your administrative permissions or organizational assignment has been updated.<br><br>**New Department:** {{departmentName}}<br>**New Level:** {{gradeLevel}}<br><br>These changes take effect immediately. Please log out and back in to see the updated menu options.<br><br>Kind regards,<br>Lingland Security Team`,
+        allowedVariables: ['{{applicantName}}', '{{departmentName}}', '{{gradeLevel}}'],
+        isActive: true
     }
 ];
 
@@ -247,9 +289,12 @@ export const EmailService = {
             dictionary['{{applicationDate}}'] = app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : '';
             dictionary['{{applicationStatus}}'] = app.status || '';
             
-            // Extra Data for Document Approvals
-            if (extraData.documentName) dictionary['{{documentName}}'] = extraData.documentName;
-            if (extraData.rejectionReason) dictionary['{{rejectionReason}}'] = extraData.rejectionReason;
+            // Extra Data for Staff & Onboarding
+            if (extraData.departmentName) dictionary['{{departmentName}}'] = extraData.departmentName;
+            if (extraData.jobTitle) dictionary['{{jobTitle}}'] = extraData.jobTitle;
+            if (extraData.role) dictionary['{{role}}'] = extraData.role;
+            if (extraData.inviteLink) dictionary['{{inviteLink}}'] = extraData.inviteLink;
+            if (extraData.gradeLevel) dictionary['{{gradeLevel}}'] = extraData.gradeLevel;
         }
 
         // Replace all instances

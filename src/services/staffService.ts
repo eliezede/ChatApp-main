@@ -3,6 +3,8 @@ import { db } from './firebaseConfig';
 import { User, StaffProfile, Department, JobTitle, UserRole, LevelPermission } from '../types';
 import { convertDoc, safeFetch } from './utils';
 import { UserService } from './userService';
+import { EmailService } from './emailService';
+import { NotificationService } from './notificationService';
 
 export const StaffService = {
   // --- Departments ---
@@ -25,6 +27,18 @@ export const StaffService = {
   },
 
   deleteDepartment: async (id: string) => {
+    // RIGOR: Check if department has any assigned job titles or staff before deleting
+    const jobs = await StaffService.getJobTitles(id);
+    if (jobs.length > 0) {
+      throw new Error(`Cannot delete department: It still has ${jobs.length} associated job titles.`);
+    }
+
+    const staffQuery = query(collection(db, 'staff_profiles'), where('departmentId', '==', id));
+    const staffSnap = await getDocs(staffQuery);
+    if (!staffSnap.empty) {
+      throw new Error(`Cannot delete department: It still has ${staffSnap.size} assigned staff members.`);
+    }
+
     await deleteDoc(doc(db, 'departments', id));
   },
 
@@ -87,6 +101,56 @@ export const StaffService = {
     await UserService.update(data.userId, { staffProfileId: docRef.id });
     
     return profile;
+  },
+
+  inviteStaffMember: async (data: { name: string, email: string, departmentId: string, jobTitleId: string, role: UserRole }) => {
+    // 1. Create the User document with PENDING status
+    const userRef = doc(collection(db, 'users'));
+    const userData: User = {
+      id: userRef.id,
+      email: data.email,
+      displayName: data.name,
+      role: data.role,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    await setDoc(userRef, userData);
+
+    // 2. Create the Staff Profile
+    const profile = await StaffService.createProfile({
+      userId: userRef.id,
+      departmentId: data.departmentId,
+      jobTitleId: data.jobTitleId,
+      onboardingCompleted: false,
+      preferences: { theme: 'system', language: 'en', notifications: true }
+    });
+
+    // 3. Trigger Invitation Email (In a real app, this generates a link)
+    // For this prototype, we simulate sending the email via our email service
+    const depts = await StaffService.getDepartments();
+    const jobs = await StaffService.getJobTitles();
+    const deptName = depts.find(d => d.id === data.departmentId)?.name || 'Unknown';
+    const jobName = jobs.find(j => j.id === data.jobTitleId)?.name || 'Staff Member';
+
+    // We use a mock invite link for the prototype
+    const inviteLink = `${window.location.origin}/signup?token=${userRef.id}`;
+
+    // Note: We call EmailService manually for the prototype/demonstration
+    await EmailService.sendApplicationEmail({
+        id: userRef.id,
+        name: data.name,
+        email: data.email,
+        status: 'PENDING'
+    } as any, 'STAFF_INVITED', 'admin@lingland.com', {
+        applicantName: data.name,
+        departmentName: deptName,
+        jobTitle: jobName,
+        role: data.role,
+        inviteLink
+    });
+
+    return { user: userData, profile, inviteLink };
   },
 
   // --- Staff Directory ---

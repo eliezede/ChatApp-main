@@ -38,6 +38,8 @@ export interface User {
   status: 'ACTIVE' | 'SUSPENDED' | 'PENDING';
   profileId?: string;
   staffProfileId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Department {

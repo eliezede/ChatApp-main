@@ -59,6 +59,7 @@ import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminEmailTemplates } from './pages/admin/settings/AdminEmailTemplates';
 import { AdminApplications } from './pages/admin/AdminApplications';
 import { AdminMessages } from './pages/admin/AdminMessages';
+import { StaffOnboarding } from './pages/admin/StaffOnboarding';
 
 // Interpreter Pages
 import { InterpreterDashboard } from './pages/interpreter/InterpreterDashboard';
@@ -192,8 +193,9 @@ const App = () => {
                               <Route path="billing/client-invoices" element={<AdminClientInvoicesPage />} />
                               <Route path="billing/client-invoices/:id" element={<AdminClientInvoiceDetailsPage />} />
                               <Route path="billing/interpreter-invoices" element={<AdminInterpreterInvoicesPage />} />
-                              <Route path="billing/interpreter-invoices/:id" element={<AdminInterpreterInvoiceDetailsPage />} />
-                              <Route path="*" element={<NotFound />} />
+                               <Route path="billing/interpreter-invoices/:id" element={<AdminInterpreterInvoiceDetailsPage />} />
+                               <Route path="onboarding" element={<StaffOnboarding />} />
+                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </AdminLayout>
                         </ProtectedRoute>

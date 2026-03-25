@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { StaffService } from '../../services/staffService';
-import { StaffProfile, Department, JobTitle } from '../../types';
+import { StaffProfile, Department, JobTitle, SystemModule } from '../../types';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
+import { Badge } from '../../components/ui/Badge';
 import { 
   User, Mail, Phone, Calendar, MapPin, 
   Shield, Briefcase, Building2, Bell, Sun, 
-  Moon, Monitor, Save, AlertCircle, Heart
+  Moon, Monitor, Save, AlertCircle, Heart,
+  ShieldCheck, Database
 } from 'lucide-react';
 
 export const AdminProfile = () => {
@@ -16,6 +18,7 @@ export const AdminProfile = () => {
   const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
+  const [allowedModules, setAllowedModules] = useState<SystemModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -25,14 +28,24 @@ export const AdminProfile = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const [prof, depts, jobs] = await Promise.all([
+      const [prof, depts, jobs, perms] = await Promise.all([
         StaffService.getProfile(user.id),
         StaffService.getDepartments(),
-        StaffService.getJobTitles()
+        StaffService.getJobTitles(),
+        StaffService.getLevelPermissions()
       ]);
       setProfile(prof);
       setDepartments(depts);
       setJobTitles(jobs);
+      
+      // Find user's allowed modules based on grade
+      if (prof?.jobTitleId) {
+          const job = jobs.find(j => j.id === prof.jobTitleId);
+          if (job?.level) {
+              const levelPerm = perms.find(p => p.level === job.level);
+              setAllowedModules(levelPerm?.modules || []);
+          }
+      }
     } catch (error) {
       showToast('Error loading profile', 'error');
     } finally {
@@ -68,7 +81,12 @@ export const AdminProfile = () => {
     }
   };
 
-  if (loading) return <div className="p-8 text-center animate-pulse">Loading profile...</div>;
+  if (loading) return (
+    <div className="p-12 text-center space-y-4">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Loading Profile Matrix...</p>
+    </div>
+  );
 
   const currentDept = departments.find(d => d.id === profile?.departmentId);
   const currentJob = jobTitles.find(j => j.id === profile?.jobTitleId);
@@ -78,7 +96,6 @@ export const AdminProfile = () => {
       <PageHeader title="My Profile" subtitle="Manage your professional data and platform preferences" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile Sidebar */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 text-center shadow-sm">
              <div className="w-24 h-24 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl font-black mb-4 shadow-lg shadow-blue-500/20">
@@ -108,8 +125,9 @@ export const AdminProfile = () => {
                        {['light', 'dark', 'system'].map((mode) => (
                            <button 
                                 key={mode}
+                                type="button"
                                 onClick={() => handleUpdatePreference('theme', mode)}
-                                className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${profile?.preferences.theme === mode ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'}`}
+                                className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${profile?.preferences?.theme === mode ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'}`}
                             >
                                {mode === 'light' && <Sun size={16} />}
                                {mode === 'dark' && <Moon size={16} />}
@@ -126,17 +144,17 @@ export const AdminProfile = () => {
                         <span className="text-[10px] text-slate-400">Desktop & Email alerts</span>
                     </div>
                     <button 
-                        onClick={() => handleUpdatePreference('notifications', !profile?.preferences.notifications)}
-                        className={`w-10 h-6 rounded-full transition-colors relative ${profile?.preferences.notifications ? 'bg-green-500' : 'bg-slate-300'}`}
+                        type="button"
+                        onClick={() => handleUpdatePreference('notifications', !profile?.preferences?.notifications)}
+                        className={`w-10 h-6 rounded-full transition-colors relative ${profile?.preferences?.notifications ? 'bg-green-500' : 'bg-slate-300'}`}
                     >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${profile?.preferences.notifications ? 'left-5' : 'left-1'}`} />
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${profile?.preferences?.notifications ? 'left-5' : 'left-1'}`} />
                     </button>
                 </div>
              </div>
           </div>
         </div>
 
-        {/* Profile Main Form */}
         <div className="lg:col-span-2 space-y-6">
            <form onSubmit={handleSaveProfile} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 sticky top-0 z-10">
@@ -148,6 +166,38 @@ export const AdminProfile = () => {
              </div>
 
              <div className="p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 gap-4 border border-slate-100 dark:border-slate-800">
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-600/20 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+                        <ShieldCheck size={24} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Grade / Level</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-lg font-black text-slate-900 dark:text-white">Level {currentJob?.level || '1'}</p>
+                            <Badge variant="neutral" className="text-[9px]">SYSTEM ACCESS: {allowedModules.length} MODULES</Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 gap-4 border border-slate-100 dark:border-slate-800">
+                      <div className="w-12 h-12 bg-amber-100 dark:bg-amber-600/20 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
+                        <Database size={24} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Active Permissions</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {allowedModules.map(m => (
+                                <Badge key={m} variant="success" className="text-[8px] px-1.5 py-0">
+                                    {m.replace('_', ' ')}
+                                </Badge>
+                            ))}
+                            {allowedModules.length === 0 && <span className="text-[10px] text-slate-400">Restricted Access</span>}
+                        </div>
+                      </div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Phone Number</label>
@@ -155,7 +205,7 @@ export const AdminProfile = () => {
                             <Phone className="absolute left-4 top-3 text-slate-400" size={16} />
                             <input 
                                 type="tel"
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
                                 placeholder="+44 7xxx xxxxxx"
                                 value={profile?.phone || ''}
                                 onChange={e => profile && setProfile({ ...profile, phone: e.target.value })}
@@ -168,7 +218,7 @@ export const AdminProfile = () => {
                             <Calendar className="absolute left-4 top-3 text-slate-400" size={16} />
                             <input 
                                 type="date"
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
                                 value={profile?.dob || ''}
                                 onChange={e => profile && setProfile({ ...profile, dob: e.target.value })}
                             />
@@ -180,7 +230,7 @@ export const AdminProfile = () => {
                             <Shield className="absolute left-4 top-3 text-slate-400" size={16} />
                             <input 
                                 type="text"
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
                                 placeholder="QQ 12 34 56 C"
                                 value={profile?.niNumber || ''}
                                 onChange={e => profile && setProfile({ ...profile, niNumber: e.target.value.toUpperCase() })}
@@ -198,20 +248,20 @@ export const AdminProfile = () => {
                         <div className="md:col-span-2">
                              <input 
                                 type="text" placeholder="Street Address"
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
                                 value={profile?.address?.street || ''}
                                 onChange={e => profile && setProfile({ ...profile, address: { ...profile.address!, street: e.target.value } })}
                             />
                         </div>
                         <input 
                             type="text" placeholder="Town/City"
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
                             value={profile?.address?.town || ''}
                             onChange={e => profile && setProfile({ ...profile, address: { ...profile.address!, town: e.target.value } })}
                         />
                         <input 
                             type="text" placeholder="Postcode"
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20 uppercase"
                             value={profile?.address?.postcode || ''}
                             onChange={e => profile && setProfile({ ...profile, address: { ...profile.address!, postcode: e.target.value } })}
                         />
@@ -226,19 +276,19 @@ export const AdminProfile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <input 
                             type="text" placeholder="Full Name"
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
                             value={profile?.emergencyContact?.name || ''}
                             onChange={e => profile && setProfile({ ...profile, emergencyContact: { ...profile.emergencyContact!, name: e.target.value } })}
                         />
                         <input 
                             type="text" placeholder="Relationship"
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
                             value={profile?.emergencyContact?.relationship || ''}
                             onChange={e => profile && setProfile({ ...profile, emergencyContact: { ...profile.emergencyContact!, relationship: e.target.value } })}
                         />
                         <input 
                             type="tel" placeholder="Phone"
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 ring-blue-500/20"
                             value={profile?.emergencyContact?.phone || ''}
                             onChange={e => profile && setProfile({ ...profile, emergencyContact: { ...profile.emergencyContact!, phone: e.target.value } })}
                         />

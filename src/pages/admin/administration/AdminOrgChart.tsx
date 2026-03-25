@@ -214,8 +214,20 @@ export const AdminOrgChart = () => {
       <PageHeader title="Organization Chart" subtitle="Manage departments, roles and platform visibility">
         {activeTab === 'structure' ? (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" icon={Plus} onClick={() => { setEditingJob(null); setIsJobModalOpen(true); }}>Add Job Title</Button>
-            <Button size="sm" icon={Building2} onClick={() => { setEditingDept(null); setIsDeptModalOpen(true); }}>Add Department</Button>
+            <Button variant="outline" size="sm" icon={Plus} onClick={() => { 
+              setEditingJob(null); 
+              setJobForm({ name: '', departmentId: '', level: 1 });
+              setIsJobModalOpen(true); 
+            }}>
+              Add Job Title
+            </Button>
+            <Button size="sm" icon={Building2} onClick={() => { 
+              setEditingDept(null); 
+              setDeptForm({ name: '', description: '' });
+              setIsDeptModalOpen(true); 
+            }}>
+              Add Department
+            </Button>
           </div>
         ) : (
           <Button icon={Save} size="sm" onClick={handleSavePermissions} isLoading={savingPermissions}>Save Matrix</Button>
@@ -360,7 +372,7 @@ export const AdminOrgChart = () => {
           </div>
           <div className="flex gap-3 mt-6">
             <Button variant="outline" className="flex-1" onClick={() => setIsDeptModalOpen(false)}>Cancel</Button>
-            <Button className="flex-1" type="submit">Save Department</Button>
+            <Button className="flex-1" type="submit">{editingDept ? "Save Changes" : "Create Department"}</Button>
           </div>
         </form>
       </Modal>
@@ -402,8 +414,8 @@ export const AdminOrgChart = () => {
             </div>
           </div>
           <div className="flex gap-3 mt-6">
-            <Button variant="outline" className="flex-1" onClick={() => setIsJobModalOpen(false)}>Cancel</Button>
-            <Button className="flex-1" type="submit">Create Job Title</Button>
+            <Button variant="outline" className="flex-1" onClick={() => { setIsJobModalOpen(false); setEditingJob(null); }}>Cancel</Button>
+            <Button className="flex-1" type="submit">{editingJob ? "Save Changes" : "Create Job Title"}</Button>
           </div>
         </form>
       </Modal>
