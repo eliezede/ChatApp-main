@@ -29,6 +29,7 @@ import { ServicesPage } from './pages/public/ServicesPage';
 import WhyUsPage from './pages/public/WhyUsPage';
 import InterpretersPage from './pages/public/InterpretersPage';
 import { TermsPage } from './pages/public/TermsPage';
+import { StaffSetup } from './pages/public/StaffSetup';
 
 // Admin Pages
 import { JobsBoard } from './pages/admin/operations/JobsBoard';
@@ -120,6 +121,7 @@ const App = () => {
                       <Route path="/why-us" element={<WhyUsPage />} />
                       <Route path="/interpreters" element={<InterpretersPage />} />
                       <Route path="/terms" element={<TermsPage />} />
+                      <Route path="/setup" element={<StaffSetup />} />
 
                       {/* Interpreter Section */}
                       <Route path="/interpreter/*" element={

@@ -133,8 +133,9 @@ export const StaffService = {
     const deptName = depts.find(d => d.id === data.departmentId)?.name || 'Unknown';
     const jobName = jobs.find(j => j.id === data.jobTitleId)?.name || 'Staff Member';
 
-    // We use a mock invite link for the prototype
-    const inviteLink = `${window.location.origin}/signup?token=${userRef.id}`;
+    // We use the production URL for invitations to ensure consistency
+    const productionUrl = 'https://lingland-2e52f.web.app';
+    const inviteLink = `${productionUrl}/#/setup?token=${userRef.id}`;
 
     // Note: We call EmailService manually for the prototype/demonstration
     await EmailService.sendApplicationEmail({
