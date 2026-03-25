@@ -74,8 +74,11 @@ export const AdminUsers = () => {
     let successCount = 0;
     await Promise.allSettled(selectedIds.map(async (id) => {
       try {
-        await UserService.delete(id);
-        successCount++;
+        const userToDelete = users.find(u => u.id === id);
+        if (userToDelete) {
+          await UserService.rigorousDelete(userToDelete);
+          successCount++;
+        }
       } catch (err) { /* silent */ }
     }));
     showToast(`${successCount} users deleted`, 'success');
@@ -225,8 +228,8 @@ export const AdminUsers = () => {
           variant: 'danger'
         });
         if (ok) {
-          await UserService.delete(user.id);
-          showToast('User deleted', 'success');
+          await UserService.rigorousDelete(user);
+          showToast('User and associated profiles deleted', 'success');
           loadData();
         }
       },

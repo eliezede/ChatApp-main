@@ -161,6 +161,18 @@ export const StaffService = {
     return allUsers.filter(u => u.role === UserRole.ADMIN || u.role === UserRole.SUPER_ADMIN);
   },
 
+  deleteProfileByUserId: async (userId: string): Promise<void> => {
+    try {
+      const q = query(collection(db, 'staff_profiles'), where('userId', '==', userId));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    } catch (e) {
+      console.warn('Failed to delete staff profile from Firestore', e);
+    }
+  },
+
   getAllAdminUsers: async (): Promise<User[]> => {
     return StaffService.getStaffMembers();
   },

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StaffService } from '../../../services/staffService';
+import { UserService } from '../../../services/userService';
 import { User, Department, JobTitle, UserRole, NotificationType } from '../../../types';
 import { NotificationService } from '../../../services/notificationService';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -9,7 +10,8 @@ import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
-import { Users, Building2, Briefcase, Mail, Phone, Settings, Shield, Crown, LayoutGrid, List, UserCircle2 } from 'lucide-react';
+import { useConfirm } from '../../../context/ConfirmContext';
+import { Users, Building2, Briefcase, Mail, Phone, Settings, Shield, Crown, LayoutGrid, List, UserCircle2, Trash2 } from 'lucide-react';
 
 export const AdminStaff = () => {
   const [staff, setStaff] = useState<User[]>([]);
@@ -27,6 +29,7 @@ export const AdminStaff = () => {
 
   const { showToast } = useToast();
   const { isSuperAdmin, user } = useAuth();
+  const { confirm } = useConfirm();
 
   const loadData = async () => {
     setLoading(true);
@@ -242,7 +245,31 @@ export const AdminStaff = () => {
             onRowClick={(member) => handleOpenManage(member)}
             renderContextMenu={(member) => [
                 { label: 'Manage Profile', icon: Settings, onClick: () => handleOpenManage(member) },
-                { label: 'View Activity', icon: Users, onClick: () => showToast('Activity log coming soon', 'info') }
+                { label: 'View Activity', icon: Users, onClick: () => showToast('Activity log coming soon', 'info') },
+                ...(isSuperAdmin ? [
+                  { 
+                    label: 'Delete Staff Member', 
+                    icon: Trash2, 
+                    variant: 'danger' as const,
+                    onClick: async () => {
+                      const ok = await confirm({
+                        title: 'Delete Staff Member',
+                        message: `Are you sure you want to permanently delete ${member.displayName}? This will remove their system account and staff profile.`,
+                        confirmLabel: 'Delete Permanently',
+                        variant: 'danger'
+                      });
+                      if (ok) {
+                        try {
+                          await UserService.rigorousDelete(member);
+                          showToast('Staff member deleted successfully', 'success');
+                          loadData();
+                        } catch (err) {
+                          showToast('Failed to delete staff member', 'error');
+                        }
+                      }
+                    }
+                  }
+                ] : [])
             ]}
         />
       ) : (
