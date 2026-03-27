@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { 
   Globe2, ChevronLeft, ChevronRight, CheckCircle2, User,
   Languages, Award, FileText, Check, ArrowRight,
-  Phone, Home, Car, MessageSquare, Plus, Trash2, Mail, ShieldCheck, Info
+  Phone, Home, Car, MessageSquare, Plus, Trash2, Mail, ShieldCheck, Info, Camera
 } from 'lucide-react';
 import { InterpreterApplication, LanguageProficiency } from '../../types';
 
@@ -108,6 +108,7 @@ export const InterpreterApplicationPage = () => {
     else list.push(qual);
     handleUpdate('qualifications', list);
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -357,29 +358,27 @@ export const InterpreterApplicationPage = () => {
                   <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center shadow-inner">
                     <User size={28} />
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Personal Profile</h2>
-                    <p className="text-slate-400 text-sm font-medium">Basic information to identify you as a partner.</p>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Personal Information</h2>
+                    <p className="text-sm text-slate-500 font-medium leading-relaxed">Please provide your legal details for the application.</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className={labelClasses}>Full Legal Name</label>
-                      <div className="relative">
-                        <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                        <input type="text" required className={inputClasses + " pl-12"} value={formData.name} onChange={e => handleUpdate('name', e.target.value)} placeholder="e.g. John Doe" />
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <label className={labelClasses}>Full Legal Name</label>
+                    <div className="relative">
+                      <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                      <input type="text" required className={inputClasses + " pl-12"} value={formData.name} onChange={e => handleUpdate('name', e.target.value)} placeholder="e.g. John Doe" />
                     </div>
-                    <div>
-                      <label className={labelClasses}>Gender</label>
-                      <select className={inputClasses} value={formData.gender} onChange={e => handleUpdate('gender', e.target.value)}>
-                        <option value="M">Male</option>
-                        <option value="F">Female</option>
-                        <option value="O">Other / Prefer not to say</option>
-                      </select>
-                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClasses}>Gender</label>
+                    <select className={inputClasses} value={formData.gender} onChange={e => handleUpdate('gender', e.target.value)}>
+                      <option value="M">Male</option>
+                      <option value="F">Female</option>
+                      <option value="O">Other / Prefer not to say</option>
+                    </select>
                   </div>
 
                   <div>
@@ -400,7 +399,9 @@ export const InterpreterApplicationPage = () => {
 
                   <div className="md:col-span-2 pt-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <Home className="text-blue-500" size={18} />
+                      <div className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center">
+                        <Home size={18} />
+                      </div>
                       <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Service Area Address</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

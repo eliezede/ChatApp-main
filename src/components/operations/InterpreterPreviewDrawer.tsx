@@ -8,6 +8,7 @@ import {
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { UserAvatar } from '../ui/UserAvatar';
 import { Booking, Interpreter } from '../../types';
 import { InterpreterService, BookingService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -111,9 +112,12 @@ export const InterpreterPreviewDrawer: React.FC<InterpreterPreviewDrawerProps> =
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center space-x-4">
-                                <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center text-2xl font-black border-4 border-white dark:border-slate-800 shadow-sm">
-                                    {interpreter.name.charAt(0)}
-                                </div>
+                                <UserAvatar 
+                                    src={interpreter.photoUrl} 
+                                    name={interpreter.name} 
+                                    size="lg" 
+                                    className="rounded-2xl border-4 border-white dark:border-slate-800 shadow-sm" 
+                                />
                                 <div>
                                     <div className="flex items-center space-x-2">
                                         <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{interpreter.name}</h3>

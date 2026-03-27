@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BookingService } from '../services/api';
+import { BookingService, InterpreterService } from '../services/api';
 // Fix: Added BookingStatus to imports to satisfy enum requirement
 import { Booking, BookingStatus } from '../types';
 
@@ -12,15 +12,16 @@ export const useBookings = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await BookingService.getAll();
-      // Garantir que data é um array e normalizar campos críticos
-      // Fix: Use BookingStatus.INCOMING enum member instead of 'REQUESTED' string literal
-      // to ensure normalizedData is assignable to Booking[]
-      const normalizedData = (data ?? []).map(b => ({
+      // Fetch all bookings
+      const allBookings = await BookingService.getAll();
+      const photoMap = await InterpreterService.getPhotoMap();
+      
+      const normalizedData = (allBookings ?? []).map((b: Booking) => ({
         ...b,
         clientName: b?.clientName ?? 'Unknown Client',
         status: b?.status ?? BookingStatus.INCOMING,
-        bookingRef: b?.bookingRef ?? ''
+        bookingRef: b?.bookingRef ?? '',
+        interpreterPhotoUrl: b.interpreterPhotoUrl || (b.interpreterId ? photoMap[b.interpreterId] : undefined)
       })) as Booking[];
 
       setBookings(normalizedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));

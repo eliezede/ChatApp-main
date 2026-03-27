@@ -233,6 +233,7 @@ export const BookingService = {
         status: BookingStatus.OPENED,
         interpreterId: interpreterId,
         interpreterName: intName,
+        interpreterPhotoUrl: intData?.photoUrl || null,
         updatedAt: serverTimestamp()
       });
 
@@ -272,6 +273,7 @@ export const BookingService = {
         b.status = BookingStatus.OPENED;
         b.interpreterId = interpreterId;
         b.interpreterName = i.name;
+        b.interpreterPhotoUrl = i.photoUrl;
         MOCK_ASSIGNMENTS.forEach(a => {
           if (a.bookingId === bookingId && a.interpreterId !== interpreterId && a.status === AssignmentStatus.OFFERED) {
             a.status = AssignmentStatus.DECLINED;
@@ -301,6 +303,7 @@ export const BookingService = {
         status: BookingStatus.INCOMING,
         interpreterId: null,
         interpreterName: null,
+        interpreterPhotoUrl: null,
         updatedAt: serverTimestamp()
       });
 
@@ -346,6 +349,7 @@ export const BookingService = {
         b.status = BookingStatus.INCOMING;
         b.interpreterId = undefined;
         b.interpreterName = undefined;
+        b.interpreterPhotoUrl = undefined;
 
         if (oldId) {
           MOCK_ASSIGNMENTS.forEach(a => {
@@ -517,7 +521,8 @@ export const BookingService = {
         await updateDoc(bookingRef, {
           status: BookingStatus.BOOKED,
           interpreterId: data.interpreterId,
-          interpreterName: intName
+          interpreterName: intName,
+          interpreterPhotoUrl: (intSnap.data() as Interpreter).photoUrl || null
         });
 
         // Notify Admins
@@ -546,7 +551,10 @@ export const BookingService = {
         if (b) {
           b.status = BookingStatus.BOOKED;
           b.interpreterId = a.interpreterId;
-          if (i) b.interpreterName = i.name;
+          if (i) {
+            b.interpreterName = i.name;
+            b.interpreterPhotoUrl = i.photoUrl;
+          }
         }
         saveMockData();
       }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Star, MapPin, CheckCircle2, Search, Filter } from 'lucide-react';
+import { UserAvatar } from '../ui/UserAvatar';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Booking, Interpreter } from '../../types';
@@ -142,9 +143,12 @@ export const InterpreterAllocationDrawer: React.FC<InterpreterAllocationDrawerPr
                                     >
                                         <div className="flex items-center space-x-4">
                                             <div className="relative">
-                                                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center font-black text-slate-400">
-                                                    {interp.name.charAt(0)}
-                                                </div>
+                                                <UserAvatar 
+                                                    src={interp.photoUrl} 
+                                                    name={interp.name} 
+                                                    size="md" 
+                                                    className="rounded-xl" 
+                                                />
                                                 {idx === 0 && searchQuery === '' && (
                                                     <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-0.5 rounded-full border-2 border-white shadow-sm">
                                                         <Star size={10} fill="currentColor" />

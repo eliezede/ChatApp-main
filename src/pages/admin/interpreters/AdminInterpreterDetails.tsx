@@ -17,6 +17,7 @@ import { useSettings } from '../../../context/SettingsContext';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useChat } from '../../../context/ChatContext';
+import { UserAvatar } from '../../../components/ui/UserAvatar';
 import {
   ChevronLeft, Mail, Phone, MapPin, Languages,
   Award, ShieldCheck, ArrowUpRight, FileText, UserCircle2, Edit, Check, MessageSquare,
@@ -100,9 +101,18 @@ export const AdminInterpreterDetails = () => {
         [user.id]: user.displayName || 'Admin',
         [interpreter.id]: interpreter.name
       };
-      const threadId = await ChatService.getOrCreateThread([user.id, interpreter.id], names);
+      const photos = {
+        [user.id]: user.photoUrl || '',
+        [interpreter.id]: interpreter.photoUrl || ''
+      };
+      const threadId = await ChatService.getOrCreateThread(
+        [user.id, interpreter.id],
+        names,
+        photos
+      );
       openThread(threadId);
     } finally {
+
       setProcessingChat(false);
     }
   };
@@ -254,9 +264,7 @@ export const AdminInterpreterDetails = () => {
             <ChevronLeft size={20} />
           </button>
           <div className="flex items-center">
-            <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl font-bold mr-3 border-2 border-white shadow-sm">
-              {interpreter.name.charAt(0)}
-            </div>
+            <UserAvatar src={interpreter.photoUrl} name={interpreter.name} size="lg" className="mr-3" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-slate-900 tracking-tight">{interpreter.name}</h1>
@@ -713,9 +721,7 @@ export const AdminInterpreterDetails = () => {
         <form onSubmit={handleSave}>
           {/* Avatar + Name header strip */}
           <div className="flex items-center gap-4 px-1 mt-1 mb-4 pb-4 border-b border-slate-100">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-blue-200 shrink-0">
-              {(formData.name || '?').charAt(0).toUpperCase()}
-            </div>
+            <UserAvatar src={formData.photoUrl} name={formData.name || ''} size="md" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-800 truncate">{formData.name || 'Loading…'}</p>
               <p className="text-xs text-slate-400 font-medium">{formData.email || ''}</p>

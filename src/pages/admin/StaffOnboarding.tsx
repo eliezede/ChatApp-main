@@ -7,8 +7,11 @@ import { Button } from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
 import { 
   User, Heart, MapPin, Shield, Calendar, Phone, 
-  CheckCircle2, ArrowRight, ArrowLeft, Rocket
+  CheckCircle2, ArrowRight, ArrowLeft, Rocket, Camera
 } from 'lucide-react';
+import { UserAvatar } from '../../components/ui/UserAvatar';
+import { ImageCropper } from '../../components/ui/ImageCropper';
+import { UserService } from '../../services/userService';
 
 export const StaffOnboarding = () => {
   const { user } = useAuth();
@@ -19,6 +22,9 @@ export const StaffOnboarding = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isPhotoLoading, setIsPhotoLoading] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -58,6 +64,32 @@ export const StaffOnboarding = () => {
       ...profile, 
       emergencyContact: { ...(profile.emergencyContact || { name: '', relationship: '', phone: '' }), [field]: value } 
     });
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setSelectedImage(reader.result as string);
+        setShowCropper(true);
+      });
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const handleCropComplete = async (croppedImage: string) => {
+    if (!user) return;
+    setIsPhotoLoading(true);
+    try {
+      const photoUrl = await UserService.uploadProfilePhoto(user.id, croppedImage, 'ADMIN');
+      handleUpdate('photoUrl', photoUrl);
+      showToast('Profile photo updated!', 'success');
+    } catch (error) {
+      showToast('Failed to update photo', 'error');
+    } finally {
+      setIsPhotoLoading(false);
+      setShowCropper(false);
+    }
   };
 
   const isStepValid = () => {
@@ -128,6 +160,30 @@ export const StaffOnboarding = () => {
           <div className="space-y-6">
             {step === 1 && (
               <div className="space-y-6 animate-in slide-in-from-right duration-500">
+                <div className="flex items-center gap-6 mb-8 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
+                  <div className="relative group">
+                    <UserAvatar 
+                      name={user?.displayName || ''} 
+                      src={profile?.photoUrl} 
+                      size="xl"
+                      className="ring-4 ring-white dark:ring-slate-900 shadow-xl"
+                    />
+                    {isPhotoLoading && (
+                      <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/60 rounded-full flex items-center justify-center">
+                        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                    <label className="absolute -bottom-1 -right-1 p-2 bg-blue-600 text-white rounded-full shadow-lg border-2 border-white dark:border-slate-900 cursor-pointer hover:bg-blue-700 hover:scale-110 transition-all">
+                      <Camera size={16} />
+                      <input type="file" className="hidden" accept="image/*" onChange={handlePhotoSelect} />
+                    </label>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white">Profile Photo</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Add a photo to help the team recognize you.</p>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-3 mb-2">
                     <User className="text-blue-600" size={20} />
                     <h2 className="text-xl font-black text-slate-900 dark:text-white">Personal Details</h2>
@@ -268,6 +324,15 @@ export const StaffOnboarding = () => {
           </div>
         </div>
       </div>
+
+      {selectedImage && (
+        <ImageCropper
+          image={selectedImage}
+          isOpen={showCropper}
+          onClose={() => setShowCropper(false)}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   );
 };

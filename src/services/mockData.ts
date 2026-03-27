@@ -11,10 +11,10 @@ const getDate = (offset: number) => {
 // === DEFAULT DATA ===
 
 const DEFAULT_USERS: User[] = [
-  { id: 'u1', displayName: 'Sarah Admin', email: 'admin@lingland.com', role: UserRole.ADMIN, status: 'ACTIVE' },
-  { id: 'u2', displayName: 'NHS Admin', email: 'bookings@nhs.uk', role: UserRole.CLIENT, profileId: 'c1', status: 'ACTIVE' },
-  { id: 'u3', displayName: 'John Doe', email: 'john@interp.com', role: UserRole.INTERPRETER, profileId: 'i1', status: 'ACTIVE' },
-  { id: 'u4', displayName: 'Maria Garcia', email: 'maria@interp.com', role: UserRole.INTERPRETER, profileId: 'i2', status: 'ACTIVE' },
+  { id: 'u1', displayName: 'Sarah Admin', email: 'admin@lingland.com', role: UserRole.ADMIN, status: 'ACTIVE', photoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop' },
+  { id: 'u2', displayName: 'NHS Admin', email: 'bookings@nhs.uk', role: UserRole.CLIENT, profileId: 'c1', status: 'ACTIVE', photoUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop' },
+  { id: 'u3', displayName: 'John Doe', email: 'john@interp.com', role: UserRole.INTERPRETER, profileId: 'i1', status: 'ACTIVE', photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop' },
+  { id: 'u4', displayName: 'Maria Garcia', email: 'maria@interp.com', role: UserRole.INTERPRETER, profileId: 'i2', status: 'ACTIVE', photoUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop' },
 ];
 
 const DEFAULT_CLIENTS: Client[] = [
@@ -30,6 +30,7 @@ const DEFAULT_INTERPRETERS: Interpreter[] = [
     email: 'john@interp.com', 
     phone: '07700900123', 
     gender: 'M',
+    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
     address: { street: '123 Baker St', town: 'London', county: 'Greater London', postcode: 'NW1 6XE', country: 'United Kingdom' },
     hasCar: true,
     languages: ['Arabic', 'French'], 
@@ -74,6 +75,7 @@ const DEFAULT_INTERPRETERS: Interpreter[] = [
     email: 'maria@interp.com', 
     phone: '07700900456', 
     gender: 'F',
+    photoUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
     address: { street: '45 Low St', town: 'Manchester', county: 'Greater Manchester', postcode: 'M1 1AA', country: 'United Kingdom' },
     hasCar: false,
     languages: ['Spanish', 'Portuguese'], 
@@ -99,6 +101,7 @@ const DEFAULT_INTERPRETERS: Interpreter[] = [
   },
 ];
 
+
 const DEFAULT_BOOKINGS: Booking[] = [
   {
     id: 'b1', clientId: 'c1', clientName: 'NHS Trust North', requestedByUserId: 'u2',
@@ -116,6 +119,7 @@ const DEFAULT_BOOKINGS: Booking[] = [
     date: getDate(-1), startTime: '14:00', durationMinutes: 60,
     locationType: 'ONLINE', onlineLink: 'https://zoom.us/j/123',
     status: BookingStatus.BOOKED, interpreterId: 'i2', interpreterName: 'Maria Garcia',
+    interpreterPhotoUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
     costCode: 'CASE-123',
     patientName: 'J. Doe', professionalName: 'Sarah Solicitor', gdprConsent: true
   }

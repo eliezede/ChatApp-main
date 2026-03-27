@@ -8,6 +8,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Search, Send, MessageSquare, Hash, FileIcon, ImageIcon, Paperclip, Check, ChevronLeft } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { UserAvatar } from '../../components/ui/UserAvatar';
 
 export const InterpreterMessages = () => {
     const { user } = useAuth();
@@ -141,9 +142,12 @@ export const InterpreterMessages = () => {
                                             className={`p-4 cursor-pointer transition-all group flex gap-3 ${isSelected ? 'bg-blue-50/50 border-l-4 border-l-blue-600' : 'hover:bg-slate-50 border-l-4 border-l-transparent'
                                                 }`}
                                         >
-                                            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-black text-slate-500 shadow-sm shrink-0">
-                                                {otherName.charAt(0)}
-                                            </div>
+                                            <UserAvatar 
+                                                src={t.participantPhotos?.[otherParticipantId!]} 
+                                                name={otherName} 
+                                                size="sm" 
+                                                className="rounded-xl shadow-sm shrink-0" 
+                                            />
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                 <div className="flex justify-between items-start mb-0.5">
                                                     <p className={`text-xs truncate font-black ${isSelected ? 'text-blue-700' : 'text-slate-900 group-hover:text-blue-600 transition-colors'}`}>
@@ -172,9 +176,12 @@ export const InterpreterMessages = () => {
                         <>
                             <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center z-10">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center font-black shadow-sm">
-                                        {activeThread?.participantNames[activeThread.participants.find(p => p !== user?.id)!]?.charAt(0)}
-                                    </div>
+                                    <UserAvatar 
+                                        src={activeThread?.participantPhotos?.[activeThread.participants.find(p => p !== user?.id)!]} 
+                                        name={activeThread?.participantNames[activeThread.participants.find(p => p !== user?.id)!] || ''} 
+                                        size="sm" 
+                                        className="rounded-xl shadow-sm" 
+                                    />
                                     <div>
                                         <h3 className="text-sm font-black text-slate-900">
                                             {activeThread?.participantNames[activeThread.participants.find(p => p !== user?.id)!]}

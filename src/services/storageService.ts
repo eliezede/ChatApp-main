@@ -8,11 +8,21 @@ export const StorageService = {
    * If storage is not available (e.g., offline or misconfigured), 
    * it falls back to converting the file to a Base64 string so the UI still works.
    */
-  uploadFile: async (file: File, path: string): Promise<string> => {
+  uploadFile: async (file: File | string, path: string): Promise<string> => {
     try {
       // 1. Try Firebase Storage
       const storageRef = ref(storage, path);
-      const snapshot = await uploadBytes(storageRef, file);
+      
+      let data: Blob | Uint8Array | ArrayBuffer;
+      if (typeof file === 'string') {
+        // Handle Base64 Data URI
+        const response = await fetch(file);
+        data = await response.blob();
+      } else {
+        data = file;
+      }
+      
+      const snapshot = await uploadBytes(storageRef, data);
       const url = await getDownloadURL(snapshot.ref);
       return url;
     } catch (error) {
@@ -20,6 +30,8 @@ export const StorageService = {
       
       // 2. Fallback: Convert to Base64 Data URI
       // This ensures the app remains functional for demo/dev purposes
+      if (typeof file === 'string') return file;
+      
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);

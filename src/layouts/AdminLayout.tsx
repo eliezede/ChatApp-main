@@ -15,6 +15,7 @@ import { ChatSystem } from '../components/chat/ChatSystem';
 import { ChatService } from '../services/chatService';
 import { StaffService } from '../services/staffService';
 import { CommandPalette } from '../components/ui/CommandPalette';
+import { UserAvatar } from '../components/ui/UserAvatar';
 import { SystemModule } from '../types';
 
 interface NavItemProps {
@@ -320,9 +321,12 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             
             <div className="relative" ref={userMenuRef}>
               <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="flex items-center space-x-3 p-1 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-black">
-                   {user?.displayName?.charAt(0)}
-                </div>
+                <UserAvatar 
+                  name={user?.displayName || 'User'} 
+                  src={user?.photoUrl} 
+                  size="sm" 
+                  className="rounded-lg shadow-sm"
+                />
                 <div className="hidden sm:block text-left">
                   <p className="text-xs font-bold leading-none">{user?.displayName}</p>
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{user?.role}</p>

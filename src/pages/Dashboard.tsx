@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { BookingService, StatsService } from '../services/api';
+import { BookingService, InterpreterService, StatsService } from '../services/api';
 import { UserRole, Booking } from '../types';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -19,6 +19,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Skeleton } from '../components/ui/Skeleton';
 import { InterpreterAllocationDrawer } from '../components/operations/InterpreterAllocationDrawer';
 import { InterpreterPreviewDrawer } from '../components/operations/InterpreterPreviewDrawer';
+import { UserAvatar } from '../components/ui/UserAvatar';
 
 // --- Components ---
 
@@ -70,9 +71,11 @@ const HighDensityActivityTable = ({ title, data, loading }: { title: string, dat
             <tr key={i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 group transition-colors">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center text-[10px] font-black uppercase border border-slate-200 dark:border-slate-700">
-                    {item.avatar}
-                  </div>
+                  <UserAvatar 
+                    name={item.name} 
+                    size="xs" 
+                    className="rounded-lg border border-slate-200 dark:border-slate-700" 
+                  />
                   <span className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">{item.name}</span>
                 </div>
               </td>
@@ -132,6 +135,8 @@ export const Dashboard = () => {
       if (currentStats) setStats(currentStats);
 
       const recent = await BookingService.getRecentBookings(10);
+      const photoMap = await InterpreterService.getPhotoMap();
+
       setRecentByRole(recent.map((b: Booking) => ({
         id: b.id,
         name: b.clientName || 'Guest',
@@ -144,6 +149,7 @@ export const Dashboard = () => {
         avatar: (b.clientName || 'G').substring(0, 2).toUpperCase(),
         interpreterId: b.interpreterId,
         interpreterName: b.interpreterName,
+        interpreterPhotoUrl: b.interpreterPhotoUrl || (b.interpreterId ? photoMap[b.interpreterId] : undefined),
         rawBooking: b
       })));
     } catch (e) {
@@ -355,9 +361,11 @@ export const Dashboard = () => {
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 flex items-center justify-center text-[10px] font-bold uppercase">
-                              {item.avatar}
-                            </div>
+                            <UserAvatar 
+                              name={item.name} 
+                              size="xs" 
+                              className="rounded-md border border-blue-100 dark:border-blue-800/50" 
+                            />
                             <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{item.name}</span>
                           </div>
                         </td>
@@ -382,9 +390,17 @@ export const Dashboard = () => {
                                 setSelectedJob(item.rawBooking);
                                 setIsPreviewOpen(true);
                               }}
-                              className="flex items-center text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                              className="flex items-center gap-2 group hover:opacity-80 transition-opacity text-left"
                             >
-                              {item.interpreterName}
+                              <UserAvatar 
+                                name={item.interpreterName || 'Professional'} 
+                                src={item.interpreterPhotoUrl}
+                                size="xs"
+                                className="border border-blue-100 dark:border-blue-800/50"
+                              />
+                              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:underline">
+                                {item.interpreterName}
+                              </span>
                             </button>
                           ) : (
                             <button

@@ -35,6 +35,7 @@ export interface User {
   displayName: string;
   email: string;
   role: UserRole;
+  photoUrl?: string;
   status: 'ACTIVE' | 'SUSPENDED' | 'PENDING';
   profileId?: string;
   staffProfileId?: string;
@@ -64,6 +65,7 @@ export interface StaffProfile {
   jobTitleId: string;
   departmentId: string;
   phone?: string;
+  photoUrl?: string;
   dob?: string;
   niNumber?: string;
   address?: {
@@ -148,6 +150,7 @@ export interface Booking {
   notes?: string;
   interpreterId?: string;
   interpreterName?: string;
+  interpreterPhotoUrl?: string;
   bookingRef?: string;
   expectedEndTime?: string;
   createdAt?: any;
@@ -192,6 +195,8 @@ export interface Client extends TenantScopedEntity {
   paymentTermsDays: number;
   contactPerson: string;
   email: string;
+  phone?: string;
+  photoUrl?: string;
   status?: 'ACTIVE' | 'GUEST' | 'SUSPENDED';
   defaultCostCodeType: 'PO' | 'Cost Code' | 'Client Name';
 }
@@ -223,11 +228,13 @@ export interface Interpreter extends TenantScopedEntity {
   // Identification
   name: string;
   shortName?: string;
+  photoUrl?: string;
   joinedDate?: string;
   
   // Personal Data
   email: string;
   phone: string;
+  homePhone?: string;
   gender: 'M' | 'F' | 'O';
   address: {
     street: string;
@@ -359,6 +366,9 @@ export interface Timesheet extends TenantScopedEntity {
   clientInvoiceId?: string;
   interpreterInvoiceId?: string;
   supportingDocumentUrl?: string;
+  clientSignatureUrl?: string;
+  clientNameSigned?: string;
+  interpreterPhotoUrl?: string;
 }
 
 export type FiscalCategory =
@@ -418,6 +428,7 @@ export interface InterpreterInvoice extends TenantScopedEntity {
   items: InterpreterPaymentItem[];
   currency: string;
   uploadedPdfUrl?: string;
+  interpreterPhotoUrl?: string;
 }
 
 export interface Rate {
@@ -440,6 +451,7 @@ export interface InterpreterApplication {
   shortName?: string;
   email: string;
   phone: string;
+  photoUrl?: string;
   gender: 'M' | 'F' | 'O';
   address: {
     street: string;
@@ -521,6 +533,7 @@ export interface ChatThread {
   id: string;
   participants: string[]; // uids
   participantNames: Record<string, string>;
+  participantPhotos?: Record<string, string>;
   lastMessage?: string;
   lastMessageAt?: string;
   bookingId?: string;

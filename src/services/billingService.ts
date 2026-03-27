@@ -29,6 +29,7 @@ import {
 import { MOCK_TIMESHEETS, MOCK_CLIENT_INVOICES, MOCK_INTERPRETER_INVOICES, saveMockData, MOCK_BOOKINGS, MOCK_RATES, MOCK_USERS } from "./mockData";
 import { convertDoc, safeFetch } from './utils';
 import { NotificationService } from "./notificationService";
+import { InterpreterService } from "./interpreterService";
 
 export const BillingService = {
 
@@ -152,34 +153,64 @@ export const BillingService = {
     }
   },
 
-  /**
-   * Interpreter Invoices
-   */
   getInterpreterInvoices: async (statusFilter?: string) => {
     try {
-      let q = query(collection(db, "interpreterInvoices"), orderBy("issueDate", "desc"));
+      const [photoMap, snap] = await Promise.all([
+        InterpreterService.getPhotoMap(),
+        getDocs(query(collection(db, "interpreterInvoices"), orderBy("issueDate", "desc")))
+      ]);
+      
+      let filteredDocs = snap.docs;
       if (statusFilter && statusFilter !== 'ALL') {
-        q = query(collection(db, "interpreterInvoices"), where("status", "==", statusFilter), orderBy("issueDate", "desc"));
+        filteredDocs = filteredDocs.filter(d => d.data().status === statusFilter);
       }
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as InterpreterInvoice));
+      
+      return filteredDocs.map((docSnap: any) => {
+        const data = docSnap.data() as InterpreterInvoice;
+        return { 
+          ...data,
+          id: docSnap.id, 
+          interpreterPhotoUrl: data.interpreterPhotoUrl || photoMap[data.interpreterId]
+        } as InterpreterInvoice;
+      });
     } catch (e) {
-      return [...MOCK_INTERPRETER_INVOICES];
+      const photoMap = await InterpreterService.getPhotoMap();
+      return MOCK_INTERPRETER_INVOICES.map(inv => ({
+        ...inv,
+        interpreterPhotoUrl: inv.interpreterPhotoUrl || photoMap[inv.interpreterId]
+      }));
     }
   },
 
   getInterpreterInvoiceById: async (id: string) => {
     try {
-      const d = await getDoc(doc(db, "interpreterInvoices", id));
-      if (!d.exists()) return MOCK_INTERPRETER_INVOICES.find(i => i.id === id) || null;
+      const [photoMap, d] = await Promise.all([
+        InterpreterService.getPhotoMap(),
+        getDoc(doc(db, "interpreterInvoices", id))
+      ]);
+      
+      if (!d.exists()) {
+        const mockInv = MOCK_INTERPRETER_INVOICES.find(i => i.id === id);
+        if (mockInv) return { ...mockInv, interpreterPhotoUrl: mockInv.interpreterPhotoUrl || photoMap[mockInv.interpreterId] };
+        return null;
+      }
 
       const linesQ = query(collection(db, "interpreterInvoiceLines"), where("interpreterInvoiceId", "==", id));
       const linesSnap = await getDocs(linesQ);
       const items = linesSnap.docs.map(l => ({ id: l.id, ...l.data() }));
+      const data = d.data() as InterpreterInvoice;
 
-      return { id: d.id, ...d.data(), items } as any as InterpreterInvoice;
+      return { 
+        ...data, 
+        id: d.id, 
+        items,
+        interpreterPhotoUrl: data.interpreterPhotoUrl || photoMap[data.interpreterId]
+      } as any as InterpreterInvoice;
     } catch (e) {
-      return MOCK_INTERPRETER_INVOICES.find(i => i.id === id) || null;
+      const photoMap = await InterpreterService.getPhotoMap();
+      const inv = MOCK_INTERPRETER_INVOICES.find(i => i.id === id);
+      if (inv) return { ...inv, interpreterPhotoUrl: inv.interpreterPhotoUrl || photoMap[inv.interpreterId] };
+      return null;
     }
   },
 

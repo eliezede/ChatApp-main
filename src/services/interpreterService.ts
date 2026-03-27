@@ -1,4 +1,3 @@
-
 import { collection, doc, getDoc, getDocs, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { Interpreter } from '../types';
@@ -51,11 +50,30 @@ export const InterpreterService = {
       console.warn('Firebase interpreter deletion failed', e);
     }
 
-    // Always cleanup mock
     const idx = MOCK_INTERPRETERS.findIndex(i => i.id === id);
     if (idx >= 0) {
       MOCK_INTERPRETERS.splice(idx, 1);
       saveMockData();
+    }
+  },
+
+  getPhotoMap: async (): Promise<Record<string, string>> => {
+    try {
+      const snap = await getDocs(collection(db, 'interpreters'));
+      const map: Record<string, string> = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.photoUrl) map[d.id] = data.photoUrl;
+      });
+      return Object.keys(map).length > 0 ? map : MOCK_INTERPRETERS.reduce((acc, i) => {
+        if (i.photoUrl) acc[i.id] = i.photoUrl;
+        return acc;
+      }, {} as Record<string, string>);
+    } catch {
+      return MOCK_INTERPRETERS.reduce((acc, i) => {
+        if (i.photoUrl) acc[i.id] = i.photoUrl;
+        return acc;
+      }, {} as Record<string, string>);
     }
   }
 };

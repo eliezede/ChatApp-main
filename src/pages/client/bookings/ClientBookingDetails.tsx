@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
@@ -6,6 +5,7 @@ import { useClientBookingById } from '../../../hooks/useClientHooks';
 import { ChevronLeft, Calendar, Clock, MapPin, Video, FileText, User } from 'lucide-react';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { ServiceType } from '../../../types';
+import { UserAvatar } from '../../../components/ui/UserAvatar';
 
 export const ClientBookingDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -156,10 +156,12 @@ export const ClientBookingDetails = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
              <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">Assignment</h3>
              {booking.interpreterId ? (
-               <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold mr-3">
-                    <User size={20} />
-                  </div>
+               <div className="flex items-center gap-3">
+                  <UserAvatar 
+                    name={booking.interpreterName || 'Unknown'} 
+                    src={booking.interpreterPhotoUrl} 
+                    size="md"
+                  />
                   <div>
                     <p className="text-sm font-bold text-gray-900">{booking.interpreterName}</p>
                     <p className="text-xs text-green-600 font-medium">Confirmed</p>

@@ -8,8 +8,9 @@ import { Button } from '../../../components/ui/Button';
 import { Table } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/StatusBadge';
-import { Booking, Interpreter } from '../../../types';
-import { InterpreterService } from '../../../services/api';
+import { Booking, BookingStatus } from '../../../types';
+import { UserAvatar } from '../../../components/ui/UserAvatar';
+import { BookingService } from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
 import { useConfirm } from '../../../context/ConfirmContext';
 import { assignInterpreterAction, createDependencies } from '../../../ui/actions';
@@ -74,6 +75,19 @@ export const AssignmentCenter = () => {
                         {new Date(job.date).toLocaleDateString([], { day: '2-digit', month: 'short' })}
                     </span>
                     <span className="text-[10px] text-blue-600 font-bold">{job.startTime}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Interpreter',
+            accessor: (job: Booking) => (
+                <div className="flex items-center space-x-2">
+                    <UserAvatar 
+                        name={job.interpreterName || 'Unknown'} 
+                        src={job.interpreterPhotoUrl} 
+                        size="xs"
+                    />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{job.interpreterName || 'Unassigned'}</span>
                 </div>
             )
         },

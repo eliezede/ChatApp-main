@@ -13,6 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   isAdmin: boolean; // true for both ADMIN and SUPER_ADMIN
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,7 +37,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               displayName: userData.displayName || firebaseUser.email,
               role: userData.role as UserRole,
               profileId: userData.profileId,
-              status: userData.status || 'ACTIVE'
+              staffProfileId: userData.staffProfileId,
+              status: userData.status || 'ACTIVE',
+              photoUrl: userData.photoUrl
             });
           } else {
             // BACKUP: Fetch by email if UID document doesn't exist
@@ -54,7 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 displayName: userData.displayName || firebaseUser.email,
                 role: userData.role as UserRole,
                 profileId: userData.profileId,
-                status: userData.status || 'ACTIVE'
+                staffProfileId: userData.staffProfileId,
+                status: userData.status || 'ACTIVE',
+                photoUrl: userData.photoUrl
               });
               
               // MIGRATION: Auto-align document ID with UID
@@ -74,7 +79,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               displayName: mockUser?.displayName || firebaseUser.displayName || 'User',
               role: mockUser?.role || UserRole.CLIENT, // Default to CLIENT if unknown
               profileId: mockUser?.profileId,
-              status: mockUser?.status || 'ACTIVE'
+              staffProfileId: mockUser?.staffProfileId,
+              status: mockUser?.status || 'ACTIVE',
+              photoUrl: mockUser?.photoUrl
             });
           }
         }
@@ -114,6 +121,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    if (!auth.currentUser) return;
+    const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      setUser({
+        id: auth.currentUser.uid,
+        email: auth.currentUser.email || '',
+        displayName: userData.displayName || auth.currentUser.email,
+        role: userData.role as UserRole,
+        profileId: userData.profileId,
+        staffProfileId: userData.staffProfileId,
+        status: userData.status || 'ACTIVE',
+        photoUrl: userData.photoUrl
+      });
+    }
+  };
+
   const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
@@ -125,6 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAuthenticated: !!user,
       isSuperAdmin,
       isAdmin,
+      refreshUser,
     }}>
       {children}
     </AuthContext.Provider>

@@ -74,9 +74,14 @@ export const AdminClientDetails = () => {
                 [user.id]: user.displayName || 'Admin',
                 [client.id]: client.companyName
             };
-            const threadId = await ChatService.getOrCreateThread([user.id, client.id], names);
+            const photos = {
+                [user.id]: user.photoUrl || '',
+                [client.id]: client.photoUrl || ''
+            };
+            const threadId = await ChatService.getOrCreateThread([user.id, client.id], names, photos);
             openThread(threadId);
         } catch (error) {
+
             showToast('Failed to start chat', 'error');
         }
     };

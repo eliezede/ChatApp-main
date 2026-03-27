@@ -97,7 +97,7 @@ export const AdminClients = () => {
     }
   };
 
-  const handleStartChat = async (e: React.MouseEvent | undefined, clientId: string, clientName: string) => {
+  const handleStartChat = async (e: React.MouseEvent | undefined, clientId: string, clientName: string, clientPhoto?: string) => {
     if (e) e.stopPropagation();
     if (!user) return;
 
@@ -107,12 +107,19 @@ export const AdminClients = () => {
         [clientId]: clientName
       };
 
+      const photos = {
+        [user.id]: user.photoUrl || '',
+        [clientId]: clientPhoto || selectedClient?.photoUrl || ''
+      };
+
       const threadId = await ChatService.getOrCreateThread(
         [user.id, clientId],
-        names
+        names,
+        photos
       );
 
       openThread(threadId);
+
     } catch (error) {
       console.error("Failed to start chat", error);
       showToast('failed to start chat', 'error');

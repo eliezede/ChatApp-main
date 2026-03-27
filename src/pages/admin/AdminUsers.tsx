@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Table } from '../../components/ui/Table';
 import { BulkActionBar } from '../../components/ui/BulkActionBar';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { UserAvatar } from '../../components/ui/UserAvatar';
 import {
   Search, Plus, ShieldOff, ShieldCheck, Trash2,
   Shield, Crown, Mail, Calendar,
@@ -161,9 +162,12 @@ export const AdminUsers = () => {
       header: 'User',
       accessor: (user: User) => (
         <div className="flex items-center space-x-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${user.role === UserRole.SUPER_ADMIN ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>
-            {user.displayName.charAt(0).toUpperCase()}
-          </div>
+          <UserAvatar 
+            name={user.displayName} 
+            src={user.photoUrl} 
+            size="sm"
+            className="rounded-lg shadow-sm"
+          />
           <div className="flex flex-col">
             <span className="font-bold text-slate-900 dark:text-white capitalize">{user.displayName}</span>
             <span className="text-[10px] text-slate-400 truncate max-w-[150px]">{user.email}</span>

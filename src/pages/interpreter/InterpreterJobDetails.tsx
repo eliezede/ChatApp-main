@@ -31,11 +31,18 @@ export const InterpreterJobDetails = () => {
       'u1': 'Sarah Admin' // Admin fallback
     };
 
+    const photos = {
+      [user.id]: user.photoUrl || '',
+      'u1': '' // Admin photo
+    };
+
     const threadId = await ChatService.getOrCreateThread(
       [user.id, 'u1'],
       names,
+      photos,
       job.id
     );
+
     openThread(threadId);
   };
 

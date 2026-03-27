@@ -9,6 +9,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { ChatService } from '../services/chatService';
 import { NotificationCenter } from '../components/notifications/NotificationCenter';
+import { UserAvatar } from '../components/ui/UserAvatar';
 
 interface NavItemProps {
   to: string;
@@ -231,9 +232,12 @@ export const InterpreterLayout: React.FC<{ children: React.ReactNode }> = ({ chi
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center space-x-3 p-1.5 pr-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
               >
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-md shrink-0">
-                   {user?.displayName?.charAt(0)}
-                </div>
+                <UserAvatar 
+                  name={user?.displayName || 'User'} 
+                  src={user?.photoUrl} 
+                  size="sm" 
+                  className="rounded-lg shadow-sm"
+                />
                 <div className="hidden sm:flex flex-col items-start transition-opacity duration-200">
                   <span className="text-xs font-bold text-slate-900 dark:text-white leading-none mb-0.5">{user?.displayName}</span>
                   <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{user?.role}</span>
@@ -244,7 +248,12 @@ export const InterpreterLayout: React.FC<{ children: React.ReactNode }> = ({ chi
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 origin-top-right">
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center space-x-3 mb-1">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white font-bold">{user?.displayName?.charAt(0)}</div>
+                    <UserAvatar 
+                      name={user?.displayName || 'User'} 
+                      src={user?.photoUrl} 
+                      size="md" 
+                      className="rounded-xl shadow-sm"
+                    />
                     <div className="flex flex-col min-w-0">
                       <span className="text-sm font-bold truncate">{user?.displayName}</span>
                       <span className="text-[10px] text-slate-400 truncate">{user?.email}</span>

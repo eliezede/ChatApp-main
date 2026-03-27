@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { BookingService } from '../../../services/bookingService';
 import { BillingService } from '../../../services/billingService';
+import { UserAvatar } from '../../../components/ui/UserAvatar';
 import { ApplicationService } from '../../../services/applicationService';
 import { PdfService } from '../../../services/pdfService';
 import { ChatService } from '../../../services/chatService';
@@ -387,9 +388,12 @@ export const AdminBookingDetails = () => {
                   {booking.interpreterId ? (
                     <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-slate-50 dark:bg-slate-950 rounded-3xl border border-slate-100 dark:border-slate-800 transition-colors gap-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg shadow-blue-500/20">
-                          {booking.interpreterName?.charAt(0)}
-                        </div>
+                        <UserAvatar 
+                          name={booking.interpreterName || ''} 
+                          src={booking.interpreterPhotoUrl} 
+                          size="xl" 
+                          className="rounded-2xl shadow-lg shadow-blue-500/20"
+                        />
                         <div>
                            <div className="flex items-center gap-2">
                              <h4 className="text-lg font-black text-slate-900 dark:text-white leading-tight uppercase hover:text-blue-600 cursor-pointer transition-colors" onClick={() => {

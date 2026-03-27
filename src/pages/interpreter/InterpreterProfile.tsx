@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { InterpreterService, StorageService } from '../../services/api';
+import { InterpreterService } from '../../services/interpreterService';
+import { StorageService } from '../../services/storageService';
+import { UserService } from '../../services/userService';
 import { useSettings } from '../../context/SettingsContext';
 import { Interpreter } from '../../types';
 import {
@@ -12,11 +14,13 @@ import { useToast } from '../../context/ToastContext';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { UserAvatar } from '../../components/ui/UserAvatar';
+import { ImageCropper } from '../../components/ui/ImageCropper';
 
 type ProfileTab = 'PERSONAL' | 'SKILLS' | 'COMPLIANCE' | 'AVAILABILITY';
 
 export const InterpreterProfile = () => {
-  const { user, logout } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
   const { settings } = useSettings();
   const { showToast } = useToast();
@@ -29,6 +33,9 @@ export const InterpreterProfile = () => {
 
   const [formData, setFormData] = useState<Partial<Interpreter>>({});
   const [viewDate, setViewDate] = useState(new Date());
+
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -86,6 +93,35 @@ export const InterpreterProfile = () => {
       showToast('Document uploaded successfully', 'success');
     } catch (error) {
       showToast('Upload failed', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSelectedImage(reader.result as string);
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCropComplete = async (croppedImage: string) => {
+    if (!user?.id) return;
+    setIsUploading(true);
+    try {
+      // Small delay to show uploading state for better UX
+      const photoUrl = await UserService.uploadProfilePhoto(user.id, croppedImage, 'INTERPRETER');
+      setProfile(prev => prev ? { ...prev, photoUrl } : null);
+      setFormData(prev => ({ ...prev, photoUrl }));
+      await refreshUser();
+      showToast('Profile photo updated', 'success');
+    } catch (error) {
+      showToast('Failed to update photo', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -206,11 +242,27 @@ export const InterpreterProfile = () => {
         {/* Left Column: Navigation Sidebar */}
         <aside className="w-full lg:w-72 shrink-0 space-y-6">
           <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden p-6 text-center">
-            <div className="relative mb-4 mx-auto w-20 h-20">
-              <div className="w-full h-full bg-slate-900 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-slate-900/10">
-                {profile.name.charAt(0)}
-              </div>
-              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg border-[3px] border-white shadow-sm flex items-center justify-center ${profile.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+            <div className="relative mb-4 mx-auto w-24 h-24 group">
+              <UserAvatar 
+                src={profile.photoUrl || user?.photoUrl} 
+                name={profile.name} 
+                size="2xl" 
+                showBorder 
+                className={isUploading ? 'opacity-50' : ''}
+              />
+              
+              {isUploading && (
+                <div className="absolute inset-0 flex items-center justify-center z-10">
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+
+              <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg border-2 border-white cursor-pointer flex items-center justify-center transition-all hover:scale-110 group-hover:rotate-6">
+                <Upload size={14} strokeWidth={2.5} />
+                <input type="file" className="hidden" accept="image/*" onChange={handlePhotoSelect} disabled={isUploading} />
+              </label>
+
+              <div className={`absolute top-0 right-0 w-4 h-4 rounded-lg border-2 border-white shadow-sm flex items-center justify-center ${profile.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`}>
                 {profile.isAvailable && <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>}
               </div>
             </div>
@@ -329,16 +381,6 @@ export const InterpreterProfile = () => {
                         className={inputClasses}
                         value={formData.phone || ''}
                         onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClasses}>Home Phone</label>
-                      <input
-                        type="tel" disabled={!isEditing}
-                        className={inputClasses}
-                        placeholder="Optional"
-                        value={formData.homePhone || ''}
-                        onChange={e => setFormData({ ...formData, homePhone: e.target.value })}
                       />
                     </div>
                     <div>
@@ -564,6 +606,15 @@ export const InterpreterProfile = () => {
         </div>
 
       </div>
+
+      {selectedImage && (
+        <ImageCropper
+          image={selectedImage}
+          isOpen={showCropper}
+          onClose={() => setShowCropper(false)}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   );
 };

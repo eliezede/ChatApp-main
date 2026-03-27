@@ -19,8 +19,9 @@ import {
   User, Languages, Award, ChevronRight, ChevronLeft, 
   Check, Globe2, Plus, Trash2, ShieldCheck, Mail, 
   Phone, Home, Car, MessageSquare, Briefcase, FileText, Info,
-  Upload, Clock, CheckCircle2, AlertCircle, X
+  Upload, Clock, CheckCircle2, AlertCircle, X, Camera
 } from 'lucide-react';
+import { UserService } from '../../services/userService';
 
 type Step = 1 | 2 | 3;
 
@@ -37,7 +38,7 @@ export const InterpreterOnboarding = () => {
   const [formData, setFormData] = useState<Partial<Interpreter>>({
     shortName: '',
     gender: 'O',
-    homePhone: '',
+    phone: '',
     address: {
       street: '',
       town: '',
@@ -147,6 +148,7 @@ export const InterpreterOnboarding = () => {
       setUploadingStatus(prev => ({ ...prev, [stepId]: false }));
     }
   };
+
 
   const nextStep = () => setStep(prev => (prev < 3 ? prev + 1 : prev) as Step);
   const prevStep = () => setStep(prev => (prev > 1 ? prev - 1 : prev) as Step);
@@ -719,9 +721,9 @@ export const InterpreterOnboarding = () => {
               </div>
             </div>
 
-          </div>
         </div>
       </div>
     </div>
+  </div>
   );
 };

@@ -6,15 +6,18 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
 import { Badge } from '../../components/ui/Badge';
+import { UserAvatar } from '../../components/ui/UserAvatar';
+import { ImageCropper } from '../../components/ui/ImageCropper';
+import { UserService } from '../../services/userService';
 import { 
   User, Mail, Phone, Calendar, MapPin, 
   Shield, Briefcase, Building2, Bell, Sun, 
   Moon, Monitor, Save, AlertCircle, Heart,
-  ShieldCheck, Database
+  ShieldCheck, Database, Upload
 } from 'lucide-react';
 
 export const AdminProfile = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
@@ -23,6 +26,10 @@ export const AdminProfile = () => {
   const [saving, setSaving] = useState(false);
   
   const { showToast } = useToast();
+
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const loadData = async () => {
     if (!user) return;
@@ -81,6 +88,33 @@ export const AdminProfile = () => {
     }
   };
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSelectedImage(reader.result as string);
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCropComplete = async (croppedImage: string) => {
+    if (!user?.id) return;
+    setIsUploading(true);
+    try {
+      const photoUrl = await UserService.uploadProfilePhoto(user.id, croppedImage, user.role);
+      setProfile(prev => prev ? { ...prev, photoUrl } : null);
+      await refreshUser();
+      showToast('Profile photo updated', 'success');
+    } catch (error) {
+      showToast('Failed to update photo', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (loading) return (
     <div className="p-12 text-center space-y-4">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -98,8 +132,25 @@ export const AdminProfile = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 text-center shadow-sm">
-             <div className="w-24 h-24 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl font-black mb-4 shadow-lg shadow-blue-500/20">
-                {user?.displayName?.charAt(0)}
+             <div className="relative mb-4 mx-auto w-24 h-24 group">
+                <UserAvatar 
+                  src={profile?.photoUrl || user?.photoUrl} 
+                  name={user?.displayName || ''} 
+                  size="2xl" 
+                  showBorder 
+                  className={isUploading ? 'opacity-50' : ''}
+                />
+                
+                {isUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+
+                <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg border-2 border-white cursor-pointer flex items-center justify-center transition-all hover:scale-110 group-hover:rotate-6">
+                  <Upload size={14} strokeWidth={2.5} className="text-white" />
+                  <input type="file" className="hidden" accept="image/*" onChange={handlePhotoSelect} disabled={isUploading} />
+                </label>
              </div>
              <h2 className="text-xl font-black text-slate-900 dark:text-white capitalize">{user?.displayName}</h2>
              <p className="text-sm text-slate-500 mb-6">{user?.email}</p>
@@ -298,6 +349,15 @@ export const AdminProfile = () => {
            </form>
         </div>
       </div>
+
+      {selectedImage && (
+        <ImageCropper
+          image={selectedImage}
+          isOpen={showCropper}
+          onClose={() => setShowCropper(false)}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   );
 };

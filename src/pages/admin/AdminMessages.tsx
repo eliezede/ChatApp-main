@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { Search, Send, MessageSquare, Hash, FileIcon, ImageIcon, Paperclip, Check, ChevronLeft } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
+import { UserAvatar } from '../../components/ui/UserAvatar';
 
 export const AdminMessages = () => {
   const { user } = useAuth();
@@ -133,9 +134,12 @@ export const AdminMessages = () => {
                     isSelected ? 'bg-blue-50/80 dark:bg-blue-900/10 border-l-4 border-l-blue-600 shadow-inner' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                   }`}
                 >
-                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-black text-slate-500 shadow-sm shrink-0">
-                    {otherName.charAt(0)}
-                  </div>
+                  <UserAvatar 
+                    src={t.participantPhotos?.[otherParticipantId!]} 
+                    name={otherName} 
+                    size="md" 
+                    className="rounded-2xl shadow-sm shrink-0" 
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                        <p className={`text-sm truncate font-black ${isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
@@ -164,9 +168,12 @@ export const AdminMessages = () => {
             {/* Header do Chat */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 shadow-sm z-10">
                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-black shadow-inner">
-                    {activeThread?.participantNames[activeThread.participants.find(p => p !== user?.id)!]?.charAt(0)}
-                  </div>
+                  <UserAvatar 
+                    src={activeThread?.participantPhotos?.[activeThread.participants.find(p => p !== user?.id)!]} 
+                    name={activeThread?.participantNames[activeThread.participants.find(p => p !== user?.id)!] || ''} 
+                    size="md" 
+                    className="rounded-2xl" 
+                  />
                   <div>
                     <h3 className="text-sm font-black text-slate-900 dark:text-white">
                       {activeThread?.participantNames[activeThread.participants.find(p => p !== user?.id)!]}

@@ -13,6 +13,7 @@ import { FirestoreClientService } from '../firebase/firestoreClient';
 import { BillingService } from '../services/billingService';
 import { ClientService } from '../services/clientService';
 import { BookingService } from '../services/bookingService';
+import { InterpreterService } from '../services/interpreterService';
 import { Booking, ClientInvoice, Client } from '../types';
 
 export const useClientBookings = (clientId: string | undefined) => {
@@ -31,8 +32,15 @@ export const useClientBookings = (clientId: string | undefined) => {
       where("clientId", "==", clientId)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const photoMap = await InterpreterService.getPhotoMap();
+      const data = snapshot.docs.map(doc => {
+        const booking = { id: doc.id, ...doc.data() } as Booking;
+        if (booking.interpreterId && !booking.interpreterPhotoUrl) {
+          booking.interpreterPhotoUrl = photoMap[booking.interpreterId];
+        }
+        return booking;
+      });
       // Sort in memory to avoid index requirements during dev
       data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setBookings(data);
@@ -60,11 +68,15 @@ export const useClientBookingById = (clientId: string | undefined, bookingId: st
     
     const docRef = doc(db, "bookings", bookingId);
     
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
         const data = { id: docSnap.id, ...docSnap.data() } as Booking;
         // Security check: ensure booking belongs to client
         if (data.clientId === clientId) {
+          if (data.interpreterId && !data.interpreterPhotoUrl) {
+            const photoMap = await InterpreterService.getPhotoMap();
+            data.interpreterPhotoUrl = photoMap[data.interpreterId];
+          }
           setBooking(data);
         } else {
           setBooking(null);

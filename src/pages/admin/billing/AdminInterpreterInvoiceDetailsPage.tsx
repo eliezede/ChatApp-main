@@ -6,6 +6,7 @@ import { InterpreterInvoice, InvoiceStatus } from '../../../types';
 import { InvoiceStatusBadge } from '../../../components/billing/InvoiceStatusBadge';
 import { ChevronLeft, CheckCircle, XCircle, FileText, PoundSterling } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
+import { UserAvatar } from '../../../components/ui/UserAvatar';
 
 export const AdminInterpreterInvoiceDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,9 +55,16 @@ export const AdminInterpreterInvoiceDetailsPage = () => {
 
       <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
         <div className="flex justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">{invoice.interpreterName}</h2>
-            <p className="text-gray-500">Reference: {invoice.externalInvoiceReference || 'N/A'}</p>
+          <div className="flex items-center gap-4">
+            <UserAvatar 
+              name={invoice.interpreterName || ''} 
+              src={invoice.interpreterPhotoUrl} 
+              size="lg"
+            />
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{invoice.interpreterName}</h2>
+              <p className="text-gray-500">Reference: {invoice.externalInvoiceReference || 'N/A'}</p>
+            </div>
           </div>
           <div className="text-right">
             <InvoiceStatusBadge status={invoice.status} />

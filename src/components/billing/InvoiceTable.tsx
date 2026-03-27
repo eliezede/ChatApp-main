@@ -40,8 +40,18 @@ export const InvoiceTable: React.FC<Props> = ({ invoices, type }) => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   {type === 'CLIENT' ? inv.reference : (inv.externalInvoiceReference || 'Self-Bill')}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300">
-                  {type === 'CLIENT' ? inv.clientName : inv.interpreterName}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <UserAvatar 
+                      name={type === 'CLIENT' ? inv.clientName : inv.interpreterName} 
+                      src={type === 'CLIENT' ? inv.clientPhotoUrl : inv.interpreterPhotoUrl}
+                      size="xs"
+                      className="border border-slate-100 dark:border-slate-800"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
+                      {type === 'CLIENT' ? inv.clientName : inv.interpreterName}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                   {new Date(inv.issueDate).toLocaleDateString()}

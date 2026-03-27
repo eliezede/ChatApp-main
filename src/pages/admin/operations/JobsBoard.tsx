@@ -20,6 +20,7 @@ import { InterpreterPreviewDrawer } from '../../../components/operations/Interpr
 import { filterBookings, groupBookings } from '../../../utils/bookingFilters';
 import { ViewManagerDrawer } from '../../../components/operations/ViewManagerDrawer';
 import { Settings, Plus as PlusIcon } from 'lucide-react';
+import { UserAvatar } from '../../../components/ui/UserAvatar';
 
 export const JobsBoard = () => {
     const navigate = useNavigate();
@@ -154,10 +155,17 @@ export const JobsBoard = () => {
                     {job.interpreterId ? (
                         <button
                             onClick={(e) => handleInterpreterPreview(e, job)}
-                            className="flex items-center text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-tight group"
+                            className="flex items-center gap-2 group hover:opacity-80 transition-opacity text-left"
                         >
-                            <UserCircle2 size={12} className="mr-1 text-blue-400 group-hover:text-blue-600" />
-                            Assigned: {job.interpreterName || 'Professional'}
+                            <UserAvatar 
+                                name={job.interpreterName || 'Professional'} 
+                                src={job.interpreterPhotoUrl}
+                                size="xs"
+                                className="border border-blue-100 dark:border-blue-900/30"
+                            />
+                            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight truncate max-w-[120px]">
+                                {job.interpreterName || 'Professional'}
+                            </span>
                         </button>
                     ) : (
                         <button
@@ -388,9 +396,12 @@ export const JobsBoard = () => {
                                 {selectedJob.interpreterId ? (
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
-                                            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center text-purple-600">
-                                                <UserCircle2 size={20} />
-                                            </div>
+                                            <UserAvatar 
+                                                name={selectedJob.interpreterName || 'Professional'} 
+                                                src={selectedJob.interpreterPhotoUrl}
+                                                size="md"
+                                                className="border-2 border-white dark:border-slate-800 shadow-sm"
+                                            />
                                             <div>
                                                 <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{selectedJob.interpreterName}</p>
                                                 <button

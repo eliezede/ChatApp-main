@@ -8,6 +8,7 @@ import { InterpreterService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { assignInterpreterAction, createDependencies } from '../../ui/actions';
 import { useAuth } from '../../context/AuthContext';
+import { UserAvatar } from '../ui/UserAvatar';
 
 interface AssignmentModalProps {
     isOpen: boolean;
@@ -169,12 +170,12 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border ${matched
-                                                ? 'bg-blue-600 text-white border-blue-700'
-                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                                            }`}>
-                                            {interpreter.name.charAt(0)}
-                                        </div>
+                                        <UserAvatar 
+                                            name={interpreter.name} 
+                                            src={interpreter.photoUrl} 
+                                            size="sm"
+                                            className="rounded-xl shadow-sm border"
+                                        />
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <p className="text-sm font-bold text-slate-900 dark:text-white leading-none">{interpreter.name}</p>

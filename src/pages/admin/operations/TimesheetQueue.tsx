@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileCheck, AlertCircle, Clock, CheckCircle2, XCircle, Eye, ArrowRight, ShieldCheck, Info, Zap } from 'lucide-react';
+import { FileCheck, AlertCircle, Clock, CheckCircle2, XCircle, Eye, ArrowRight, ShieldCheck, Info, Zap, CheckCircle } from 'lucide-react';
 import { useBookings } from '../../../hooks/useBookings';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
@@ -8,9 +8,10 @@ import { Table } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { BulkActionBar } from '../../../components/ui/BulkActionBar';
-import { Booking, BookingStatus, Timesheet, ServiceCategory } from '../../../types';
+import { Booking, BookingStatus, Timesheet, ServiceCategory, InterpreterInvoice, InvoiceStatus } from '../../../types';
 import { BookingService, BillingService } from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
+import { UserAvatar } from '../../../components/ui/UserAvatar';
 
 export const TimesheetQueue = () => {
     const navigate = useNavigate();
@@ -80,11 +81,14 @@ export const TimesheetQueue = () => {
         {
             header: 'Interpreter',
             accessor: (job: Booking) => (
-                <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-slate-400 font-bold text-[10px]">
-                        {job.interpreterName?.charAt(0)}
-                    </div>
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{job.interpreterName}</span>
+                <div className="flex items-center">
+                    <UserAvatar
+                        name={job.interpreterName || 'Unknown'}
+                        src={job.interpreterPhotoUrl}
+                        size="sm"
+                        className="mr-3"
+                    />
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{job.interpreterName}</div>
                 </div>
             )
         },
@@ -100,7 +104,7 @@ export const TimesheetQueue = () => {
                     ) : (
                         <>
                             <Clock size={14} className="mr-2 text-blue-500" />
-                            {job.durationMinutes} min
+                            {job.durationMinutes === 0 ? 'TBD' : `${Math.floor(job.durationMinutes / 60)}h ${job.durationMinutes % 60}m`}
                         </>
                     )}
                 </div>

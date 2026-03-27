@@ -15,6 +15,7 @@ import { useChat } from '../../context/ChatContext';
 import { ViewToggle } from '../../components/ui/ViewToggle';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/ui/Table';
+import { UserAvatar } from '../../components/ui/UserAvatar';
 import { BulkActionBar } from '../../components/ui/BulkActionBar';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -68,7 +69,7 @@ export const AdminInterpreters = () => {
     return matchesText && matchesLang && matchesStatus;
   });
 
-  const handleStartChat = async (e: React.MouseEvent | undefined, interpreterId: string | undefined, interpreterName: string | undefined) => {
+  const handleStartChat = async (e: React.MouseEvent | undefined, interpreterId: string | undefined, interpreterName: string | undefined, interpreterPhoto?: string) => {
     if (e) e.stopPropagation();
     if (!user || !interpreterId) return;
 
@@ -78,9 +79,15 @@ export const AdminInterpreters = () => {
         [interpreterId]: interpreterName || 'Interpreter'
       };
 
+      const photos = {
+        [user.id]: user.photoUrl || '',
+        [interpreterId]: interpreterPhoto || selectedInterpreter?.photoUrl || ''
+      };
+
       const threadId = await ChatService.getOrCreateThread(
         [user.id, interpreterId],
-        names
+        names,
+        photos
       );
 
       openThread(threadId);
@@ -88,6 +95,7 @@ export const AdminInterpreters = () => {
       console.error("Failed to start chat", error);
     }
   };
+
 
   const handleOpenPreview = async (interpreter: Interpreter) => {
     setSelectedInterpreter(interpreter);
@@ -141,9 +149,7 @@ export const AdminInterpreters = () => {
       header: 'Interpreter',
       accessor: (i: Interpreter) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center font-bold text-sm border border-slate-200 dark:border-slate-700">
-            {i.name.charAt(0)}
-          </div>
+          <UserAvatar src={i.photoUrl} name={i.name} size="sm" />
           <div>
             <p className="font-bold text-slate-900 dark:text-white">{i.name}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">{i.email}</p>
@@ -283,9 +289,7 @@ export const AdminInterpreters = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 gap-4">
               <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="w-16 h-16 bg-slate-700 dark:bg-slate-800 text-white rounded-xl flex items-center justify-center font-bold text-2xl shadow-sm border-2 border-slate-200 dark:border-slate-700">
-                  {selectedInterpreter.name.charAt(0)}
-                </div>
+                <UserAvatar src={selectedInterpreter.photoUrl} name={selectedInterpreter.name} size="xl" />
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white">{selectedInterpreter.name}</h2>
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">

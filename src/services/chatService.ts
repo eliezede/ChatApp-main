@@ -8,7 +8,7 @@ import { ChatThread, ChatMessage, NotificationType } from '../types';
 import { NotificationService } from './notificationService';
 
 export const ChatService = {
-  getOrCreateThread: async (participants: string[], names: Record<string, string>, bookingId?: string) => {
+  getOrCreateThread: async (participants: string[], names: Record<string, string>, photos?: Record<string, string>, bookingId?: string) => {
     // Generate a unique stable ID based on sorted participants or booking
     const threadId = bookingId ? `booking-${bookingId}` : participants.sort().join('_');
     const threadRef = doc(db, 'chatThreads', threadId);
@@ -19,6 +19,7 @@ export const ChatService = {
       const threadData: any = {
         participants,
         participantNames: names,
+        participantPhotos: photos || {},
         updatedAt: serverTimestamp(),
         bookingId: bookingId || null,
         unreadCount: participants.reduce((acc, p) => ({ ...acc, [p]: 0 }), {})
@@ -29,6 +30,7 @@ export const ChatService = {
       // but do NOT reset the unreadCount or participants list.
       await updateDoc(threadRef, {
         participantNames: names,
+        participantPhotos: photos || {},
         updatedAt: serverTimestamp()
       });
     }

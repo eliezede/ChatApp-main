@@ -15,7 +15,9 @@ import { NotificationCenter } from '../../components/notifications/NotificationC
 import { OnboardingWidget } from '../../components/interpreter/OnboardingWidget';
 import { useToast } from '../../context/ToastContext';
 import { useChat } from '../../context/ChatContext';
-import { ChatService } from '../../services/chatService';
+import { UserAvatar } from '../../components/ui/UserAvatar';
+import {
+ChatService } from '../../services/chatService';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -252,13 +254,19 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  const handleMessageAdmin = async (jobId: string) => {
+  const handleMessageAdmin = async (bookingId: string) => {
     try {
-      const adminId = 'admin-user-id'; // This would normally come from the booking or service
+      const photos = {
+        [user!.id]: user!.photoUrl || '',
+        'admin': '' // Support icon/logo could go here
+      };
+
+      // Support chat or Booking chat
       const threadId = await ChatService.getOrCreateThread(
-        [user!.id, adminId],
-        { [user!.id]: user!.displayName || 'Interpreter', [adminId]: 'Admin' },
-        jobId
+        [user!.id, 'admin'],
+        { [user!.id]: user!.displayName || 'Interpreter', 'admin': 'Lingland Support' },
+        photos,
+        bookingId
       );
       openThread(threadId);
     } catch (e) {
@@ -276,6 +284,27 @@ export const InterpreterDashboard = () => {
         <Button onClick={() => navigate('/interpreter/jobs')} variant="secondary" icon={Briefcase} size="sm">Browse Jobs</Button>
       </PageHeader>
 
+      {/* Welcome Block */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+          <div className="flex items-center gap-6 relative">
+            <UserAvatar
+              name={user?.displayName || ''}
+              src={user?.photoUrl}
+              size="lg"
+              className="rounded-3xl shadow-lg border-2 border-slate-50 dark:border-slate-800"
+            />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Welcome back,</p>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">{user?.displayName || 'Agent'}</h2>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 relative z-10">
+            <Button variant="secondary" onClick={() => navigate('/interpreter/profile')} icon={User}>My Profile</Button>
+            <Button onClick={() => navigate('/interpreter/timesheets')} icon={Calendar}>Timesheets</Button>
+          </div>
+          <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-48 h-48 bg-blue-500/10 dark:bg-blue-400/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700" />
+        </div>
+
       {/* Conditional Rendering: Onboarding Flow */}
       {/* Case 1: New Applicant - Must complete profile wizard first */}
       {interpreterStatus === 'APPLICANT' && interpreter && (
@@ -288,8 +317,8 @@ export const InterpreterDashboard = () => {
             <p className="text-slate-500 text-sm mb-8 leading-relaxed">
               We've provisioned your account. To start receiving job offers, we first need to complete your professional profile.
             </p>
-            <Button 
-              onClick={() => navigate('/interpreter/onboarding')} 
+            <Button
+              onClick={() => navigate('/interpreter/onboarding')}
               className="w-full bg-slate-900 py-4 rounded-2xl"
               icon={ChevronRight}
               iconPosition="right"

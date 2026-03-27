@@ -1,7 +1,8 @@
 import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc, setDoc, addDoc } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { db, auth } from './firebaseConfig';
-import { User } from '../types';
+import { User, Interpreter, StaffProfile, Client } from '../types';
+import { StorageService } from './storageService';
 import { MOCK_USERS, saveMockData } from './mockData';
 import { convertDoc, safeFetch } from './utils';
 
@@ -95,5 +96,40 @@ export const UserService = {
       console.error("Error sending activation email:", e);
       throw e;
     }
+  },
+
+  uploadProfilePhoto: async (userId: string, file: File | string, role: string): Promise<string> => {
+    const path = `profiles/${role.toLowerCase()}/${userId}/${Date.now()}_profile.jpg`;
+    const photoUrl = await StorageService.uploadFile(file, path);
+    
+    // Update main user record
+    await UserService.update(userId, { photoUrl });
+
+    // Update specific profile based on role
+    try {
+      if (role === 'INTERPRETER') {
+        const { InterpreterService } = await import('./interpreterService');
+        const user = await UserService.getUserById(userId);
+        if (user?.profileId) {
+          await InterpreterService.updateProfile(user.profileId, { photoUrl });
+        }
+      } else if (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'COORDINATOR' || role === 'STAFF') {
+        const { StaffService } = await import('./staffService');
+        const user = await UserService.getUserById(userId);
+        if (user?.staffProfileId) {
+          await StaffService.updateProfile(user.staffProfileId, { photoUrl });
+        }
+      } else if (role === 'CLIENT') {
+        const { ClientService } = await import('./clientService');
+        const user = await UserService.getUserById(userId);
+        if (user?.profileId) {
+          await ClientService.update(user.profileId, { photoUrl });
+        }
+      }
+    } catch (profileError) {
+      console.error("Error updating sub-profile photo:", profileError);
+    }
+
+    return photoUrl;
   }
 };

@@ -1,12 +1,48 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useClientProfile } from '../../hooks/useClientHooks';
-import { Building2, Mail, MapPin, CreditCard, Users } from 'lucide-react';
+import { Building2, Mail, MapPin, CreditCard, Users, Upload } from 'lucide-react';
+import { UserAvatar } from '../../components/ui/UserAvatar';
+import { ImageCropper } from '../../components/ui/ImageCropper';
+import { UserService } from '../../services/userService';
+import { useToast } from '../../context/ToastContext';
 
 export const ClientProfile = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { profile, loading } = useClientProfile(user?.profileId);
+  const { showToast } = useToast();
+
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSelectedImage(reader.result as string);
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCropComplete = async (croppedImage: string) => {
+    if (!user?.id) return;
+    setIsUploading(true);
+    try {
+      const photoUrl = await UserService.uploadProfilePhoto(user.id, croppedImage, 'CLIENT');
+      // Note: useClientProfile might not auto-refresh if it's not reactive to the user object's photoUrl change
+      // but the main user record is updated.
+      await refreshUser();
+      showToast('Profile photo updated', 'success');
+    } catch (error) {
+      showToast('Failed to update photo', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (!profile) return <div className="p-8 text-red-500">Profile not found.</div>;
@@ -17,8 +53,25 @@ export const ClientProfile = () => {
 
       <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
         <div className="flex items-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center text-white text-2xl font-bold mr-4">
-            {profile.companyName.charAt(0)}
+          <div className="relative group mr-6">
+            <UserAvatar 
+              src={user?.photoUrl || profile.photoUrl} 
+              name={profile.companyName} 
+              size="2xl" 
+              showBorder 
+              className={isUploading ? 'opacity-50' : ''}
+            />
+            
+            {isUploading && (
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg border-2 border-white cursor-pointer flex items-center justify-center transition-all hover:scale-110 group-hover:rotate-6">
+              <Upload size={14} strokeWidth={2.5} />
+              <input type="file" className="hidden" accept="image/*" onChange={handlePhotoSelect} disabled={isUploading} />
+            </label>
           </div>
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{profile.companyName}</h2>
@@ -76,6 +129,15 @@ export const ClientProfile = () => {
           </div>
         </div>
       </div>
+
+      {selectedImage && (
+        <ImageCropper
+          image={selectedImage}
+          isOpen={showCropper}
+          onClose={() => setShowCropper(false)}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   );
 };

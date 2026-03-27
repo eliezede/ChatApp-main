@@ -11,6 +11,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useConfirm } from '../../../context/ConfirmContext';
+import { UserAvatar } from '../../../components/ui/UserAvatar';
 import { Users, Building2, Briefcase, Mail, Phone, Settings, Shield, Crown, LayoutGrid, List, UserCircle2, Trash2 } from 'lucide-react';
 
 export const AdminStaff = () => {
@@ -113,9 +114,12 @@ export const AdminStaff = () => {
       header: 'Member',
       accessor: (user: User) => (
         <div className="flex items-center space-x-3">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${user.role === UserRole.SUPER_ADMIN ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-            {user.displayName.charAt(0).toUpperCase()}
-          </div>
+          <UserAvatar 
+            name={user.displayName} 
+            src={user.photoUrl} 
+            size="sm"
+            className="rounded-xl shadow-sm"
+          />
           <div className="flex flex-col">
             <span className="font-bold text-slate-900 dark:text-white capitalize truncate max-w-[150px]">{user.displayName}</span>
             <div className="flex items-center space-x-2">
@@ -178,9 +182,12 @@ export const AdminStaff = () => {
         </div>
         
         <div className="flex flex-col items-center text-center space-y-4">
-            <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center text-2xl font-black shadow-inner ${member.role === UserRole.SUPER_ADMIN ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-                {member.displayName.charAt(0).toUpperCase()}
-            </div>
+            <UserAvatar 
+              name={member.displayName} 
+              src={member.photoUrl} 
+              size="lg"
+              className="rounded-[2rem] shadow-inner"
+            />
             
             <div>
                 <h3 className="font-black text-slate-900 dark:text-white capitalize text-lg tracking-tight mb-1">{member.displayName}</h3>
@@ -284,9 +291,12 @@ export const AdminStaff = () => {
         title={selectedStaff?.role === UserRole.SUPER_ADMIN ? "SuperAdmin Details" : "Staff Profile & Assignment"}
       >
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xl">
-                {selectedStaff?.displayName?.charAt(0)}
-            </div>
+            <UserAvatar 
+              name={selectedStaff?.displayName || ''} 
+              src={selectedStaff?.photoUrl} 
+              size="md"
+              className="rounded-xl shadow-sm"
+            />
             <div className="flex-1 min-w-0">
                 <h4 className="font-black text-blue-900 dark:text-blue-100 truncate">{selectedStaff?.displayName}</h4>
                 <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest truncate">{selectedStaff?.email}</p>

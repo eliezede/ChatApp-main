@@ -6,6 +6,7 @@ import { StaffService } from '../../services/staffService';
 import { ChatThread, ChatMessage, Booking, User, Department } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
+import { UserAvatar } from '../ui/UserAvatar';
 
 export const ChatSystem = () => {
   const { user, isAdmin } = useAuth();
@@ -194,9 +195,18 @@ export const ChatSystem = () => {
                         className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all flex items-center justify-between group"
                       >
                         <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-slate-400 font-black">
-                            {t.id.startsWith('dept-') ? <Hash size={20} /> : (t.participantNames[t.participants.find(p => p !== user.id)!]?.charAt(0) || '?')}
-                          </div>
+                          {t.id.startsWith('dept-') ? (
+                            <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-slate-400 font-black">
+                              <Hash size={20} />
+                            </div>
+                          ) : (
+                            <UserAvatar 
+                              name={t.participantNames[t.participants.find(p => p !== user.id)!] || '?'} 
+                              src={t.participantPhotos?.[t.participants.find(p => p !== user.id)!]} 
+                              size="md"
+                              className="rounded-xl shadow-sm"
+                            />
+                          )}
                           <div className="min-w-0">
                             <p className="text-sm font-black text-slate-900 dark:text-white truncate">
                               {t.id.startsWith('dept-') ? t.metadata?.name : t.participantNames[t.participants.find(p => p !== user.id)!]}
@@ -252,15 +262,19 @@ export const ChatSystem = () => {
                           key={s.id}
                           onClick={async () => {
                             const names = { [user.id]: user.displayName || 'Me', [s.id]: s.displayName || 'Staff' };
-                            const tid = await ChatService.getOrCreateThread([user.id, s.id], names);
+                            const photos = { [user.id]: user.photoUrl || '', [s.id]: s.photoUrl || '' };
+                            const tid = await ChatService.getOrCreateThread([user.id, s.id], names, photos);
                             setActiveThreadId(tid);
                           }}
                           className="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 cursor-pointer hover:border-blue-500 transition-all flex items-center gap-3"
                         >
                           <div className="relative">
-                            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center text-slate-500 font-bold text-sm">
-                              {s.displayName?.charAt(0)}
-                            </div>
+                            <UserAvatar 
+                              name={s.displayName || ''} 
+                              src={s.photoUrl} 
+                              size="sm"
+                              className="rounded-xl shadow-sm"
+                            />
                             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full" />
                           </div>
                           <div className="min-w-0">
