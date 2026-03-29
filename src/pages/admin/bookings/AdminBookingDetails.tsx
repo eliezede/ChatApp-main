@@ -25,6 +25,7 @@ import { useClients } from '../../../context/ClientContext';
 import { ActivityTimeline } from '../../../components/operations/ActivityTimeline';
 import { InterpreterAllocationDrawer } from '../../../components/operations/InterpreterAllocationDrawer';
 import { InterpreterPreviewDrawer } from '../../../components/operations/InterpreterPreviewDrawer';
+import { LocationMap } from '../../../components/ui/LocationMap';
 
 export const AdminBookingDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,8 +33,8 @@ export const AdminBookingDetails = () => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { user } = useAuth();
-  const { openChat } = useChat();
-  const { clients } = useClients();
+  const { openThread } = useChat();
+  const { clientsMap, getClientCompany } = useClients();
 
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -89,14 +90,7 @@ export const AdminBookingDetails = () => {
     if (!booking) return;
     setIsExporting(true);
     try {
-      const pdfBlob = await PdfService.generateBookingSummary(booking);
-      const url = window.URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `booking_${booking.reference || id}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      PdfService.generateBookingSummary(booking);
       showToast('Booking summary exported successfully', 'success');
     } catch (error) {
       showToast('Failed to export PDF', 'error');
@@ -107,7 +101,7 @@ export const AdminBookingDetails = () => {
 
   const handleOpenChat = () => {
     if (booking?.interpreterId) {
-      openChat(booking.interpreterId);
+      openThread(booking.interpreterId);
     } else {
       showToast('No interpreter assigned to chat with', 'info');
     }
@@ -285,7 +279,7 @@ export const AdminBookingDetails = () => {
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
-                            {booking.location?.address}, {booking.location?.postcode}
+                            {booking.address}, {booking.postcode}
                           </p>
                           <div className="mt-3 flex items-center gap-2">
                              <button className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter hover:underline flex items-center gap-1">
@@ -299,6 +293,25 @@ export const AdminBookingDetails = () => {
                           </div>
                         </div>
                       </div>
+                      
+                      {booking.lat && booking.lng && (
+                        <div className="mt-6">
+                           <LocationMap 
+                             center={{ lat: booking.lat, lng: booking.lng }} 
+                             zoom={12}
+                             height="250px"
+                             markers={[
+                               { lat: booking.lat, lng: booking.lng, label: 'Job Location', color: '#ef4444' },
+                               ...(booking.interpreterId ? [{ 
+                                 lat: booking.lat + 0.01, // Mocking proximity for demo if interp doesn't have real coords yet
+                                 lng: booking.lng + 0.01, 
+                                 label: booking.interpreterName || 'Interpreter',
+                                 color: '#3b82f6' 
+                               }] : [])
+                             ]}
+                           />
+                        </div>
+                      )}
                       
                       {booking.notes && (
                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border-l-4 border-blue-500 shadow-sm transition-colors">
@@ -407,7 +420,7 @@ export const AdminBookingDetails = () => {
                            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-1">Allocated ID: <span className="text-slate-900 dark:text-slate-300">INT-{booking.interpreterId.substring(0, 8)}</span></p>
                            <div className="flex items-center gap-3 mt-3">
                              <button 
-                               onClick={handleOpenChat}
+                               onClick={() => openThread(booking.interpreterId)}
                                className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-all"
                              >
                                <MessageSquare size={12} /> Live Chat
@@ -533,35 +546,23 @@ export const AdminBookingDetails = () => {
         </div>
       </div>
 
-      {/* Resource Allocation Desk Drawer */}
       <InterpreterAllocationDrawer
         isOpen={isAllocationDrawerOpen}
         onClose={() => setIsAllocationDrawerOpen(false)}
-        booking={booking}
-        onAllocate={async (intId, rate) => {
-          setIsActionLoading(true);
-          try {
-            await BookingService.update(id!, { 
-              interpreterId: intId, 
-              interpreterRate: rate,
-              status: 'CONFIRMED' 
-            } as any);
-            showToast('Interpreter successfully allocated', 'success');
-            loadBooking();
-            setIsAllocationDrawerOpen(false);
-          } catch (e) {
-            showToast('Failed to allocate interpreter', 'error');
-          } finally {
-            setIsActionLoading(false);
-          }
+        job={booking}
+        onSuccess={() => {
+          loadBooking();
+          setIsAllocationDrawerOpen(false);
+          showToast('Interpreter successfully allocated', 'success');
         }}
       />
 
-      {/* Interpreter Identity Modal */}
       <InterpreterPreviewDrawer
         interpreterId={selectedInterpreterId || ''}
+        jobId={id || ''}
         isOpen={isInterpreterPreviewOpen}
         onClose={() => setIsInterpreterPreviewOpen(false)}
+        onSuccess={() => loadBooking()}
       />
     </div>
   );

@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dark body {
+  background-color: #020617;
+  color: #f8fafc;
+}
+
+.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+*,
+::before,
+::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Supabase-style Sidebar */
+.sidebar-active {
+  background-color: rgba(241, 245, 249, 1); /* slate-100 */
+  color: rgba(15, 23, 42, 1); /* slate-900 */
+  position: relative;
+}
+
+.dark .sidebar-active {
+  background-color: rgba(30, 41, 59, 0.5); /* slate-800/50 */
+  color: rgba(255, 255, 255, 1); /* white */
+}
+
+.sidebar-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  height: 50%;
+  width: 3px;
+  background-color: #3b82f6; /* blue-500 */
+  border-radius: 0 4px 4px 0;
+}
+
+.sidebar-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8; /* slate-400 */
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 0 0.75rem;
+  margin-bottom: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.dark .sidebar-group-label {
+  color: #64748b; /* slate-500 */
+}
+
+/* Safe areas for mobile notches */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}

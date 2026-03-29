@@ -33,10 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onUserCreated = void 0;
+exports.resendStaffInvite = exports.onUserCreated = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 exports.onUserCreated = functions.runWith({
+    secrets: ['BREVO_API_KEY'],
     timeoutSeconds: 60,
     memory: '256MB'
 }).firestore
@@ -45,9 +46,14 @@ exports.onUserCreated = functions.runWith({
     const userData = snap.data();
     if (!userData)
         return null;
-    const { email, displayName, role } = userData;
+    const { email, displayName, role, status } = userData;
     if (!email) {
         console.warn(`[onUserCreated] No email for user ${context.params.userId}`);
+        return null;
+    }
+    // Only process PENDING users (invites). Already ACTIVE users don't need provisioning.
+    if (status && status !== 'PENDING') {
+        console.log(`[onUserCreated] User ${email} status is ${status}, skipping provisioning.`);
         return null;
     }
     try {
@@ -59,12 +65,12 @@ exports.onUserCreated = functions.runWith({
         }
         catch (authErr) {
             if (authErr.code === 'auth/user-not-found') {
-                // 2. Create the user in Firebase Auth
+                // 2. Create the user in Firebase Auth with a random temporary password
                 console.log(`[onUserCreated] Creating Auth user for ${email}...`);
                 userRecord = await admin.auth().createUser({
                     email,
                     displayName: displayName || email.split('@')[0],
-                    password: Math.random().toString(36).slice(-12) + '!', // Random temporary password
+                    password: Math.random().toString(36).slice(-12) + 'A1!',
                 });
             }
             else {
@@ -72,52 +78,149 @@ exports.onUserCreated = functions.runWith({
             }
         }
         const authUid = userRecord.uid;
-        // 3. IMPORTANT: ID ALIGNMENT
-        // If the current Firestore document ID is NOT the Auth UID, we must migrate it.
-        // This ensures AuthContext.tsx can fetch the user by UID upon login.
+        // 3. ID ALIGNMENT: Migrate Firestore doc to match Auth UID
         if (authUid !== context.params.userId) {
-            console.log(`[onUserCreated] ID Mismatch Detected. Migrating ${context.params.userId} to ${authUid}...`);
-            await admin.firestore().collection('users').doc(authUid).set({
-                ...userData,
-                id: authUid // Update ID within the document
+            console.log(`[onUserCreated] ID Mismatch. Migrating ${context.params.userId} → ${authUid} atomically...`);
+            const departmentId = userData._prov_departmentId || '';
+            const jobTitleId = userData._prov_jobTitleId || '';
+            const batch = admin.firestore().batch();
+            const profileRef = admin.firestore().collection('staff_profiles').doc();
+            batch.set(profileRef, {
+                id: profileRef.id,
+                userId: authUid,
+                departmentId,
+                jobTitleId,
+                onboardingCompleted: false,
+                preferences: { theme: 'system', language: 'en', notifications: true },
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
+            const { _prov_departmentId, _prov_jobTitleId, ...cleanUserData } = userData;
+            const newUserRef = admin.firestore().collection('users').doc(authUid);
+            batch.set(newUserRef, {
+                ...cleanUserData,
+                id: authUid,
+                staffProfileId: profileRef.id
             }, { merge: true });
-            // Delete the temporary (random ID) document
-            await admin.firestore().collection('users').doc(context.params.userId).delete();
-            console.log(`[onUserCreated] ID Alignment complete for ${email}.`);
+            const oldUserRef = admin.firestore().collection('users').doc(context.params.userId);
+            batch.delete(oldUserRef);
+            await batch.commit();
+            console.log(`[onUserCreated] Atomic ID Alignment & profile creation complete for ${email}.`);
         }
-        // 4. Generate Activation Link
-        console.log(`[onUserCreated] Generating activation link for ${email}...`);
-        const actionCodeSettings = {
-            url: 'https://lingland-platform.web.app/login',
-        };
-        const link = await admin.auth().generatePasswordResetLink(email, actionCodeSettings);
-        // 5. Send Activation Email
-        console.log(`[onUserCreated] Queueing activation email for ${email}`);
-        await admin.firestore().collection('mail').add({
-            to: [email],
-            message: {
-                subject: 'Welcome to Lingland - Activate your Account',
-                html: `
-                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1e293b;">
-                            <h1 style="color: #2563eb;">Welcome to Lingland!</h1>
-                            <p>Hello ${displayName || 'there'},</p>
-                            <p>Your professional account on the Lingland Platform has been provisioned.</p>
-                            <p><strong>To access your dashboard, you must first set your password:</strong></p>
-                            <div style="margin: 30px 0;">
-                                <a href="${link}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Set My Password</a>
-                            </div>
-                            <p style="font-size: 14px;">Once your password is set, you can log in using your email: <strong>${email}</strong></p>
-                            <p>Best regards,<br>The Lingland Team</p>
-                        </div>
-                    `,
-            },
-            createdAt: new Date().toISOString()
-        });
+        await sendInvitationEmail(authUid, email, displayName, role);
         return true;
     }
     catch (error) {
         console.error(`[onUserCreated] ❌ Error provisioning user ${email}:`, error);
+        await admin.firestore().collection('users').doc(context.params.userId).update({
+            error: error?.message || 'Unknown error provisioning user'
+        });
         return null;
     }
 });
+exports.resendStaffInvite = functions.runWith({ secrets: ['BREVO_API_KEY'] }).https.onCall(async (data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in');
+    const callerRef = await admin.firestore().collection('users').doc(context.auth.uid).get();
+    if (!callerRef.exists || callerRef.data()?.role !== 'SUPER_ADMIN') {
+        throw new functions.https.HttpsError('permission-denied', 'Only SUPER_ADMIN can resend invites');
+    }
+    const { userId } = data;
+    if (!userId)
+        throw new functions.https.HttpsError('invalid-argument', 'userId is required');
+    const userRef = await admin.firestore().collection('users').doc(userId).get();
+    if (!userRef.exists)
+        throw new functions.https.HttpsError('not-found', 'User not found');
+    const userData = userRef.data();
+    if (userData.status !== 'PENDING')
+        throw new functions.https.HttpsError('failed-precondition', 'User is not pending');
+    await sendInvitationEmail(userData.id, userData.email, userData.displayName, userData.role);
+    return { success: true };
+});
+async function sendInvitationEmail(authUid, email, displayName, role) {
+    const productionUrl = 'https://lingland-2e52f.web.app';
+    console.log(`[sendInvitationEmail] Generating password reset link for ${email}...`);
+    const resetLink = await admin.auth().generatePasswordResetLink(email, {
+        url: `${productionUrl}/#/setup?token=${authUid}`,
+    });
+    // Extract oobCode from the Firebase reset link
+    const url = new URL(resetLink);
+    const oobCode = url.searchParams.get('oobCode') || '';
+    // Build our custom setup link with both token (authUid) and oobCode
+    const setupLink = `${productionUrl}/#/setup?token=${authUid}&oobCode=${oobCode}`;
+    console.log(`[sendInvitationEmail] Custom setup link generated for ${email}`);
+    // Determine role label for email
+    const roleLabels = {
+        'SUPER_ADMIN': 'Super Administrator',
+        'ADMIN': 'Administrator',
+        'INTERPRETER': 'Interpreter',
+        'CLIENT': 'Client'
+    };
+    const roleLabel = roleLabels[role] || role || 'Team Member';
+    console.log(`[sendInvitationEmail] Queueing branded invitation email for ${email}`);
+    await admin.firestore().collection('mail').add({
+        to: [email],
+        message: {
+            subject: 'Welcome to Lingland – Complete Your Account Setup',
+            html: `
+                <div style="font-family: 'Inter', -apple-system, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+                    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px 32px; border-radius: 16px 16px 0 0;">
+                        <div style="width: 48px; height: 48px; background: #2563eb; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
+                            <span style="color: white; font-size: 24px; font-weight: 900;">L</span>
+                        </div>
+                        <h1 style="color: #ffffff; font-size: 28px; font-weight: 900; margin: 0 0 8px 0; letter-spacing: -0.5px;">
+                            Welcome to Lingland
+                        </h1>
+                        <p style="color: #94a3b8; font-size: 15px; margin: 0; line-height: 1.6;">
+                            Your professional account has been created and is ready for activation.
+                        </p>
+                    </div>
+
+                    <div style="padding: 32px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 16px 16px;">
+                        <p style="color: #1e293b; font-size: 15px; line-height: 1.7; margin: 0 0 8px 0;">
+                            Hello <strong>${displayName || 'there'}</strong>,
+                        </p>
+                        <p style="color: #475569; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;">
+                            You have been invited to join the Lingland platform as a <strong>${roleLabel}</strong>.
+                            To get started, click the button below to set your password and complete your onboarding.
+                        </p>
+
+                        <div style="text-align: center; margin: 32px 0;">
+                            <a href="${setupLink}" 
+                               style="display: inline-block; background: #2563eb; color: #ffffff; padding: 14px 32px; 
+                                      text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 15px;
+                                      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+                                Set My Password &amp; Join Team →
+                            </a>
+                        </div>
+
+                        <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin: 24px 0 0 0; border: 1px solid #e2e8f0;">
+                            <p style="color: #64748b; font-size: 12px; margin: 0 0 4px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                                Account Details
+                            </p>
+                            <p style="color: #1e293b; font-size: 14px; margin: 4px 0;">
+                                <strong>Email:</strong> ${email}
+                            </p>
+                            <p style="color: #1e293b; font-size: 14px; margin: 4px 0;">
+                                <strong>Role:</strong> ${roleLabel}
+                            </p>
+                        </div>
+
+                        <p style="color: #94a3b8; font-size: 12px; margin: 24px 0 0 0; line-height: 1.6;">
+                            This link is valid for a limited time. If it expires, please contact your administrator for a new invitation.
+                        </p>
+
+                        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+
+                        <p style="color: #94a3b8; font-size: 11px; text-align: center; margin: 0;">
+                            Lingland Platform · Professional Language Services
+                        </p>
+                    </div>
+                </div>
+            `,
+        },
+        createdAt: new Date().toISOString()
+    });
+    console.log(`[sendInvitationEmail] ✅ Invitation email queued for ${email}`);
+}
 //# sourceMappingURL=onUserCreated.js.map

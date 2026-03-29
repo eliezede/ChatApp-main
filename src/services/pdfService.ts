@@ -225,5 +225,10 @@ export const PdfService = {
     doc.text('Payment was processed via bank transfer. Thank you for your service.', 105, 280, { align: 'center' });
 
     doc.save(`Remittance_${payment.id}.pdf`);
+  },
+
+  generateBookingSummary: (booking: any) => {
+    // For now, use the Job Sheet format as a summary
+    PdfService.generateJobSheet(booking);
   }
 };

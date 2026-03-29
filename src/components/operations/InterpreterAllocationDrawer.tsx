@@ -8,6 +8,7 @@ import { InterpreterService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { assignInterpreterAction, createDependencies } from '../../ui/actions';
+import { LocationService } from '../../services/locationService';
 
 interface InterpreterAllocationDrawerProps {
     isOpen: boolean;
@@ -27,6 +28,8 @@ export const InterpreterAllocationDrawer: React.FC<InterpreterAllocationDrawerPr
     const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [distances, setDistances] = useState<Record<string, { distance: number, duration: number }>>({});
+    const [isCalculatingDistances, setIsCalculatingDistances] = useState(false);
 
     const actionsDeps = createDependencies((user as any)?.organizationId || 'lingland-main');
 
@@ -50,6 +53,40 @@ export const InterpreterAllocationDrawer: React.FC<InterpreterAllocationDrawerPr
             showToast("Failed to load interpreters", "error");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (interpreters.length > 0 && job?.lat && job?.lng) {
+            calculateAllDistances();
+        }
+    }, [interpreters, job]);
+
+    const calculateAllDistances = async () => {
+        if (!job?.lat || !job?.lng) return;
+        
+        setIsCalculatingDistances(true);
+        try {
+            // Filter interpreters that have coordinates
+            const intsWithCoords = interpreters
+                .filter(i => i.address?.lat && i.address?.lng)
+                .map(i => ({
+                    id: i.id,
+                    lat: i.address!.lat!,
+                    lng: i.address!.lng!
+                }));
+
+            if (intsWithCoords.length > 0) {
+                const matrix = await LocationService.calculateMatrix(
+                    intsWithCoords,
+                    { lat: job.lat, lng: job.lng }
+                );
+                setDistances(matrix);
+            }
+        } catch (e) {
+            console.error("Failed to calculate distances", e);
+        } finally {
+            setIsCalculatingDistances(false);
         }
     };
 
@@ -165,6 +202,12 @@ export const InterpreterAllocationDrawer: React.FC<InterpreterAllocationDrawerPr
                                                         <Star size={10} className="text-amber-400" />
                                                         <span className="text-[10px] text-slate-500">{98 - idx}% Reliability</span>
                                                     </div>
+                                                    {distances[interp.id] && (
+                                                        <div className="flex items-center space-x-1">
+                                                            <MapPin size={10} className="text-blue-500" />
+                                                            <span className="text-[10px] text-blue-600 font-bold">{distances[interp.id].distance.toFixed(1)} miles</span>
+                                                        </div>
+                                                    )}
                                                     <div className="flex items-center space-x-1">
                                                         <CheckCircle2 size={10} className="text-green-500" />
                                                         <span className="text-[10px] text-slate-500">DBS Valid</span>

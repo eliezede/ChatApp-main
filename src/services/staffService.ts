@@ -3,7 +3,6 @@ import { db } from './firebaseConfig';
 import { User, StaffProfile, Department, JobTitle, UserRole, LevelPermission } from '../types';
 import { convertDoc, safeFetch } from './utils';
 import { UserService } from './userService';
-import { EmailService } from './emailService';
 import { NotificationService } from './notificationService';
 
 export const StaffService = {
@@ -105,6 +104,7 @@ export const StaffService = {
 
   inviteStaffMember: async (data: { name: string, email: string, departmentId: string, jobTitleId: string, role: UserRole }) => {
     // 1. Create the User document with PENDING status
+    // The _prov_ fields are temporary fields used by the Cloud Function to provision the staff profile
     const userRef = doc(collection(db, 'users'));
     const userData: User = {
       id: userRef.id,
@@ -113,45 +113,24 @@ export const StaffService = {
       role: data.role,
       status: 'PENDING',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      // @ts-ignore
+      _prov_departmentId: data.departmentId,
+      // @ts-ignore
+      _prov_jobTitleId: data.jobTitleId
     };
     await setDoc(userRef, userData);
 
-    // 2. Create the Staff Profile
-    const profile = await StaffService.createProfile({
-      userId: userRef.id,
-      departmentId: data.departmentId,
-      jobTitleId: data.jobTitleId,
-      onboardingCompleted: false,
-      preferences: { theme: 'system', language: 'en', notifications: true }
-    });
+    console.log(`[StaffService] Invitation initiated for ${data.email}. Cloud Function will handle provisioning and email.`);
 
-    // 3. Trigger Invitation Email (In a real app, this generates a link)
-    // For this prototype, we simulate sending the email via our email service
-    const depts = await StaffService.getDepartments();
-    const jobs = await StaffService.getJobTitles();
-    const deptName = depts.find(d => d.id === data.departmentId)?.name || 'Unknown';
-    const jobName = jobs.find(j => j.id === data.jobTitleId)?.name || 'Staff Member';
+    return { user: userData };
+  },
 
-    // We use the production URL for invitations to ensure consistency
-    const productionUrl = 'https://lingland-2e52f.web.app';
-    const inviteLink = `${productionUrl}/#/setup?token=${userRef.id}`;
-
-    // Note: We call EmailService manually for the prototype/demonstration
-    await EmailService.sendApplicationEmail({
-        id: userRef.id,
-        name: data.name,
-        email: data.email,
-        status: 'PENDING'
-    } as any, 'STAFF_INVITED', 'admin@lingland.com', {
-        applicantName: data.name,
-        departmentName: deptName,
-        jobTitle: jobName,
-        role: data.role,
-        inviteLink
-    });
-
-    return { user: userData, profile, inviteLink };
+  resendInvite: async (userId: string) => {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const resendInviteFn = httpsCallable(functions, 'resendStaffInvite');
+    await resendInviteFn({ userId });
   },
 
   // --- Staff Directory ---
@@ -189,5 +168,12 @@ export const StaffService = {
       batch.set(ref, p);
     });
     await batch.commit();
+  },
+
+  getInvitationByEmail: async (email: string): Promise<User | null> => {
+    const q = query(collection(db, 'users'), where('email', '==', email), where('status', '==', 'PENDING'));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return convertDoc<User>(snap.docs[0]);
   }
 };

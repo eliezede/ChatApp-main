@@ -253,6 +253,21 @@ export const AdminStaff = () => {
             renderContextMenu={(member) => [
                 { label: 'Manage Profile', icon: Settings, onClick: () => handleOpenManage(member) },
                 { label: 'View Activity', icon: Users, onClick: () => showToast('Activity log coming soon', 'info') },
+                ...(isSuperAdmin && member.status === 'PENDING' ? [
+                  {
+                    label: 'Resend Invite',
+                    icon: Mail,
+                    onClick: async () => {
+                      try {
+                        showToast(`Resending invite to ${member.email}...`, 'info');
+                        await StaffService.resendInvite(member.id);
+                        showToast(`Invitation resent to ${member.email}`, 'success');
+                      } catch (err: any) {
+                        showToast(err.message || 'Error resending invite', 'error');
+                      }
+                    }
+                  }
+                ] : []),
                 ...(isSuperAdmin ? [
                   { 
                     label: 'Delete Staff Member', 

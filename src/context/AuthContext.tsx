@@ -123,19 +123,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     if (!auth.currentUser) return;
-    const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      setUser({
-        id: auth.currentUser.uid,
-        email: auth.currentUser.email || '',
-        displayName: userData.displayName || auth.currentUser.email,
-        role: userData.role as UserRole,
-        profileId: userData.profileId,
-        staffProfileId: userData.staffProfileId,
-        status: userData.status || 'ACTIVE',
-        photoUrl: userData.photoUrl
-      });
+    try {
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUser(prev => prev ? { ...prev, ...userData, status: userData.status || 'ACTIVE' } : null);
+        return;
+      }
+      
+      const q = query(collection(db, 'users'), where('email', '==', auth.currentUser.email));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const userData = snap.docs[0].data();
+        setUser(prev => prev ? { ...prev, ...userData, status: userData.status || 'ACTIVE' } : null);
+        return;
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    const mockUser = MOCK_USERS.find(u => u.email === auth.currentUser?.email);
+    if (mockUser) {
+      setUser(prev => prev ? { ...prev, ...mockUser, status: mockUser.status || 'ACTIVE' } : null);
     }
   };
 

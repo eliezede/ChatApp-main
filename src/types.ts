@@ -69,10 +69,13 @@ export interface StaffProfile {
   dob?: string;
   niNumber?: string;
   address?: {
+    houseNumber?: string;
     street: string;
     town: string;
     county: string;
     postcode: string;
+    lat?: number;
+    lng?: number;
   };
   emergencyContact?: {
     name: string;
@@ -144,6 +147,8 @@ export interface Booking {
   location?: string;
   address?: string;
   postcode?: string;
+  lat?: number;
+  lng?: number;
   onlineLink?: string;
   status: BookingStatus;
   costCode?: string;
@@ -237,11 +242,14 @@ export interface Interpreter extends TenantScopedEntity {
   homePhone?: string;
   gender: 'M' | 'F' | 'O';
   address: {
+    houseNumber?: string;
     street: string;
     town: string;
     county: string;
     postcode: string;
     country: string;
+    lat?: number;
+    lng?: number;
   };
   hasCar: boolean;
   skypeId?: string;
@@ -454,11 +462,14 @@ export interface InterpreterApplication {
   photoUrl?: string;
   gender: 'M' | 'F' | 'O';
   address: {
+    houseNumber?: string;
     street: string;
     town: string;
     county: string;
     postcode: string;
     country: string;
+    lat?: number;
+    lng?: number;
   };
   hasCar: boolean;
   skypeId?: string;

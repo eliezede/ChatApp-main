@@ -1,5 +1,4 @@
 import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc, setDoc, addDoc } from 'firebase/firestore';
-import { sendPasswordResetEmail } from 'firebase/auth';
 import { db, auth } from './firebaseConfig';
 import { User, Interpreter, StaffProfile, Client } from '../types';
 import { StorageService } from './storageService';
@@ -83,18 +82,6 @@ export const UserService = {
       MOCK_USERS.push(mockUser);
       saveMockData();
       return mockUser;
-    }
-  },
-
-  sendActivationEmail: async (email: string) => {
-    try {
-      // In a production environment, this triggers a standard Firebase password reset.
-      // This will now only work if the user has already been provisioned by the backend.
-      await sendPasswordResetEmail(auth, email);
-      return true;
-    } catch (e) {
-      console.error("Error sending activation email:", e);
-      throw e;
     }
   },
 

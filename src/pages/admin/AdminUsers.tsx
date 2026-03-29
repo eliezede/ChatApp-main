@@ -90,22 +90,8 @@ export const AdminUsers = () => {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    setActionInProgress('invite');
-    try {
-      await UserService.create({
-        displayName: inviteData.name,
-        email: inviteData.email,
-        role: inviteData.role,
-        status: 'PENDING'
-      });
-      await UserService.sendActivationEmail(inviteData.email);
-      showToast('Invitation sent successfully', 'success');
-      setIsInviteModalOpen(false);
-      setInviteData({ name: '', email: '', role: UserRole.ADMIN });
-      await loadData();
-    } catch (err) {
-      showToast('Failed to send invitation', 'error');
-    } finally { setActionInProgress(null); }
+    showToast('Staff invitations must be sent from the Staff Directory page (Administration > Staff).', 'info');
+    setIsInviteModalOpen(false);
   };
 
   const handleRoleChange = async () => {

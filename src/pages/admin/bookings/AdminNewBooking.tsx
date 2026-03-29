@@ -13,6 +13,8 @@ import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../context/AuthContext';
+import { AddressService, UkAddress } from '../../../services/addressService';
+import { PostcodeLookup } from '../../../components/ui/PostcodeLookup';
 
 export const AdminNewBooking = () => {
     const navigate = useNavigate();
@@ -43,6 +45,7 @@ export const AdminNewBooking = () => {
         locationType: 'ONSITE' as 'ONSITE' | 'ONLINE',
         address: '',
         postcode: '',
+        houseNumber: '',
         onlineLink: '',
         notes: '',
         genderPreference: 'None' as 'Male' | 'Female' | 'None',
@@ -55,7 +58,9 @@ export const AdminNewBooking = () => {
         translationFormatOther: '',
         quoteRequested: false,
         sourceFiles: [] as string[],
-        deliveryEmail: ''
+        deliveryEmail: '',
+        lat: undefined as number | undefined,
+        lng: undefined as number | undefined
     });
 
     const isTranslation = formData.serviceType === ServiceType.TRANSLATION;
@@ -112,7 +117,9 @@ export const AdminNewBooking = () => {
                 translationFormatOther: formData.translationFormatOther,
                 quoteRequested: formData.quoteRequested,
                 sourceFiles: formData.sourceFiles,
-                deliveryEmail: formData.deliveryEmail || formData.contactEmail
+                deliveryEmail: formData.deliveryEmail || formData.contactEmail,
+                lat: formData.lat,
+                lng: formData.lng
             };
 
             if (clientSource === 'EXISTING' && selectedClient) {
@@ -194,9 +201,12 @@ export const AdminNewBooking = () => {
                             <h2 className="text-xl font-black text-slate-900 dark:text-white">Billing Information</h2>
                         </div>
                         <div>
-                            <label className={labelClasses}>Purchase Order / Cost Code</label>
+                            <label htmlFor="costCode" className={labelClasses}>Purchase Order / Cost Code</label>
                             <input
                                 type="text"
+                                id="costCode"
+                                name="costCode"
+                                autoComplete="off"
                                 className={inputClasses + " font-mono"}
                                 placeholder="e.g. PO-2024-001 or CC-HR-99"
                                 value={formData.costCode}
@@ -274,9 +284,12 @@ export const AdminNewBooking = () => {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className={labelClasses}>Request Member Name</label>
+                                        <label htmlFor="contactName" className={labelClasses}>Request Member Name</label>
                                         <input
                                             type="text"
+                                            id="contactName"
+                                            name="contactName"
+                                            autoComplete="name"
                                             className={inputClasses}
                                             placeholder="Person who called/emailed"
                                             value={formData.contactName}
@@ -284,9 +297,12 @@ export const AdminNewBooking = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className={labelClasses}>Direct Contact Number</label>
+                                        <label htmlFor="contactPhone" className={labelClasses}>Direct Contact Number</label>
                                         <input
                                             type="tel"
+                                            id="contactPhone"
+                                            name="contactPhone"
+                                            autoComplete="tel"
                                             className={inputClasses}
                                             placeholder="+44 0000 000000"
                                             value={formData.contactPhone}
@@ -299,9 +315,12 @@ export const AdminNewBooking = () => {
                             <div className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="md:col-span-2">
-                                        <label className={labelClasses}>Organization / Company</label>
+                                        <label htmlFor="organization" className={labelClasses}>Organization / Company</label>
                                         <input
                                             type="text"
+                                            id="organization"
+                                            name="organization"
+                                            autoComplete="organization"
                                             className={inputClasses}
                                             placeholder="e.g. British Council"
                                             value={formData.organization}
@@ -309,9 +328,12 @@ export const AdminNewBooking = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className={labelClasses}>Contact Person</label>
+                                        <label htmlFor="guestContactName" className={labelClasses}>Contact Person</label>
                                         <input
                                             type="text"
+                                            id="guestContactName"
+                                            name="guestContactName"
+                                            autoComplete="name"
                                             className={inputClasses}
                                             placeholder="Full Name"
                                             value={formData.contactName}
@@ -319,9 +341,12 @@ export const AdminNewBooking = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className={labelClasses}>Email Address</label>
+                                        <label htmlFor="guestContactEmail" className={labelClasses}>Email Address</label>
                                         <input
                                             type="email"
+                                            id="guestContactEmail"
+                                            name="guestContactEmail"
+                                            autoComplete="email"
                                             className={inputClasses}
                                             placeholder="email@example.com"
                                             value={formData.contactEmail}
@@ -346,6 +371,8 @@ export const AdminNewBooking = () => {
                             <div>
                                 <label className={labelClasses}>Language Category</label>
                                 <select
+                                    id="serviceType"
+                                    name="serviceType"
                                     className={inputClasses}
                                     value={formData.serviceType}
                                     onChange={e => setFormData({ ...formData, serviceType: e.target.value as ServiceType })}
@@ -359,6 +386,8 @@ export const AdminNewBooking = () => {
                                 <label className={labelClasses}>Target Language</label>
                                 <select
                                     required
+                                    id="languageTo"
+                                    name="languageTo"
                                     className={inputClasses}
                                     value={formData.languageTo}
                                     onChange={e => setFormData({ ...formData, languageTo: e.target.value })}
@@ -377,6 +406,8 @@ export const AdminNewBooking = () => {
                                     <input
                                         type="date"
                                         required
+                                        id="date"
+                                        name="date"
                                         className={inputClasses + " pl-12"}
                                         value={formData.date}
                                         onChange={e => setFormData({ ...formData, date: e.target.value })}
@@ -391,6 +422,8 @@ export const AdminNewBooking = () => {
                                         <input
                                             type="time"
                                             required={!isTranslation}
+                                            id="startTime"
+                                            name="startTime"
                                             className={inputClasses}
                                             value={formData.startTime}
                                             onChange={e => setFormData({ ...formData, startTime: e.target.value })}
@@ -401,6 +434,8 @@ export const AdminNewBooking = () => {
                                         <input
                                             type="number"
                                             required={!isTranslation}
+                                            id="durationMinutes"
+                                            name="durationMinutes"
                                             className={inputClasses}
                                             value={formData.durationMinutes}
                                             onChange={e => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })}
@@ -449,33 +484,80 @@ export const AdminNewBooking = () => {
                                 </div>
 
                                 {formData.locationType === 'ONSITE' ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 animate-in fade-in slide-in-from-top-2">
-                                        <div className="md:col-span-2">
-                                            <label className={labelClasses}>Full Address</label>
-                                            <input
-                                                type="text"
-                                                className={inputClasses}
-                                                placeholder="Street, Building name..."
-                                                value={formData.address}
-                                                onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                        <div className="md:col-span-3">
+                                            <label className={labelClasses}>Job Location Address</label>
+                                            <PostcodeLookup 
+                                                onAddressSelected={(addr: UkAddress) => {
+                                                    setFormData({
+                                                        ...formData,
+                                                        address: addr.street || addr.formattedAddress,
+                                                        houseNumber: addr.houseNumber || '',
+                                                        postcode: addr.postcode,
+                                                        lat: addr.lat,
+                                                        lng: addr.lng
+                                                    });
+                                                }}
+                                                className="mb-2"
                                             />
+                                            <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5 ml-1">
+                                                <div className="w-1 h-1 rounded-full bg-blue-500" />
+                                                Include house number for exact matches (e.g. "10 SW1A 1AA")
+                                            </p>
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                                                <div>
+                                                    <label htmlFor="jobHouseNumber" className={labelClasses}>House/Flat #</label>
+                                                    <input
+                                                        type="text"
+                                                        id="jobHouseNumber"
+                                                        name="jobHouseNumber"
+                                                        autoComplete="address-line2"
+                                                        className={inputClasses}
+                                                        placeholder="e.g. 42B"
+                                                        value={formData.houseNumber}
+                                                        onChange={e => setFormData({ ...formData, houseNumber: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label htmlFor="jobAddress" className={labelClasses}>Street Address</label>
+                                                    <input
+                                                        type="text"
+                                                        id="jobAddress"
+                                                        name="jobAddress"
+                                                        autoComplete="address-line1"
+                                                        className={inputClasses}
+                                                        placeholder="Street, Building name..."
+                                                        value={formData.address}
+                                                        onChange={e => setFormData({ ...formData, address: e.target.value, lat: undefined, lng: undefined })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="jobPostcode" className={labelClasses}>Postcode</label>
+                                                    <input
+                                                        type="text"
+                                                        id="jobPostcode"
+                                                        name="jobPostcode"
+                                                        autoComplete="postal-code"
+                                                        className={inputClasses + " uppercase"}
+                                                        placeholder="SW1A 1AA"
+                                                        value={formData.postcode}
+                                                        onChange={e => setFormData({ ...formData, postcode: e.target.value, lat: undefined, lng: undefined })}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {formData.lat && (
+                                                <p className="mt-2 text-[10px] text-green-600 font-bold uppercase tracking-widest flex items-center gap-1">
+                                                    <Check size={10} /> Geocoding Active: {formData.lat.toFixed(4)}, {formData.lng?.toFixed(4)}
+                                                </p>
+                                            )}
                                         </div>
-                                        <div>
-                                            <label className={labelClasses}>Postcode</label>
-                                            <input
-                                                type="text"
-                                                className={inputClasses + " uppercase"}
-                                                placeholder="SW1A 1AA"
-                                                value={formData.postcode}
-                                                onChange={e => setFormData({ ...formData, postcode: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
                                 ) : (
                                     <div className="mt-6 animate-in fade-in slide-in-from-top-2">
-                                        <label className={labelClasses}>Meeting Link / Platform</label>
+                                        <label htmlFor="onlineLink" className={labelClasses}>Meeting Link / Platform</label>
                                         <input
                                             type="text"
+                                            id="onlineLink"
+                                            name="onlineLink"
+                                            autoComplete="url"
                                             className={inputClasses}
                                             placeholder="e.g. MS Teams Link, Zoom ID, or 'TBC'"
                                             value={formData.onlineLink}
@@ -505,6 +587,8 @@ export const AdminNewBooking = () => {
                                     {formData.translationFormat === 'Other' && (
                                         <input
                                             type="text"
+                                            id="translationFormatOther"
+                                            name="translationFormatOther"
                                             className={inputClasses + " mt-3"}
                                             placeholder="Please specify format..."
                                             value={formData.translationFormatOther}
@@ -537,6 +621,8 @@ export const AdminNewBooking = () => {
                                         <label className={labelClasses}>Delivery Email Address</label>
                                         <input
                                             type="email"
+                                            id="deliveryEmail"
+                                            name="deliveryEmail"
                                             className={inputClasses}
                                             placeholder="Where to send the translation..."
                                             value={formData.deliveryEmail}
@@ -561,6 +647,8 @@ export const AdminNewBooking = () => {
                             <h2 className="text-xl font-black">Admin Notes</h2>
                         </div>
                         <textarea
+                            id="notes"
+                            name="notes"
                             className="w-full h-40 bg-white/5 border border-white/10 rounded-2xl p-6 outline-none focus:ring-4 focus:ring-white/5 focus:border-white/20 transition-all text-white font-medium placeholder:text-white/20 resize-none"
                             placeholder="Any special instructions or case notes for the interpreter..."
                             value={formData.notes}
@@ -584,6 +672,8 @@ export const AdminNewBooking = () => {
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600" size={18} />
                                 <input
                                     type="text"
+                                    id="interpreterSearch"
+                                    name="interpreterSearch"
                                     className={inputClasses + " pl-12 bg-slate-50 dark:bg-slate-800/50"}
                                     placeholder="Search for an interpreter..."
                                     value={searchingInterpreter}
@@ -705,6 +795,8 @@ export const AdminNewBooking = () => {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input
                             type="text"
+                            id="clientSearch"
+                            name="clientSearch"
                             className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white font-medium placeholder:text-slate-400"
                             placeholder="Search by company name or contact person..."
                             value={clientSearchQuery}
